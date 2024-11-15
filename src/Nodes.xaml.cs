@@ -7,11 +7,11 @@ namespace wpflow;
 /// <summary>
 ///     Logique d'interaction pour Nodes.xaml
 /// </summary>
-public partial class Nodes : ContentControl
+public partial class Nodes
 {
     private bool _isDragging;
-    private Point _startPoint;
     private Canvas _parentCanvas;
+    private Point _startPoint;
 
     public Nodes()
     {
@@ -27,10 +27,7 @@ public partial class Nodes : ContentControl
     private void InitializeParentCanvas()
     {
         _parentCanvas = Parent as Canvas;
-        if (_parentCanvas == null)
-        {
-            throw new InvalidOperationException("Nodes must be a direct child of a Canvas.");
-        }
+        if (_parentCanvas == null) throw new InvalidOperationException("Nodes must be a direct child of a Canvas.");
     }
 
     private void OnMouseDown(object sender, MouseButtonEventArgs e)

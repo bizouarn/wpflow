@@ -12,5 +12,6 @@
         
             </Grid>
         </wpflow:Nodes>
+        <wpflow:Edge></wpflow:Edge>
     </wpflow:Wpflow>
 </Window>
