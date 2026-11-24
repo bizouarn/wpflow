@@ -179,8 +179,11 @@ public sealed class EdgeLayer : Canvas
     /// <summary>
     ///     Met à jour les edges. Avec <paramref name="touchedNodes" />, seuls les edges reliés à ces nodes (ou sans visuel
     ///     existant) sont recalculés ; sans, tous les edges le sont et les visuels obsolètes sont supprimés.
+    ///     Avec <paramref name="show" /> et <paramref name="keep" /> (virtualisation), un edge n'existe que s'il touche la
+    ///     zone <paramref name="keep" /> et n'est affiché que s'il touche <paramref name="show" />.
     /// </summary>
-    internal void Refresh(FlowView flow, IReadOnlySet<string>? touchedNodes = null)
+    internal void Refresh(FlowView flow, IReadOnlySet<string>? touchedNodes = null, Core.Rect? show = null,
+        Core.Rect? keep = null)
     {
         // Brosses lues une fois pour tous les edges : une recherche de ressource par edge coûterait trop cher.
         var style = new EdgeStyle(
@@ -191,9 +194,34 @@ public sealed class EdgeLayer : Canvas
         foreach (var edge in flow.Edges)
         {
             seen?.Add(edge.Id);
-            if (touchedNodes != null && _visuals.ContainsKey(edge.Id)
-                                     && !touchedNodes.Contains(edge.Source) && !touchedNodes.Contains(edge.Target))
+
+            var visibility = Visibility.Visible;
+            if (show is { } shown && keep is { } kept)
+            {
+                if (flow.ViewRectOf(edge.Source) is not { } a || flow.ViewRectOf(edge.Target) is not { } b)
+                {
+                    Remove(edge.Id);
+                    continue;
+                }
+
+                if (!GraphUtils.IsEdgeVisible(a, b, shown))
+                {
+                    if (!GraphUtils.IsEdgeVisible(a, b, kept))
+                    {
+                        Remove(edge.Id); // trop loin : pas d'élément visuel du tout
+                        continue;
+                    }
+
+                    visibility = Visibility.Collapsed;
+                }
+            }
+
+            var exists = _visuals.TryGetValue(edge.Id, out var visual);
+            if (exists && touchedNodes != null && !touchedNodes.Contains(edge.Source) && !touchedNodes.Contains(edge.Target))
+            {
+                SetVisibility(edge.Id, visual!, visibility);
                 continue;
+            }
 
             if (flow.GetEdgeEnds(edge) is not var (s, sp, t, tp))
             {
@@ -201,7 +229,7 @@ public sealed class EdgeLayer : Canvas
                 continue;
             }
 
-            if (!_visuals.TryGetValue(edge.Id, out var visual))
+            if (!exists)
             {
                 visual = new EdgeVisual(edge.Id);
                 _visuals[edge.Id] = visual;
@@ -215,13 +243,21 @@ public sealed class EdgeLayer : Canvas
                 "smoothstep" => EdgePaths.SmoothStep(s, sp, t, tp),
                 _ => EdgePaths.Bezier(s, sp, t, tp)
             };
-            visual.Update(edge, path, s, sp, t, tp, style);
+            visual!.Update(edge, path, s, sp, t, tp, style);
             UpdateLabel(edge, path, style);
+            SetVisibility(edge.Id, visual, visibility);
         }
 
         if (seen == null) return;
         foreach (var id in _visuals.Keys.Where(k => !seen.Contains(k)).ToList()) Remove(id);
     }
+
+    private void SetVisibility(string id, EdgeVisual visual, Visibility visibility)
+    {
+        if (visual.Visibility != visibility) visual.Visibility = visibility;
+        if (_labels.TryGetValue(id, out var label) && label.Visibility != visibility) label.Visibility = visibility;
+    }
+
 
     // Les labels sont créés à la demande : la plupart des edges n'en ont pas.
     private void UpdateLabel(Edge edge, EdgePath path, EdgeStyle style)
@@ -246,20 +282,6 @@ public sealed class EdgeLayer : Canvas
     {
         if (_visuals.Remove(id, out var visual)) Children.Remove(visual);
         if (_labels.Remove(id, out var label)) Children.Remove(label);
-    }
-
-    /// <summary>Masque les edges hors zone visible (<c>visible</c> = null : tous visibles).</summary>
-    internal void ApplyVisibility(FlowView flow, Core.Rect? visible)
-    {
-        foreach (var edge in flow.Edges)
-        {
-            if (!_visuals.TryGetValue(edge.Id, out var v)) continue;
-            var want = Visibility.Visible;
-            if (visible is { } view && flow.NodeRectOf(edge.Source) is { } s && flow.NodeRectOf(edge.Target) is { } t)
-                want = GraphUtils.IsEdgeVisible(s, t, view) ? Visibility.Visible : Visibility.Collapsed;
-            if (v.Visibility != want) v.Visibility = want;
-            if (_labels.TryGetValue(edge.Id, out var label) && label.Visibility != want) label.Visibility = want;
-        }
     }
 }
 

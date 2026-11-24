@@ -117,7 +117,7 @@ public class FlowView : ContentControl
     /// <summary>Ne rend que les nodes et edges visibles (<c>onlyRenderVisibleElements</c>) : indispensable au-delà de ~2 000 nodes.</summary>
     public static readonly DependencyProperty OnlyRenderVisibleElementsProperty = DependencyProperty.Register(
         nameof(OnlyRenderVisibleElements), typeof(bool), typeof(FlowView),
-        new PropertyMetadata(false, (d, _) => ((FlowView)d).UpdateVisibility()));
+        new PropertyMetadata(false, (d, _) => ((FlowView)d).UpdateVirtualization()));
 
     /// <summary>Modèle de contenu des labels d'edges (DataContext = l'<see cref="Edge" />) ; équivalent d'<c>EdgeLabelRenderer</c>.</summary>
     public static readonly DependencyProperty EdgeLabelTemplateProperty = DependencyProperty.Register(
@@ -282,8 +282,8 @@ public class FlowView : ContentControl
     #endregion
 
     private readonly Dictionary<string, NodeHost> _hosts = new();
-    private readonly Dictionary<string, Node> _nodeIndex = new(); // coordonnées absolues
-    private readonly Dictionary<string, Node> _rawIndex = new(); // tels que fournis (position relative au parent)
+    private Dictionary<string, Node> _nodeIndex = new(); // coordonnées absolues
+    private readonly Dictionary<string, Node> _rawIndex = new(); // tels que fournis (position relative au parent) ; rempli seulement s'il y a des groupes
     private bool _virtualized;
     private readonly Dictionary<string, IReadOnlyList<HandleInfo>> _handleMap = new();
     private Canvas? _nodeCanvas;
@@ -330,7 +330,7 @@ public class FlowView : ContentControl
         SizeChanged += (_, _) =>
         {
             CoerceValue(ViewportProperty);
-            UpdateVisibility();
+            UpdateVirtualization();
             TryFitOnInit();
             RaiseStateChanged();
         };
@@ -389,6 +389,8 @@ public class FlowView : ContentControl
 
         // Un nouveau gabarit repart d'un canvas vide : les hôtes de l'ancien ne sont plus dans l'arbre.
         _hosts.Clear();
+        _nodeIndex.Clear();
+        _previousIndex.Clear();
         _handleMap.Clear();
         _measured.Clear();
 
@@ -457,64 +459,86 @@ public class FlowView : ContentControl
 
     #region Sync with model
 
+    // Deux index permutés à chaque mise à jour (aucune réallocation) : l'actuel et le précédent (pour détecter ajouts,
+    // suppressions et nodes modifiés sans HashSet temporaire).
+    private Dictionary<string, Node> _previousIndex = new();
+    private Dictionary<string, int>? _depths;
+    private bool _hasTree;
+    private Core.Rect _showRect, _keepRect;
+
+    private enum Presence
+    {
+        Absent, // pas d'élément visuel du tout (c'est ce qui économise la mémoire)
+        Hidden, // élément gardé mais masqué : évite de le recréer à chaque aller-retour du pan
+        Shown
+    }
+
     private void OnNodesChanged()
     {
         if (_nodeCanvas == null) return;
-        var seen = new HashSet<string>();
-        var changed = new HashSet<string>();
-        var structural = false;
         var nodes = Nodes;
-        var hasTree = nodes.Any(n => n.ParentId != null);
-        var abs = hasTree ? NodeTree.AbsolutePositions(nodes) : null;
-        var depths = hasTree ? NodeTree.Depths(nodes) : null;
+        _hasTree = nodes.Any(n => n.ParentId != null);
+        var abs = _hasTree ? NodeTree.AbsolutePositions(nodes) : null;
+        _depths = _hasTree ? NodeTree.Depths(nodes) : null;
+        _virtualized = OnlyRenderVisibleElements;
+        ComputeViewRects();
+
+        (_nodeIndex, _previousIndex) = (_previousIndex, _nodeIndex);
         _nodeIndex.Clear();
-        _rawIndex.Clear();
+        if (_hasTree) _rawIndex.Clear(); // sans arbre, _nodeIndex contient déjà les nodes tels que fournis
+
+        var changed = new HashSet<string>();
+        var added = false;
+        var kept = 0;
         foreach (var node in nodes)
         {
-            seen.Add(node.Id);
-            _rawIndex[node.Id] = node;
             // _nodeIndex contient des nodes en coordonnées absolues (edges, handles, minimap).
             var absolute = abs == null ? node : node with { Position = abs[node.Id], ParentId = null };
+            if (_hasTree) _rawIndex[node.Id] = node;
             _nodeIndex[node.Id] = absolute;
-            if (!_hosts.TryGetValue(node.Id, out var host))
+
+            // Nodes immuables : même référence (ou, avec un arbre, même valeur) = rien n'a changé.
+            if (_previousIndex.TryGetValue(node.Id, out var before))
             {
-                host = new NodeHost(this);
-                _hosts[node.Id] = host;
-                _nodeCanvas.Children.Add(host);
-                structural = true;
+                kept++;
+                if (!ReferenceEquals(before, absolute) && !(_hasTree && before == absolute)) changed.Add(node.Id);
+            }
+            else
+            {
+                added = true;
+                changed.Add(node.Id);
             }
 
-            // Les nodes sont immuables : même référence et même position absolue = « rien à refaire ».
-            if (ReferenceEquals(host.Node, node) && host.AbsolutePosition == absolute.Position) continue;
-            changed.Add(node.Id);
-            host.SetNode(node, absolute.Position, depths?.GetValueOrDefault(node.Id) ?? 0);
+            SyncHost(node, absolute);
         }
 
-        if (_hosts.Count != seen.Count)
+        var removed = kept != _previousIndex.Count;
+        if (removed)
         {
-            foreach (var id in _hosts.Keys.Where(k => !seen.Contains(k)).ToList())
+            foreach (var id in _hosts.Keys.Where(k => !_nodeIndex.ContainsKey(k)).ToList())
             {
                 _nodeCanvas.Children.Remove(_hosts[id]);
                 _hosts.Remove(id);
-                _handleMap.Remove(id);
             }
 
-            structural = true;
+            foreach (var id in _handleMap.Keys.Where(k => !_nodeIndex.ContainsKey(k)).ToList()) _handleMap.Remove(id);
         }
 
         // Ajout/retrait de node : recalcul complet ; sinon seuls les edges des nodes modifiés (et de leurs descendants).
-        if (hasTree && !structural) changed.UnionWith(NodeTree.DescendantsOf(changed.ToList(), nodes));
-        _edgeLayer?.Refresh(this, structural ? null : changed);
-        UpdateVisibility();
+        var structural = added || removed;
+        if (_hasTree && !structural) changed.UnionWith(NodeTree.DescendantsOf(changed.ToList(), nodes));
+        RefreshEdges(structural ? null : changed);
         RaiseStateChanged();
     }
 
     private void OnEdgesChanged()
     {
-        _edgeLayer?.Refresh(this);
-        UpdateVisibility();
+        RefreshEdges(null);
         RaiseStateChanged();
     }
+
+    private void RefreshEdges(IReadOnlySet<string>? touchedNodes) =>
+        _edgeLayer?.Refresh(this, touchedNodes, _virtualized ? _showRect : null, _keepRect);
 
     private void OnViewportChanged()
     {
@@ -522,7 +546,7 @@ public class FlowView : ContentControl
         if (_viewportGrid != null)
             _viewportGrid.RenderTransform = new MatrixTransform(v.Zoom, 0, 0, v.Zoom, v.X, v.Y);
         _background?.SetViewport(v);
-        UpdateVisibility();
+        UpdateVirtualization();
         RaiseStateChanged();
     }
 
@@ -533,43 +557,81 @@ public class FlowView : ContentControl
         return v;
     }
 
-    /// <summary>
-    ///     Virtualisation (<see cref="OnlyRenderVisibleElements" />) : masque nodes et edges hors de la zone visible.
-    ///     Un node jamais mesuré hors zone reste masqué (donc non mesuré) tant qu'il n'approche pas de la vue.
-    /// </summary>
-    private void UpdateVisibility()
+    private void ComputeViewRects()
     {
-        if (_nodeCanvas == null) return;
-        if (!OnlyRenderVisibleElements)
+        if (!_virtualized) return;
+        var view = ViewportMath.GetVisibleRect(Viewport, Math.Max(ActualWidth, 1), Math.Max(ActualHeight, 1));
+        // Affichés : la vue + 300 px (on mesure un peu avant l'entrée). Gardés : + 900 px, pour ne pas recréer un node
+        // à chaque va-et-vient du pan. Au-delà, plus aucun élément visuel n'existe.
+        _showRect = Inflate(view, 300 / Viewport.Zoom);
+        _keepRect = Inflate(view, 900 / Viewport.Zoom);
+    }
+
+    private static Core.Rect Inflate(Core.Rect r, double m) => new(r.X - m, r.Y - m, r.Width + 2 * m, r.Height + 2 * m);
+
+    /// <summary>Taille supposée d'un node jamais mesuré, pour décider s'il faut le créer.</summary>
+    private static Core.Rect AssumedRect(Node n) => new(n.Position.X, n.Position.Y, n.Width ?? 200, n.Height ?? 100);
+
+    private Presence PresenceOf(Node absolute)
+    {
+        if (!_virtualized || absolute.Selected) return Presence.Shown;
+        var rect = AssumedRect(absolute);
+        return rect.Overlaps(_showRect) ? Presence.Shown : rect.Overlaps(_keepRect) ? Presence.Hidden : Presence.Absent;
+    }
+
+    /// <summary>
+    ///     Met l'élément visuel d'un node en accord avec son état (créé, masqué, supprimé, à jour).
+    ///     Seul le mode virtualisé produit <see cref="Presence.Hidden" /> et <see cref="Presence.Absent" />.
+    /// </summary>
+    private void SyncHost(Node raw, Node absolute)
+    {
+        var presence = PresenceOf(absolute);
+        if (!_hosts.TryGetValue(raw.Id, out var host))
         {
-            if (!_virtualized) return;
-            _virtualized = false;
-            foreach (var host in _hosts.Values) host.Visibility = Visibility.Visible;
-            _edgeLayer?.ApplyVisibility(this, null);
+            if (presence == Presence.Absent) return;
+            host = new NodeHost(this);
+            _hosts[raw.Id] = host;
+            _nodeCanvas!.Children.Add(host);
+        }
+        else if (presence == Presence.Absent)
+        {
+            _nodeCanvas!.Children.Remove(host);
+            _hosts.Remove(raw.Id);
             return;
         }
 
-        _virtualized = true;
-        var view = ViewportMath.GetVisibleRect(Viewport, Math.Max(ActualWidth, 1), Math.Max(ActualHeight, 1));
-        var margin = 300 / Viewport.Zoom; // marge pour mesurer/afficher un peu avant l'entrée dans la vue
-        var inflated = new Core.Rect(view.X - margin, view.Y - margin, view.Width + 2 * margin, view.Height + 2 * margin);
-        foreach (var (id, host) in _hosts)
-        {
-            if (!_nodeIndex.TryGetValue(id, out var n)) continue;
-            // Sans mesure, on suppose une taille par défaut pour décider.
-            var rect = new Core.Rect(n.Position.X, n.Position.Y, n.Width ?? 200, n.Height ?? 100);
-            var visible = n.Selected || rect.Overlaps(inflated);
-            var want = visible ? Visibility.Visible : Visibility.Collapsed;
-            if (host.Visibility != want) host.Visibility = want;
-        }
-
-        _edgeLayer?.ApplyVisibility(this, inflated);
+        var want = presence == Presence.Shown ? Visibility.Visible : Visibility.Collapsed;
+        if (host.Visibility != want) host.Visibility = want;
+        if (ReferenceEquals(host.Node, raw) && host.AbsolutePosition == absolute.Position) return;
+        host.SetNode(raw, absolute.Position, _depths?.GetValueOrDefault(raw.Id) ?? 0);
     }
+
+    /// <summary>
+    ///     Virtualisation (<see cref="OnlyRenderVisibleElements" />) : seuls les nodes et edges proches de la vue ont un
+    ///     élément visuel. Appelé quand la vue ou le mode changent. Un node jamais mesuré hors zone n'est pas créé, donc
+    ///     pas mesuré, tant qu'il n'approche pas.
+    /// </summary>
+    private void UpdateVirtualization()
+    {
+        if (_nodeCanvas == null || (!OnlyRenderVisibleElements && !_virtualized)) return;
+        _virtualized = OnlyRenderVisibleElements;
+        ComputeViewRects();
+        foreach (var absolute in _nodeIndex.Values) SyncHost(RawNode(absolute.Id) ?? absolute, absolute);
+        // Aucun node n'a changé : on ne crée que les edges qui deviennent proches, et on retire ceux qui s'éloignent.
+        RefreshEdges(_virtualized ? EmptySet : null);
+    }
+
+    private static readonly IReadOnlySet<string> EmptySet = new HashSet<string>();
+
+    private Node? RawNode(string id) => (_hasTree ? _rawIndex : _nodeIndex).GetValueOrDefault(id);
 
     /// <summary>Nodes en coordonnées absolues (pour MiniMap et composants externes).</summary>
     public IReadOnlyCollection<Node> AbsoluteNodes => _nodeIndex.Values;
 
     internal Core.Rect? NodeRectOf(string id) => _nodeIndex.TryGetValue(id, out var n) ? n.Rect : null;
+
+    /// <summary>Rectangle d'un node pour la virtualisation des edges : mesuré, sinon supposé.</summary>
+    internal Core.Rect? ViewRectOf(string id) => _nodeIndex.TryGetValue(id, out var n) ? n.Rect ?? AssumedRect(n) : null;
 
     #region Theme
 
@@ -731,7 +793,7 @@ public class FlowView : ContentControl
     /// </summary>
     private XYPosition ConstrainPosition(string id, XYPosition relative)
     {
-        if (!_rawIndex.TryGetValue(id, out var node)) return relative;
+        if (RawNode(id) is not { } node) return relative;
         var parentAbs = XYPosition.Zero;
         if (node.ParentId != null && _nodeIndex.TryGetValue(node.ParentId, out var parent))
         {
@@ -757,7 +819,7 @@ public class FlowView : ContentControl
         {
             if (!n.Selected || !n.Draggable) continue;
             var covered = false;
-            for (var p = n.ParentId; p != null && _rawIndex.TryGetValue(p, out var parent); p = parent.ParentId)
+            for (var p = n.ParentId; p != null && RawNode(p) is { } parent; p = parent.ParentId)
                 if (selected.Contains(p)) { covered = true; break; }
             if (!covered) result[n.Id] = n.Position;
         }

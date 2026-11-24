@@ -73,7 +73,7 @@ Guides : [Thèmes](../learn/08-theming.md), [Interactions](../learn/09-interacti
 
 *Onglet « Performance ».*
 
-« Charger 3 000 nodes » avec ou sans virtualisation (`OnlyRenderVisibleElements`) ; le texte affiche le nombre de nodes réellement rendus (de l'ordre de 260 sur 3 000 en virtualisé).
+« Charger 3 000 nodes » avec ou sans virtualisation (`OnlyRenderVisibleElements`) ; le texte affiche le nombre de nodes réellement rendus (de l'ordre de 260 sur 3 000 en virtualisé, les autres n'existent pas).
 
 Guide : [Performance et accessibilité](../learn/11-performance-accessibility.md).
 

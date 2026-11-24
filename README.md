@@ -112,7 +112,7 @@ Types intégrés : `default` (handle haut + bas), `input` (source seule), `outpu
 
 **Disposition automatique.** `GraphLayout.LayeredLeftToRight(nodes, edges)` calcule des positions en couches.
 
-**Performance.** Mesuré dans la démo (nodes par défaut, un edge par node, sur la machine de développement) : 1 000 nodes → 0,8 s d'affichage, ~20 ms/image en déplacement et en pan ; 3 000 nodes rendus en totalité → 3,5 à 3,8 s et 65 à 95 ms/image. Avec `OnlyRenderVisibleElements="True"`, 5 000 nodes → 2,5 s, 11 ms et 7 ms/image : **activez-le dès ~1 000 nodes**. Les nodes hors vue n'étant pas mesurés, `FitViewOnInit` et la minimap ne connaissent que les nodes mesurés : donnez `FixedWidth`/`FixedHeight` aux nodes d'un grand graphe virtualisé.
+**Performance et mémoire.** Mesuré dans la démo (nodes par défaut, un edge par node, sur la machine de développement) : 3 000 nodes rendus en totalité → 3,5 à 3,8 s d'affichage, 65 à 95 ms/image en déplacement et en pan, +32 Mo de mémoire managée (≈ 11 Ko par node). Avec `OnlyRenderVisibleElements="True"`, seuls les nodes et edges proches de la vue ont un élément visuel : 5 000 nodes → 0,4 s, 9 à 13 ms/image, +7 Mo ; 20 000 nodes → 0,4 s, ~25 ms/image, +8 Mo. **Activez-le dès ~1 000 nodes.** Les nodes hors vue n'étant ni créés ni mesurés, `FitViewOnInit` et la minimap ne connaissent que les nodes mesurés : donnez `FixedWidth`/`FixedHeight` aux nodes d'un grand graphe virtualisé.
 
 **Accessibilité.** `FlowView` et `NodeHost` exposent des peers UI Automation (nom, sélection) ; navigation complète au clavier (voir tableau).
 

@@ -22,6 +22,7 @@ internal static class PerfTest
             .Select(i => new Edge($"e{i}", $"n{i - 1}", $"n{i}"))
             .ToList();
 
+        var baseline = Heap();
         var sw = Stopwatch.StartNew();
         flow.Edges = edges;
         flow.Nodes = nodes;
@@ -35,8 +36,11 @@ internal static class PerfTest
             await flow.Dispatcher.InvokeAsync(() => { }, DispatcherPriority.Background);
         await flow.Dispatcher.InvokeAsync(() => { }, DispatcherPriority.Render);
         log($"{count} nodes / {edges.Count} edges : premier affichage + mesure = {sw.ElapsedMilliseconds} ms");
+        var loaded = Heap();
+        log($"mémoire : tas managé {baseline.Managed / 1048576.0:0.0} -> {loaded.Managed / 1048576.0:0.0} Mo (+{(loaded.Managed - baseline.Managed) / 1024.0 / count:0.0} Ko/node), working set +{(loaded.WorkingSet - baseline.WorkingSet) / 1048576.0:0} Mo");
 
         const int frames = 60;
+        var (a0, g0) = (GC.GetAllocatedBytesForCurrentThread(), (GC.CollectionCount(0), GC.CollectionCount(1), GC.CollectionCount(2)));
         var id = "n0";
         sw.Restart();
         for (var i = 1; i <= frames; i++)
@@ -45,7 +49,8 @@ internal static class PerfTest
             await flow.Dispatcher.InvokeAsync(() => { }, DispatcherPriority.Render);
         }
 
-        log($"déplacement d'un node : {sw.ElapsedMilliseconds / (double)frames:0.0} ms / image");
+        log($"déplacement d'un node : {sw.ElapsedMilliseconds / (double)frames:0.0} ms / image, {(GC.GetAllocatedBytesForCurrentThread() - a0) / frames / 1024.0:0} Ko alloués / image, GC gen0/1/2 = {GC.CollectionCount(0) - g0.Item1}/{GC.CollectionCount(1) - g0.Item2}/{GC.CollectionCount(2) - g0.Item3}");
+        var a1 = GC.GetAllocatedBytesForCurrentThread();
 
         sw.Restart();
         for (var i = 1; i <= frames; i++)
@@ -54,6 +59,15 @@ internal static class PerfTest
             await flow.Dispatcher.InvokeAsync(() => { }, DispatcherPriority.Render);
         }
 
-        log($"pan : {sw.ElapsedMilliseconds / (double)frames:0.0} ms / image");
+        log($"pan : {sw.ElapsedMilliseconds / (double)frames:0.0} ms / image, {(GC.GetAllocatedBytesForCurrentThread() - a1) / frames / 1024.0:0} Ko alloués / image");
+    }
+
+    // Tas managé après collecte complète, et mémoire résidente du processus.
+    private static (long Managed, long WorkingSet) Heap()
+    {
+        GC.Collect();
+        GC.WaitForPendingFinalizers();
+        GC.Collect();
+        return (GC.GetTotalMemory(true), Process.GetCurrentProcess().WorkingSet64);
     }
 }
