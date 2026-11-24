@@ -1,0 +1,153 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:local="clr-namespace:Wpflow.Wpf">
+
+    <!-- Surface -->
+    <Style TargetType="{x:Type local:FlowView}">
+        <Setter Property="Background" Value="{DynamicResource Flow.Background}" />
+        <Setter Property="Focusable" Value="True" />
+        <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+        <Setter Property="SnapsToDevicePixels" Value="False" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="{x:Type local:FlowView}">
+                    <Border Background="{TemplateBinding Background}" ClipToBounds="True">
+                        <Grid>
+                            <local:FlowBackground x:Name="PART_Background" />
+                            <Grid x:Name="PART_Viewport">
+                                <local:EdgeLayer x:Name="PART_Edges" />
+                                <Canvas x:Name="PART_Nodes" />
+                                <Path x:Name="PART_Connection" Stroke="#b1b1b7" StrokeThickness="1.5"
+                                      IsHitTestVisible="False" />
+                            </Grid>
+                            <Border x:Name="PART_Selection" Visibility="Collapsed" HorizontalAlignment="Left"
+                                    VerticalAlignment="Top" Background="#140059DC" BorderBrush="#0059DC"
+                                    BorderThickness="1" IsHitTestVisible="False" />
+                            <ContentPresenter />
+                        </Grid>
+                    </Border>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!-- NodeHost : contenu + contour de sélection (nodes à template personnalisé) -->
+    <Style TargetType="{x:Type local:NodeHost}">
+        <Setter Property="Focusable" Value="False" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="{x:Type local:NodeHost}">
+                    <Grid>
+                        <ContentPresenter />
+                        <Border x:Name="outline" BorderBrush="{DynamicResource Flow.Outline}" BorderThickness="1.5" Margin="-3"
+                                CornerRadius="{TemplateBinding OutlineCornerRadius}" IsHitTestVisible="False"
+                                Visibility="Collapsed" />
+                    </Grid>
+                    <ControlTemplate.Triggers>
+                        <MultiTrigger>
+                            <MultiTrigger.Conditions>
+                                <Condition Property="IsSelected" Value="True" />
+                                <Condition Property="ShowOutline" Value="True" />
+                            </MultiTrigger.Conditions>
+                            <Setter TargetName="outline" Property="Visibility" Value="Visible" />
+                        </MultiTrigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!-- NodeToolbar -->
+    <Style TargetType="{x:Type local:NodeToolbar}">
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="{x:Type local:NodeToolbar}">
+                    <Border Background="{DynamicResource Flow.ControlsBackground}" CornerRadius="6" Padding="4">
+                        <Border.Effect>
+                            <DropShadowEffect BlurRadius="6" ShadowDepth="1" Opacity="0.25" />
+                        </Border.Effect>
+                        <ContentPresenter />
+                    </Border>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!-- Handle -->
+    <Style TargetType="{x:Type local:Handle}">
+        <Setter Property="Background" Value="#9CA3AF" />
+        <Setter Property="BorderBrush" Value="White" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="{x:Type local:Handle}">
+                    <Grid Background="Transparent">
+                        <!-- Zone de clic élargie, sans effet sur la mesure. -->
+                        <Rectangle Fill="Transparent" Margin="-6" />
+                        <Ellipse Fill="{TemplateBinding Background}" Stroke="{TemplateBinding BorderBrush}"
+                                 StrokeThickness="{TemplateBinding BorderThickness}" />
+                    </Grid>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!-- Controls -->
+    <Style x:Key="FlowControlButton" TargetType="ButtonBase">
+        <Setter Property="Width" Value="26" />
+        <Setter Property="Height" Value="26" />
+        <Setter Property="Background" Value="{DynamicResource Flow.ControlsBackground}" />
+        <Setter Property="Cursor" Value="Hand" />
+        <Setter Property="Focusable" Value="False" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="ButtonBase">
+                    <Border x:Name="bd" Background="{TemplateBinding Background}" BorderBrush="{DynamicResource Flow.ControlsBorder}"
+                            BorderThickness="0,0,0,1">
+                        <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="bd" Property="Background" Value="{DynamicResource Flow.ControlsHover}" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <Style TargetType="{x:Type local:FlowControls}">
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="{x:Type local:FlowControls}">
+                    <Border Background="{DynamicResource Flow.ControlsBackground}" CornerRadius="2">
+                        <Border.Effect>
+                            <DropShadowEffect BlurRadius="5" ShadowDepth="0" Opacity="0.2" />
+                        </Border.Effect>
+                        <StackPanel>
+                            <Button x:Name="PART_ZoomIn" Style="{StaticResource FlowControlButton}" ToolTip="Zoom in">
+                                <Path Fill="{DynamicResource Flow.ControlsForeground}" Stretch="Uniform" Width="10" Height="10"
+                                      Data="M32 18.133H18.133V32h-4.266V18.133H0v-4.266h13.867V0h4.266v13.867H32z" />
+                            </Button>
+                            <Button x:Name="PART_ZoomOut" Style="{StaticResource FlowControlButton}" ToolTip="Zoom out">
+                                <Path Fill="{DynamicResource Flow.ControlsForeground}" Stretch="Uniform" Width="10" Height="3" Data="M0 0h32v4.2H0z" />
+                            </Button>
+                            <Button x:Name="PART_Fit" Style="{StaticResource FlowControlButton}" ToolTip="Fit view">
+                                <Path Fill="{DynamicResource Flow.ControlsForeground}" Stretch="Uniform" Width="12" Height="12"
+                                      Data="M3.692 4.63c0-.53.4-.938.939-.938h5.215V0H4.708C2.13 0 0 2.054 0 4.63v5.216h3.692V4.631zM27.354 0h-5.2v3.692h5.17c.53 0 .984.4.984.939v5.215H32V4.631A4.624 4.624 0 0027.354 0zm.954 24.83c0 .532-.4.94-.939.94h-5.215v3.768h5.215c2.577 0 4.631-2.13 4.631-4.707v-5.139h-3.692v5.139zm-23.677.94c-.531 0-.939-.4-.939-.94v-5.138H0v5.139c0 2.577 2.13 4.707 4.708 4.707h5.138V25.77H4.631z" />
+                            </Button>
+                            <ToggleButton x:Name="PART_Lock" Style="{StaticResource FlowControlButton}"
+                                          ToolTip="Toggle interactivity">
+                                <Grid Width="12" Height="12">
+                                    <Path Fill="{DynamicResource Flow.ControlsForeground}" Data="M1,5 H11 V11.5 H1 Z" />
+                                    <Path x:Name="shackle" Stroke="{DynamicResource Flow.ControlsForeground}" StrokeThickness="1.4"
+                                          Data="M3,5 V3.5 A3,3 0 0 1 9,3.5" />
+                                </Grid>
+                            </ToggleButton>
+                        </StackPanel>
+                    </Border>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+</ResourceDictionary>

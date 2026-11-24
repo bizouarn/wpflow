@@ -1,0 +1,163 @@
+<Window x:Class="demo.ExamplesWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:flow="clr-namespace:Wpflow.Wpf;assembly=Wpflow.Wpf"
+        Title="WPFlow - Exemples" Height="760" Width="1200" FontFamily="Segoe UI">
+    <Window.Resources>
+        <!-- Label d'edge personnalisé (équivalent d'EdgeLabelRenderer) -->
+        <DataTemplate x:Key="PillLabel">
+            <Border x:Name="pill" Background="#FF0071" CornerRadius="9" Padding="8,2">
+                <TextBlock Text="{Binding Label}" Foreground="White" FontSize="10" FontWeight="SemiBold" />
+            </Border>
+            <DataTemplate.Triggers>
+                <DataTrigger Binding="{Binding Label}" Value="{x:Null}">
+                    <Setter TargetName="pill" Property="Visibility" Value="Collapsed" />
+                </DataTrigger>
+            </DataTemplate.Triggers>
+        </DataTemplate>
+
+        <!-- Node avec NodeToolbar et NodeResizer -->
+        <DataTemplate x:Key="wpflow-node-tool">
+            <Grid>
+                <Border Background="{DynamicResource Flow.NodeBackground}" BorderBrush="{DynamicResource Flow.NodeBorder}"
+                        BorderThickness="1" CornerRadius="6" Padding="12">
+                    <StackPanel>
+                        <TextBlock Text="{Binding Data.Title}" FontWeight="SemiBold"
+                                   Foreground="{DynamicResource Flow.NodeText}" />
+                        <TextBlock Text="Sélectionnez-moi : barre d'outils + poignées" FontSize="10" TextWrapping="Wrap"
+                                   Margin="0,4,0,0" Foreground="{DynamicResource Flow.NodeText}" />
+                    </StackPanel>
+                </Border>
+                <flow:NodeResizer NodeMinWidth="150" NodeMinHeight="70" />
+                <flow:NodeToolbar ToolbarPosition="Top">
+                    <StackPanel Orientation="Horizontal">
+                        <Button x:Name="dup" Content="Dupliquer" Command="{Binding Data.DuplicateCommand}" Padding="8,2" />
+                        <Button x:Name="del" Content="Supprimer" Command="{Binding Data.DeleteCommand}" Padding="8,2"
+                                Margin="4,0,0,0" />
+                    </StackPanel>
+                </flow:NodeToolbar>
+                <flow:Handle Type="Target" Position="Left" />
+                <flow:Handle Type="Source" Position="Right" />
+            </Grid>
+        </DataTemplate>
+
+        <Style x:Key="PaletteItem" TargetType="Border">
+            <Setter Property="Background" Value="White" />
+            <Setter Property="BorderBrush" Value="#1A192B" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="CornerRadius" Value="3" />
+            <Setter Property="Padding" Value="10,6" />
+            <Setter Property="Margin" Value="0,0,0,8" />
+            <Setter Property="Cursor" Value="Hand" />
+        </Style>
+    </Window.Resources>
+
+    <TabControl x:Name="Tabs">
+        <TabItem Header="Types d'edges">
+            <flow:FlowView x:Name="EdgesFlow" FitViewOnInit="True" FitViewPadding="0.15"
+                           EdgeLabelTemplate="{StaticResource PillLabel}">
+                <flow:FlowPanel PanelPosition="TopLeft">
+                    <TextBlock Text="straight · bezier · step · smoothstep · marqueurs · edges animés · labels personnalisés"
+                               Foreground="#666" />
+                </flow:FlowPanel>
+            </flow:FlowView>
+        </TabItem>
+
+        <TabItem Header="Groupes">
+            <flow:FlowView x:Name="GroupsFlow" FitViewOnInit="True" FitViewPadding="0.2">
+<Grid>
+                <flow:FlowPanel PanelPosition="TopLeft">
+                    <TextBlock Text="Nodes imbriqués : les enfants suivent leur parent et restent dans le groupe (extent: parent). Supprimer le groupe supprime ses enfants."
+                               Foreground="#666" TextWrapping="Wrap" MaxWidth="600" />
+                </flow:FlowPanel>
+                <flow:MiniMap />
+                <flow:FlowControls />
+</Grid>
+            </flow:FlowView>
+        </TabItem>
+
+        <TabItem Header="Toolbar et resizer">
+            <flow:FlowView x:Name="ToolFlow" FitViewOnInit="True" FitViewPadding="0.4">
+                <flow:FlowControls />
+            </flow:FlowView>
+        </TabItem>
+
+        <TabItem Header="Palette">
+            <DockPanel>
+                <StackPanel DockPanel.Dock="Left" Width="170" Margin="12">
+                    <TextBlock Text="Glissez un node" FontWeight="SemiBold" Margin="0,0,0,10" />
+                    <Border Style="{StaticResource PaletteItem}" Tag="input" PreviewMouseMove="OnPaletteMove">
+                        <TextBlock Text="Input node" />
+                    </Border>
+                    <Border Style="{StaticResource PaletteItem}" Tag="default" PreviewMouseMove="OnPaletteMove">
+                        <TextBlock Text="Default node" />
+                    </Border>
+                    <Border Style="{StaticResource PaletteItem}" Tag="output" PreviewMouseMove="OnPaletteMove">
+                        <TextBlock Text="Output node" />
+                    </Border>
+                </StackPanel>
+                <flow:FlowView x:Name="PaletteFlow" BackgroundVariant="Lines" BackgroundGap="40">
+                    <flow:FlowControls />
+                </flow:FlowView>
+            </DockPanel>
+        </TabItem>
+
+        <TabItem Header="Disposition auto">
+            <DockPanel>
+                <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="12">
+                    <Button Content="Disposition automatique" Padding="12,4" Click="OnAutoLayout" />
+                    <Button Content="Mélanger" Padding="12,4" Margin="8,0,0,0" Click="OnShuffle" />
+                </StackPanel>
+                <flow:FlowView x:Name="LayoutFlow" FitViewPadding="0.2">
+                    <flow:MiniMap />
+                </flow:FlowView>
+            </DockPanel>
+        </TabItem>
+
+        <TabItem Header="Options et JSON">
+            <DockPanel>
+                <StackPanel DockPanel.Dock="Left" Width="260" Margin="12">
+                    <CheckBox x:Name="DarkBox" Content="Mode sombre" Click="OnOptionsChanged" Margin="0,0,0,6" />
+                    <CheckBox x:Name="LooseBox" Content="Connexion « loose » (tout handle vers tout handle)"
+                              Click="OnOptionsChanged" Margin="0,0,0,6" />
+                    <CheckBox x:Name="SnapBox" Content="Magnétisme sur la grille (20 px)" Click="OnOptionsChanged"
+                              Margin="0,0,0,6" />
+                    <CheckBox x:Name="LockBox" Content="Verrouiller" Click="OnOptionsChanged" Margin="0,0,0,6" />
+                    <CheckBox x:Name="ExtentBox" Content="Limiter le pan (translateExtent)" Click="OnOptionsChanged"
+                              Margin="0,0,0,6" />
+                    <CheckBox x:Name="NoSelfBox" Content="Refuser les connexions vers « Node D » (isValidConnection)"
+                              Click="OnOptionsChanged" Margin="0,0,0,14" />
+                    <StackPanel Orientation="Horizontal">
+                        <Button Content="Exporter JSON" Padding="10,4" Click="OnExport" />
+                        <Button Content="Importer JSON" Padding="10,4" Margin="8,0,0,0" Click="OnImport" />
+                    </StackPanel>
+                    <TextBox x:Name="JsonBox" Margin="0,8,0,0" Height="380" AcceptsReturn="True" FontFamily="Consolas"
+                             FontSize="10" VerticalScrollBarVisibility="Auto" />
+                </StackPanel>
+                <flow:FlowView x:Name="OptionsFlow" FitViewOnInit="True" FitViewPadding="0.3">
+<Grid>
+                    <flow:MiniMap />
+                    <flow:FlowControls />
+</Grid>
+                </flow:FlowView>
+            </DockPanel>
+        </TabItem>
+
+        <TabItem Header="Performance">
+            <DockPanel>
+                <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="12">
+                    <Button Content="Charger 3 000 nodes" Padding="12,4" Click="OnLoadMany" />
+                    <CheckBox x:Name="VirtBox" Content="Ne rendre que les éléments visibles" IsChecked="True"
+                              Margin="12,0,0,0" VerticalAlignment="Center" Click="OnVirtChanged" />
+                    <TextBlock x:Name="PerfStatus" Margin="12,0,0,0" VerticalAlignment="Center" />
+                </StackPanel>
+                <flow:FlowView x:Name="PerfFlow" OnlyRenderVisibleElements="True" MinZoom="0.1">
+<Grid>
+                    <flow:MiniMap />
+                    <flow:FlowControls />
+</Grid>
+                </flow:FlowView>
+            </DockPanel>
+        </TabItem>
+    </TabControl>
+</Window>

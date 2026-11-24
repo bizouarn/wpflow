@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>Wpflow.Core</RootNamespace>
+    <PackageId>Wpflow.Core</PackageId>
+    <Description>Noyau sans UI de Wpflow : modèle de graphe, viewport, chemins d'edges, connexions, sérialisation JSON (port de @xyflow/system).</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <None Include="../../README.md" Pack="true" PackagePath="\" Visible="false" />
+  </ItemGroup>
+
+</Project>

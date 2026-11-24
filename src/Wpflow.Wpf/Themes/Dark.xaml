@@ -1,0 +1,22 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <!-- Thème sombre. -->
+    <SolidColorBrush x:Key="Flow.Background" Color="#141414" />
+    <SolidColorBrush x:Key="Flow.Dots" Color="#4A4A52" />
+    <SolidColorBrush x:Key="Flow.Edge" Color="#6B6B75" />
+    <SolidColorBrush x:Key="Flow.EdgeSelected" Color="#E5E5E5" />
+    <SolidColorBrush x:Key="Flow.NodeBackground" Color="#1E1E22" />
+    <SolidColorBrush x:Key="Flow.NodeBorder" Color="#D9D9DD" />
+    <SolidColorBrush x:Key="Flow.NodeBorderSelected" Color="#FFFFFF" />
+    <SolidColorBrush x:Key="Flow.NodeText" Color="#F8F8F8" />
+    <SolidColorBrush x:Key="Flow.GroupBackground" Color="#14FFFFFF" />
+    <SolidColorBrush x:Key="Flow.Outline" Color="#E5E5E5" />
+    <SolidColorBrush x:Key="Flow.MiniMapBackground" Color="#1E1E22" />
+    <SolidColorBrush x:Key="Flow.MiniMapNode" Color="#3A3A42" />
+    <SolidColorBrush x:Key="Flow.MiniMapNodeSelected" Color="#7A7A85" />
+    <SolidColorBrush x:Key="Flow.MiniMapMask" Color="#99141414" />
+    <SolidColorBrush x:Key="Flow.ControlsBackground" Color="#1E1E22" />
+    <SolidColorBrush x:Key="Flow.ControlsForeground" Color="#F2F2F2" />
+    <SolidColorBrush x:Key="Flow.ControlsBorder" Color="#34343A" />
+    <SolidColorBrush x:Key="Flow.ControlsHover" Color="#2C2C32" />
+</ResourceDictionary>

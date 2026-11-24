@@ -1,17 +1,189 @@
 ﻿<Window x:Class="demo.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
-        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-        xmlns:wpflow="clr-namespace:wpflow;assembly=wpflow"
-        mc:Ignorable="d"
-        Title="MainWindow" Height="450" Width="800">
-    <wpflow:Wpflow>
-        <wpflow:Nodes>
-            <Grid Width="100" Height="100" Background="Blue">
-        
+        xmlns:flow="clr-namespace:Wpflow.Wpf;assembly=Wpflow.Wpf"
+        xmlns:demo="clr-namespace:demo"
+        Title="WPFlow" Height="720" Width="1200" Background="White"
+        FontFamily="Segoe UI">
+    <Window.Resources>
+        <SolidColorBrush x:Key="Pink" Color="#FF0071" />
+        <DropShadowEffect x:Key="CardShadow" BlurRadius="14" ShadowDepth="2" Direction="270" Opacity="0.12" />
+
+        <Style x:Key="Card" TargetType="Border">
+            <Setter Property="Background" Value="White" />
+            <Setter Property="CornerRadius" Value="8" />
+            <Setter Property="Padding" Value="12,10,12,12" />
+            <Setter Property="BorderBrush" Value="#EEEEF2" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="Effect" Value="{StaticResource CardShadow}" />
+        </Style>
+
+        <Style x:Key="CardTitle" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="9" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="Foreground" Value="#111" />
+        </Style>
+
+        <Style x:Key="PinkSlider" TargetType="Slider">
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Slider">
+                        <Grid Height="16" Background="Transparent">
+                            <Border Height="4" CornerRadius="2" Background="#E5E7EB" VerticalAlignment="Center" />
+                            <Track x:Name="PART_Track">
+                                <Track.DecreaseRepeatButton>
+                                    <RepeatButton Command="Slider.DecreaseLarge" Focusable="False">
+                                        <RepeatButton.Template>
+                                            <ControlTemplate TargetType="RepeatButton">
+                                                <Border Height="4" CornerRadius="2" Background="{StaticResource Pink}"
+                                                        VerticalAlignment="Center" />
+                                            </ControlTemplate>
+                                        </RepeatButton.Template>
+                                    </RepeatButton>
+                                </Track.DecreaseRepeatButton>
+                                <Track.Thumb>
+                                    <Thumb Width="12" Height="12" Focusable="False">
+                                        <Thumb.Template>
+                                            <ControlTemplate TargetType="Thumb">
+                                                <Ellipse Fill="{StaticResource Pink}" Stroke="White" StrokeThickness="1.5" />
+                                            </ControlTemplate>
+                                        </Thumb.Template>
+                                    </Thumb>
+                                </Track.Thumb>
+                                <Track.IncreaseRepeatButton>
+                                    <RepeatButton Command="Slider.IncreaseLarge" Focusable="False">
+                                        <RepeatButton.Template>
+                                            <ControlTemplate TargetType="RepeatButton">
+                                                <Border Background="Transparent" />
+                                            </ControlTemplate>
+                                        </RepeatButton.Template>
+                                    </RepeatButton>
+                                </Track.IncreaseRepeatButton>
+                            </Track>
+                        </Grid>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="PinkRadio" TargetType="RadioButton">
+            <Setter Property="FontSize" Value="9" />
+            <Setter Property="Foreground" Value="#444" />
+            <Setter Property="Margin" Value="0,6,0,0" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="RadioButton">
+                        <StackPanel Orientation="Horizontal" Background="Transparent">
+                            <Grid Width="12" Height="12" VerticalAlignment="Center">
+                                <Ellipse Stroke="#9CA3AF" StrokeThickness="1" Fill="White" />
+                                <Ellipse x:Name="dot" Width="6" Height="6" Fill="{StaticResource Pink}"
+                                         Visibility="Collapsed" />
+                                <Ellipse x:Name="ring" Stroke="{StaticResource Pink}" StrokeThickness="1.2"
+                                         Visibility="Collapsed" />
+                            </Grid>
+                            <TextBlock Text="{TemplateBinding Content}" Margin="7,0,0,0" VerticalAlignment="Center" />
+                        </StackPanel>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsChecked" Value="True">
+                                <Setter TargetName="dot" Property="Visibility" Value="Visible" />
+                                <Setter TargetName="ring" Property="Visibility" Value="Visible" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- Les clés « wpflow-node-{type} » sont résolues par chaque node selon Node.Type. -->
+        <DataTemplate x:Key="wpflow-node-color">
+            <Grid>
+                <Border Style="{StaticResource Card}" Width="150">
+                    <StackPanel>
+                        <TextBlock Text="shape color" Style="{StaticResource CardTitle}" />
+                        <StackPanel Orientation="Horizontal" Margin="0,9,0,0">
+                            <Rectangle Width="13" Height="13" RadiusX="2" RadiusY="2" Fill="{Binding Data.Brush}" />
+                            <TextBox Text="{Binding Data.ColorHex, UpdateSourceTrigger=PropertyChanged}"
+                                     Margin="8,0,0,0" Width="80" FontSize="9" BorderThickness="0" Padding="0"
+                                     VerticalAlignment="Center" Foreground="#444" />
+                        </StackPanel>
+                    </StackPanel>
+                </Border>
+                <flow:Handle Type="Source" Position="Right" />
             </Grid>
-        </wpflow:Nodes>
-        <wpflow:Edge></wpflow:Edge>
-    </wpflow:Wpflow>
+        </DataTemplate>
+
+        <DataTemplate x:Key="wpflow-node-shape">
+            <Grid>
+                <Border Style="{StaticResource Card}" Width="150">
+                    <StackPanel>
+                        <TextBlock Text="shape type" Style="{StaticResource CardTitle}" />
+                        <RadioButton Content="cube" GroupName="shape" Style="{StaticResource PinkRadio}"
+                                     IsChecked="{Binding Data.IsCube, Mode=TwoWay}" />
+                        <RadioButton Content="pyramid" GroupName="shape" Style="{StaticResource PinkRadio}"
+                                     IsChecked="{Binding Data.IsPyramid, Mode=TwoWay}" />
+                    </StackPanel>
+                </Border>
+                <flow:Handle Type="Source" Position="Right" />
+            </Grid>
+        </DataTemplate>
+
+        <DataTemplate x:Key="wpflow-node-zoom">
+            <Grid>
+                <Border Style="{StaticResource Card}" Width="150">
+                    <StackPanel>
+                        <TextBlock Text="zoom level" Style="{StaticResource CardTitle}" />
+                        <Slider Minimum="0" Maximum="1" Value="{Binding Data.Zoom, Mode=TwoWay}"
+                                Style="{StaticResource PinkSlider}" Margin="0,10,0,0" />
+                    </StackPanel>
+                </Border>
+                <flow:Handle Type="Source" Position="Right" />
+            </Grid>
+        </DataTemplate>
+
+        <DataTemplate x:Key="wpflow-node-output">
+            <Grid>
+                <Border Style="{StaticResource Card}">
+                    <Grid>
+                        <TextBlock Text="output" Style="{StaticResource CardTitle}" VerticalAlignment="Top" />
+                        <demo:CubeField State="{Binding Data}" Margin="0,14,0,0" />
+                    </Grid>
+                </Border>
+                <flow:NodeResizer NodeMinWidth="180" NodeMinHeight="140" />
+                <flow:Handle Type="Target" Position="Left" HandleId="color" Offset="48" />
+                <flow:Handle Type="Target" Position="Left" HandleId="shape" Offset="62" />
+                <flow:Handle Type="Target" Position="Left" HandleId="zoom" Offset="76" />
+            </Grid>
+        </DataTemplate>
+    </Window.Resources>
+
+    <flow:FlowView x:Name="Flow" EdgeStroke="#A1A1AA" EdgeStrokeThickness="1.3" MinZoom="0.3" MaxZoom="2">
+        <Grid>
+            <!-- Texte d'accueil façon reactflow.dev -->
+            <StackPanel HorizontalAlignment="Left" VerticalAlignment="Center" Margin="50,0,0,40"
+                        IsHitTestVisible="False">
+                <TextBlock Text="Wire your ideas" FontFamily="Segoe UI Black" FontSize="52" Foreground="Black"
+                           LineHeight="56" LineStackingStrategy="BlockLineHeight" />
+                <TextBlock FontFamily="Segoe UI Black" FontSize="52" LineHeight="56"
+                           LineStackingStrategy="BlockLineHeight">
+                    <Run Text="with " Foreground="Black" /><Run Text="WPFlow" Foreground="{StaticResource Pink}" />
+                </TextBlock>
+                <TextBlock Margin="0,22,0,0" FontSize="17" Foreground="#222" TextWrapping="Wrap" Width="420"
+                           Text="A customizable WPF control for building node-based editors and interactive diagrams." />
+            </StackPanel>
+
+            <Border HorizontalAlignment="Left" VerticalAlignment="Center" Margin="50,230,0,0" Background="{StaticResource Pink}"
+                    CornerRadius="22" Padding="22,10" Cursor="Hand">
+                <TextBlock Text="⚡ Quickstart" Foreground="White" FontWeight="SemiBold" FontSize="15" />
+            </Border>
+
+            <Border HorizontalAlignment="Left" VerticalAlignment="Center" Margin="208,230,0,0" Background="White"
+                    BorderBrush="{StaticResource Pink}" BorderThickness="1.5" CornerRadius="22" Padding="22,8.5" Cursor="Hand"
+                    PreviewMouseLeftButtonDown="OnOpenExamples">
+                <TextBlock Text="✦ Exemples" Foreground="{StaticResource Pink}" FontWeight="SemiBold" FontSize="15" />
+            </Border>
+
+            <flow:MiniMap />
+            <flow:FlowControls />
+        </Grid>
+    </flow:FlowView>
 </Window>

@@ -1,0 +1,11 @@
+<Project>
+  <PropertyGroup>
+    <Version>0.1.0</Version>
+    <Authors>Wpflow contributors</Authors>
+    <Product>Wpflow</Product>
+    <Description>Éditeur de graphes node/edge interactif pour WPF, porté de xyflow (React Flow).</Description>
+    <PackageTags>wpf;diagram;graph;node-editor;flow;xyflow;reactflow</PackageTags>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+  </PropertyGroup>
+</Project>

@@ -1,0 +1,22 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <!-- Thème clair (valeurs de React Flow). Surchargeable : redéfinir ces clés dans FlowView.Resources. -->
+    <SolidColorBrush x:Key="Flow.Background" Color="#FFFFFF" />
+    <SolidColorBrush x:Key="Flow.Dots" Color="#91919A" />
+    <SolidColorBrush x:Key="Flow.Edge" Color="#B1B1B7" />
+    <SolidColorBrush x:Key="Flow.EdgeSelected" Color="#555555" />
+    <SolidColorBrush x:Key="Flow.NodeBackground" Color="#FFFFFF" />
+    <SolidColorBrush x:Key="Flow.NodeBorder" Color="#1A192B" />
+    <SolidColorBrush x:Key="Flow.NodeBorderSelected" Color="#555555" />
+    <SolidColorBrush x:Key="Flow.NodeText" Color="#222222" />
+    <SolidColorBrush x:Key="Flow.GroupBackground" Color="#14F0F0F0" />
+    <SolidColorBrush x:Key="Flow.Outline" Color="#555555" />
+    <SolidColorBrush x:Key="Flow.MiniMapBackground" Color="#FFFFFF" />
+    <SolidColorBrush x:Key="Flow.MiniMapNode" Color="#E2E2E2" />
+    <SolidColorBrush x:Key="Flow.MiniMapNodeSelected" Color="#B1B1B7" />
+    <SolidColorBrush x:Key="Flow.MiniMapMask" Color="#99F0F0F0" />
+    <SolidColorBrush x:Key="Flow.ControlsBackground" Color="#FFFFFF" />
+    <SolidColorBrush x:Key="Flow.ControlsForeground" Color="#222222" />
+    <SolidColorBrush x:Key="Flow.ControlsBorder" Color="#EEEEEE" />
+    <SolidColorBrush x:Key="Flow.ControlsHover" Color="#F4F4F4" />
+</ResourceDictionary>
