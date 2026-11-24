@@ -33,6 +33,11 @@ internal static class ExamplesSelfTest
         await Tab(0);
         await Shot("edges");
         Check("edges: 10 nodes et 5 edges affichés", win.Edges.Nodes.Count == 10 && win.Edges.Edges.Count == 5);
+        // Edge animé : les pointillés défilent, donc deux captures espacées dans le temps diffèrent (rien d'autre n'est animé ici).
+        var animA = Snapshot(win.Edges);
+        await Task.Delay(260);
+        var animB = Snapshot(win.Edges);
+        Check("edge animé: les pointillés défilent", !animA.SequenceEqual(animB));
         var overridden = (win.Edges.ThemeBrush("Flow.Edge") as SolidColorBrush)?.Color;
         var inherited = (win.Edges.ThemeBrush("Flow.Background") as SolidColorBrush)?.Color;
         Check("thème: la clé surchargée dans FlowView.Resources l'emporte, le reste vient du thème",

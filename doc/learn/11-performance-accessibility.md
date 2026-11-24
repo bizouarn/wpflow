@@ -8,11 +8,11 @@
 
 Faites dans la démo (`WPFLOW_PERF=N`), nodes par défaut, un edge par node, sur la machine de développement. Ce sont des ordres de grandeur, pas des garanties :
 
-| | 1 000 nodes | 5 000 nodes | 5 000 nodes, `OnlyRenderVisibleElements` |
+| | 1 000 nodes | 3 000 nodes | 5 000 nodes, `OnlyRenderVisibleElements` |
 |---|---|---|---|
-| Premier affichage + mesure | 1,2 s | ~10 s | 2,1 s |
-| Déplacer un node (par image) | 11 ms | ~180 ms | 13 ms |
-| Déplacer la vue (par image) | 22 ms | ~200 ms | 8 ms |
+| Premier affichage + mesure | 0,8 s | 3,5 à 3,8 s | 2,5 s |
+| Déplacer un node (par image) | ~20 ms | 65 à 95 ms | 11 ms |
+| Déplacer la vue (par image) | ~20 ms | 65 à 90 ms | 7 ms |
 
 ### Activer la virtualisation
 
@@ -32,11 +32,11 @@ new Node(id, position, "default", data, FixedWidth: 150, FixedHeight: 40)
 
 - Les mesures de nodes sont **regroupées** : N nodes mesurés = une seule mise à jour (sans cela, le chargement était quadratique).
 - Une mise à jour ne recalcule que les nodes dont la référence ou la position absolue a changé, et les edges qui y sont reliés.
-- Les edges étant des `Path` WPF figés, leur géométrie n'est recalculée que si l'un de leurs nodes a bougé.
+- Un edge dont le tracé, les extrémités et le style n'ont pas changé n'est ni re-parsé ni redessiné ; chaque edge est un seul élément qui se dessine lui-même.
 
 ### Conseils
 
-- Gardez les templates de nodes légers : le coût par node vient surtout du nombre d'éléments visuels.
+- Gardez les templates de nodes légers : le coût par node vient surtout du nombre d'éléments visuels (un handle, un edge et un contour de sélection sont dessinés par un seul élément chacun).
 - Évitez les `Effect` (ombres portées) sur des centaines de nodes ; un seul effet par carte reste raisonnable.
 - Ne reconstruisez pas toute la liste quand un seul node change : `Flow.Nodes.Select(n => n.Id == x ? n with { … } : n)` conserve la référence des autres.
 

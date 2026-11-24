@@ -31,32 +31,6 @@
         </Setter>
     </Style>
 
-    <!-- NodeHost : contenu + contour de sélection (nodes à template personnalisé) -->
-    <Style TargetType="{x:Type local:NodeHost}">
-        <Setter Property="Focusable" Value="False" />
-        <Setter Property="Template">
-            <Setter.Value>
-                <ControlTemplate TargetType="{x:Type local:NodeHost}">
-                    <Grid>
-                        <ContentPresenter />
-                        <Border x:Name="outline" BorderBrush="{DynamicResource Flow.Outline}" BorderThickness="1.5" Margin="-3"
-                                CornerRadius="{TemplateBinding OutlineCornerRadius}" IsHitTestVisible="False"
-                                Visibility="Collapsed" />
-                    </Grid>
-                    <ControlTemplate.Triggers>
-                        <MultiTrigger>
-                            <MultiTrigger.Conditions>
-                                <Condition Property="IsSelected" Value="True" />
-                                <Condition Property="ShowOutline" Value="True" />
-                            </MultiTrigger.Conditions>
-                            <Setter TargetName="outline" Property="Visibility" Value="Visible" />
-                        </MultiTrigger>
-                    </ControlTemplate.Triggers>
-                </ControlTemplate>
-            </Setter.Value>
-        </Setter>
-    </Style>
-
     <!-- NodeToolbar -->
     <Style TargetType="{x:Type local:NodeToolbar}">
         <Setter Property="Template">
@@ -68,25 +42,6 @@
                         </Border.Effect>
                         <ContentPresenter />
                     </Border>
-                </ControlTemplate>
-            </Setter.Value>
-        </Setter>
-    </Style>
-
-    <!-- Handle -->
-    <Style TargetType="{x:Type local:Handle}">
-        <Setter Property="Background" Value="#9CA3AF" />
-        <Setter Property="BorderBrush" Value="White" />
-        <Setter Property="BorderThickness" Value="1" />
-        <Setter Property="Template">
-            <Setter.Value>
-                <ControlTemplate TargetType="{x:Type local:Handle}">
-                    <Grid Background="Transparent">
-                        <!-- Zone de clic élargie, sans effet sur la mesure. -->
-                        <Rectangle Fill="Transparent" Margin="-6" />
-                        <Ellipse Fill="{TemplateBinding Background}" Stroke="{TemplateBinding BorderBrush}"
-                                 StrokeThickness="{TemplateBinding BorderThickness}" />
-                    </Grid>
                 </ControlTemplate>
             </Setter.Value>
         </Setter>

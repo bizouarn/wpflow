@@ -2,162 +2,179 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
-using System.Windows.Shapes;
 using Wpflow.Core;
-using Path = System.Windows.Shapes.Path;
 
 namespace Wpflow.Wpf;
 
-/// <summary>Rendu d'un edge : chemin, zone de clic élargie, marqueur et label.</summary>
-internal sealed class EdgeVisual : Canvas
+/// <summary>Élément de la couche d'edges qui appartient à un edge (tracé ou label) : sert à retrouver l'edge sous la souris.</summary>
+internal interface IEdgePart
 {
-    private readonly Path _hit = new() { Stroke = Brushes.Transparent, StrokeThickness = 10, Fill = null };
-    private readonly Path _line = new() { Fill = null, StrokeLineJoin = PenLineJoin.Round };
-    private readonly Path _marker = new() { StrokeLineJoin = PenLineJoin.Round };
-    private readonly Path _markerStart = new() { StrokeLineJoin = PenLineJoin.Round };
-    private readonly Border _label;
-    private readonly TextBlock _labelText = new() { FontSize = 10 };
-    private readonly ContentPresenter _custom = new();
-    private bool _animated;
-    private XYPosition _labelPos;
+    string EdgeId { get; }
+}
 
-    public EdgeVisual(string edgeId)
-    {
-        EdgeId = edgeId;
-        _label = new Border
-        {
-            Background = Brushes.White,
-            Padding = new Thickness(2, 2, 2, 2),
-            CornerRadius = new CornerRadius(2),
-            Child = _labelText,
-            Visibility = Visibility.Collapsed
-        };
-        _label.SizeChanged += (_, _) => PositionLabel();
-        Children.Add(_hit);
-        Children.Add(_line);
-        Children.Add(_marker);
-        Children.Add(_markerStart);
-        Children.Add(_label);
-    }
+/// <summary>
+///     Tracé d'un edge : chemin, zone de clic élargie, flèches et animation, le tout dessiné dans <c>OnRender</c>.
+///     Un seul élément visuel par edge (contre un <c>Canvas</c> et cinq enfants auparavant), ce qui compte quand
+///     le graphe en contient des milliers.
+/// </summary>
+internal sealed class EdgeVisual : FrameworkElement, IEdgePart
+{
+    private static readonly Pen HitPen = Frozen(new Pen(Brushes.Transparent, 10));
+    private static readonly Geometry OpenArrow = Frozen(Geometry.Parse("M-7,-5 L0,0 L-7,5"));
+    private static readonly Geometry ClosedArrow = Frozen(Geometry.Parse("M-7,-5 L0,0 L-7,5 Z"));
 
-    public string EdgeId { get; }
+    private readonly record struct Marker(EdgeMarker Kind, Matrix Transform);
 
     private readonly record struct UpdateKey(Edge Edge, string Path, XYPosition Start, Position StartSide, XYPosition End,
         Position EndSide, EdgeStyle Style);
 
     private UpdateKey? _lastUpdate;
+    private Geometry? _geometry;
+    private Pen? _linePen;
+    private Brush _stroke = Brushes.Gray;
+    private double _thickness = 1;
+    private Marker _markerStart, _markerEnd;
+    private DashStyle? _dash;
 
+    public EdgeVisual(string edgeId)
+    {
+        EdgeId = edgeId;
+    }
+
+    public string EdgeId { get; }
+
+    private static T Frozen<T>(T f) where T : Freezable
+    {
+        f.Freeze();
+        return f;
+    }
+
+    /// <summary>Met à jour le tracé ; ne fait rien (ni parsing, ni redessin) si rien n'a changé.</summary>
     public void Update(Edge edge, EdgePath path, XYPosition start, Position startSide, XYPosition end, Position endSide,
         EdgeStyle style)
     {
-        // Rien n'a changé (même edge, même tracé, mêmes brosses) : on évite de re-parser la géométrie et de toucher à l'arbre visuel.
         var key = new UpdateKey(edge, path.Path, start, startSide, end, endSide, style);
         if (_lastUpdate == key) return;
+        var geometryChanged = _lastUpdate?.Path != path.Path;
         _lastUpdate = key;
 
-        var stroke = edge.Selected ? style.SelectedStroke : style.Stroke;
-        var thickness = style.Thickness;
-        var labelTemplate = style.LabelTemplate;
-        var labelBackground = style.LabelBackground;
-        var labelForeground = style.LabelForeground;
-        var geometry = Geometry.Parse(path.Path);
-        geometry.Freeze();
-        _hit.Data = geometry;
-        _line.Data = geometry;
-        _line.Stroke = stroke;
-        _line.StrokeThickness = thickness;
+        if (geometryChanged)
+        {
+            _geometry = Geometry.Parse(path.Path);
+            _geometry.Freeze();
+        }
 
+        _stroke = edge.Selected ? style.SelectedStroke : style.Stroke;
+        _thickness = style.Thickness;
+        _linePen = new Pen(_stroke, _thickness) { LineJoin = PenLineJoin.Round };
         SetAnimated(edge.Animated);
-
-        ApplyMarker(_marker, edge.MarkerEnd, end, endSide, stroke, thickness);
-        ApplyMarker(_markerStart, edge.MarkerStart, start, startSide, stroke, thickness);
-
-        if (labelTemplate != null)
-        {
-            // Contenu libre (équivalent d'EdgeLabelRenderer) : le DataContext est l'edge.
-            _custom.ContentTemplate = labelTemplate;
-            _custom.Content = edge;
-            _label.Child = _custom;
-            _label.Background = Brushes.Transparent;
-            _label.Padding = new Thickness(0);
-            _label.Visibility = Visibility.Visible;
-            _labelPos = new XYPosition(path.LabelX, path.LabelY);
-            PositionLabel();
-        }
-        else if (string.IsNullOrEmpty(edge.Label))
-        {
-            _label.Visibility = Visibility.Collapsed;
-        }
-        else
-        {
-            _labelText.Text = edge.Label;
-            _labelText.Foreground = labelForeground;
-            _label.Child = _labelText;
-            _label.Background = labelBackground;
-            _label.Padding = new Thickness(2);
-            _label.Visibility = Visibility.Visible;
-            _labelPos = new XYPosition(path.LabelX, path.LabelY);
-            PositionLabel();
-        }
+        _markerEnd = new Marker(edge.MarkerEnd, ArrowTransform(end, endSide));
+        _markerStart = new Marker(edge.MarkerStart, ArrowTransform(start, startSide));
+        InvalidateVisual();
     }
 
-    /// <summary>Flèche à une extrémité : elle pointe vers le node, donc dans le sens opposé au côté du handle.</summary>
-    private static void ApplyMarker(Path marker, EdgeMarker kind, XYPosition at, Position side, Brush stroke, double thickness)
+    /// <summary>Une flèche pointe vers le node : sens opposé au côté où le handle est attaché.</summary>
+    private static Matrix ArrowTransform(XYPosition at, Position side)
     {
-        if (kind == EdgeMarker.None)
-        {
-            marker.Visibility = Visibility.Collapsed;
-            return;
-        }
-
-        marker.Visibility = Visibility.Visible;
-        var closed = kind == EdgeMarker.ArrowClosed;
-        marker.Data = Geometry.Parse(closed ? "M-7,-5 L0,0 L-7,5 Z" : "M-7,-5 L0,0 L-7,5");
-        marker.Stroke = stroke;
-        marker.StrokeThickness = thickness;
-        marker.Fill = closed ? stroke : null;
-
-        var angle = side switch
-        {
-            Position.Left => 0,
-            Position.Top => 90,
-            Position.Right => 180,
-            _ => 270
-        };
         var m = Matrix.Identity;
-        m.Rotate(angle);
+        m.Rotate(side switch { Position.Left => 0, Position.Top => 90, Position.Right => 180, _ => 270 });
         m.Translate(at.X, at.Y);
-        marker.RenderTransform = new MatrixTransform(m);
-    }
-
-    private void PositionLabel()
-    {
-        SetLeft(_label, _labelPos.X - _label.ActualWidth / 2);
-        SetTop(_label, _labelPos.Y - _label.ActualHeight / 2);
+        return m;
     }
 
     private void SetAnimated(bool animated)
     {
-        if (animated == _animated) return;
-        _animated = animated;
-        if (animated)
+        if (!animated)
         {
-            _line.StrokeDashArray = [5, 5];
-            _line.BeginAnimation(Shape.StrokeDashOffsetProperty,
+            _dash?.BeginAnimation(DashStyle.OffsetProperty, null);
+            _dash = null;
+            return;
+        }
+
+        // Pointillés qui défilent de la source vers la cible (comme les edges animés de React Flow).
+        if (_dash == null) // l'animation continue d'un rafraîchissement à l'autre au lieu de repartir de zéro
+        {
+            _dash = new DashStyle([5, 5], 0);
+            _dash.BeginAnimation(DashStyle.OffsetProperty,
                 new DoubleAnimation(10, 0, TimeSpan.FromSeconds(0.5)) { RepeatBehavior = RepeatBehavior.Forever });
         }
-        else
-        {
-            _line.BeginAnimation(Shape.StrokeDashOffsetProperty, null);
-            _line.StrokeDashArray = null;
-        }
+
+        _linePen!.DashStyle = _dash;
+    }
+
+    protected override void OnRender(DrawingContext dc)
+    {
+        if (_geometry == null || _linePen == null) return;
+        dc.DrawGeometry(null, HitPen, _geometry); // large et transparent : sert au clic
+        dc.DrawGeometry(null, _linePen, _geometry);
+        DrawMarker(dc, _markerEnd);
+        DrawMarker(dc, _markerStart);
+    }
+
+    private void DrawMarker(DrawingContext dc, Marker marker)
+    {
+        if (marker.Kind == EdgeMarker.None) return;
+        var closed = marker.Kind == EdgeMarker.ArrowClosed;
+        dc.PushTransform(new MatrixTransform(marker.Transform));
+        dc.DrawGeometry(closed ? _stroke : null, new Pen(_stroke, _thickness) { LineJoin = PenLineJoin.Round },
+            closed ? ClosedArrow : OpenArrow);
+        dc.Pop();
     }
 }
 
-/// <summary>Couche regroupant les <see cref="EdgeVisual" /> ; une instance par <see cref="Edge" />.</summary>
+/// <summary>Label d'un edge : texte simple ou contenu issu de <see cref="FlowView.EdgeLabelTemplate" />, centré sur le tracé.</summary>
+internal sealed class EdgeLabel : Border, IEdgePart
+{
+    private readonly TextBlock _text = new() { FontSize = 10 };
+    private readonly ContentPresenter _custom = new();
+    private XYPosition _position;
+
+    public EdgeLabel(string edgeId)
+    {
+        EdgeId = edgeId;
+        CornerRadius = new CornerRadius(2);
+        Panel.SetZIndex(this, 1); // au-dessus des edges
+        SizeChanged += (_, _) => Place();
+    }
+
+    public string EdgeId { get; }
+
+    public void Update(Edge edge, EdgePath path, EdgeStyle style)
+    {
+        if (style.LabelTemplate is { } template)
+        {
+            // Contenu libre (équivalent d'EdgeLabelRenderer) : le DataContext est l'edge.
+            _custom.ContentTemplate = template;
+            _custom.Content = edge;
+            Child = _custom;
+            Background = Brushes.Transparent;
+            Padding = new Thickness(0);
+        }
+        else
+        {
+            _text.Text = edge.Label;
+            _text.Foreground = style.LabelForeground;
+            Child = _text;
+            Background = style.LabelBackground;
+            Padding = new Thickness(2);
+        }
+
+        _position = new XYPosition(path.LabelX, path.LabelY);
+        Place();
+    }
+
+    private void Place()
+    {
+        Canvas.SetLeft(this, _position.X - ActualWidth / 2);
+        Canvas.SetTop(this, _position.Y - ActualHeight / 2);
+    }
+}
+
+/// <summary>Couche regroupant les <see cref="EdgeVisual" /> (un par <see cref="Edge" />) et leurs <see cref="EdgeLabel" />.</summary>
 public sealed class EdgeLayer : Canvas
 {
     private readonly Dictionary<string, EdgeVisual> _visuals = new();
+    private readonly Dictionary<string, EdgeLabel> _labels = new();
 
     /// <summary>
     ///     Met à jour les edges. Avec <paramref name="touchedNodes" />, seuls les edges reliés à ces nodes (ou sans visuel
@@ -165,20 +182,22 @@ public sealed class EdgeLayer : Canvas
     /// </summary>
     internal void Refresh(FlowView flow, IReadOnlySet<string>? touchedNodes = null)
     {
+        // Brosses lues une fois pour tous les edges : une recherche de ressource par edge coûterait trop cher.
         var style = new EdgeStyle(
             flow.EdgeStroke ?? flow.ThemeBrush("Flow.Edge"), flow.ThemeBrush("Flow.EdgeSelected"), flow.EdgeStrokeThickness,
             flow.EdgeLabelTemplate, flow.ThemeBrush("Flow.NodeBackground"), flow.ThemeBrush("Flow.NodeText"));
         var seen = touchedNodes == null ? new HashSet<string>() : null;
+
         foreach (var edge in flow.Edges)
         {
             seen?.Add(edge.Id);
             if (touchedNodes != null && _visuals.ContainsKey(edge.Id)
                                      && !touchedNodes.Contains(edge.Source) && !touchedNodes.Contains(edge.Target))
                 continue;
-            var ends = flow.GetEdgeEnds(edge);
-            if (ends is null)
+
+            if (flow.GetEdgeEnds(edge) is not var (s, sp, t, tp))
             {
-                if (_visuals.Remove(edge.Id, out var stale)) Children.Remove(stale);
+                Remove(edge.Id);
                 continue;
             }
 
@@ -189,7 +208,6 @@ public sealed class EdgeLayer : Canvas
                 Children.Add(visual);
             }
 
-            var (s, sp, t, tp) = ends.Value;
             var path = edge.Type switch
             {
                 "straight" => EdgePaths.Straight(s, t),
@@ -197,16 +215,37 @@ public sealed class EdgeLayer : Canvas
                 "smoothstep" => EdgePaths.SmoothStep(s, sp, t, tp),
                 _ => EdgePaths.Bezier(s, sp, t, tp)
             };
-
             visual.Update(edge, path, s, sp, t, tp, style);
+            UpdateLabel(edge, path, style);
         }
 
         if (seen == null) return;
-        foreach (var id in _visuals.Keys.Where(k => !seen.Contains(k)).ToList())
+        foreach (var id in _visuals.Keys.Where(k => !seen.Contains(k)).ToList()) Remove(id);
+    }
+
+    // Les labels sont créés à la demande : la plupart des edges n'en ont pas.
+    private void UpdateLabel(Edge edge, EdgePath path, EdgeStyle style)
+    {
+        if (style.LabelTemplate == null && string.IsNullOrEmpty(edge.Label))
         {
-            Children.Remove(_visuals[id]);
-            _visuals.Remove(id);
+            if (_labels.Remove(edge.Id, out var stale)) Children.Remove(stale);
+            return;
         }
+
+        if (!_labels.TryGetValue(edge.Id, out var label))
+        {
+            label = new EdgeLabel(edge.Id);
+            _labels[edge.Id] = label;
+            Children.Add(label);
+        }
+
+        label.Update(edge, path, style);
+    }
+
+    private void Remove(string id)
+    {
+        if (_visuals.Remove(id, out var visual)) Children.Remove(visual);
+        if (_labels.Remove(id, out var label)) Children.Remove(label);
     }
 
     /// <summary>Masque les edges hors zone visible (<c>visible</c> = null : tous visibles).</summary>
@@ -219,6 +258,7 @@ public sealed class EdgeLayer : Canvas
             if (visible is { } view && flow.NodeRectOf(edge.Source) is { } s && flow.NodeRectOf(edge.Target) is { } t)
                 want = GraphUtils.IsEdgeVisible(s, t, view) ? Visibility.Visible : Visibility.Collapsed;
             if (v.Visibility != want) v.Visibility = want;
+            if (_labels.TryGetValue(edge.Id, out var label) && label.Visibility != want) label.Visibility = want;
         }
     }
 }

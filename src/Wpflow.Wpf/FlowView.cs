@@ -787,7 +787,7 @@ public class FlowView : ContentControl
     {
         base.OnMouseLeftButtonDown(e);
         Focus();
-        var (host, handle, edge) = HitTarget(e.OriginalSource as DependencyObject);
+        var (host, handle, edgeId) = HitTarget(e.OriginalSource as DependencyObject);
         var pos = e.GetPosition(this);
         var additive = Keyboard.Modifiers.HasFlag(ModifierKeys.Control) || Keyboard.Modifiers.HasFlag(ModifierKeys.Shift);
 
@@ -831,10 +831,10 @@ public class FlowView : ContentControl
                 if (_dragStart.Count > 0) _mode = Mode.DragNodes;
             }
         }
-        else if (edge != null && !IsLocked)
+        else if (edgeId != null && !IsLocked)
         {
-            Select([], [edge.EdgeId], additive);
-            TryBeginReconnect(edge.EdgeId, ScreenToFlow(pos));
+            Select([], [edgeId], additive);
+            TryBeginReconnect(edgeId, ScreenToFlow(pos));
         }
         else if (Keyboard.Modifiers.HasFlag(ModifierKeys.Shift) && !IsLocked)
         {
@@ -1138,14 +1138,14 @@ public class FlowView : ContentControl
     }
 
     /// <summary>Un seul parcours vers la racine : le handle (le plus proche) et le node ou l'edge qui le contient.</summary>
-    private static (NodeHost? Host, Handle? Handle, EdgeVisual? Edge) HitTarget(DependencyObject? d)
+    private static (NodeHost? Host, Handle? Handle, string? EdgeId) HitTarget(DependencyObject? d)
     {
         Handle? handle = null;
         for (; d != null; d = ParentOf(d))
         {
             handle ??= d as Handle;
             if (d is NodeHost host) return (host, handle, null);
-            if (d is EdgeVisual edge) return (null, handle, edge);
+            if (d is IEdgePart edge) return (null, handle, edge.EdgeId);
         }
 
         return (null, handle, null);

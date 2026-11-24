@@ -3,6 +3,7 @@ using System.Windows.Controls;
 using System.Windows.Media;
 using System.Windows.Threading;
 using Wpflow.Core;
+using Rect = System.Windows.Rect;
 
 namespace Wpflow.Wpf;
 
@@ -14,23 +15,33 @@ public sealed class NodeHost : ContentControl
 {
 
     public static readonly DependencyProperty IsSelectedProperty = DependencyProperty.Register(
-        nameof(IsSelected), typeof(bool), typeof(NodeHost), new PropertyMetadata(false));
+        nameof(IsSelected), typeof(bool), typeof(NodeHost),
+        new FrameworkPropertyMetadata(false, FrameworkPropertyMetadataOptions.AffectsRender));
 
     /// <summary>Affiche un contour autour des nodes à template personnalisé quand ils sont sélectionnés.</summary>
     public static readonly DependencyProperty ShowOutlineProperty = DependencyProperty.Register(
-        nameof(ShowOutline), typeof(bool), typeof(NodeHost), new PropertyMetadata(false));
+        nameof(ShowOutline), typeof(bool), typeof(NodeHost),
+        new FrameworkPropertyMetadata(false, FrameworkPropertyMetadataOptions.AffectsRender));
 
     public static readonly DependencyProperty OutlineCornerRadiusProperty = DependencyProperty.Register(
-        nameof(OutlineCornerRadius), typeof(CornerRadius), typeof(NodeHost), new PropertyMetadata(new CornerRadius(8)));
+        nameof(OutlineCornerRadius), typeof(CornerRadius), typeof(NodeHost),
+        new FrameworkPropertyMetadata(new CornerRadius(8), FrameworkPropertyMetadataOptions.AffectsRender));
 
     private readonly FlowView _flow;
     private Border? _defaultBorder;
     private bool _measureQueued;
     private string? _contentKind;
 
-    static NodeHost()
+    // Le contour de sélection est dessiné ici plutôt que par un gabarit : pas d'élément visuel supplémentaire par node.
+    protected override void OnRender(DrawingContext dc)
     {
-        DefaultStyleKeyProperty.OverrideMetadata(typeof(NodeHost), new FrameworkPropertyMetadata(typeof(NodeHost)));
+        base.OnRender(dc);
+        if (!IsSelected || !ShowOutline || ActualWidth <= 0) return;
+        const double gap = 3, thickness = 1.5;
+        var pen = new Pen(_flow.ThemeBrush("Flow.Outline"), thickness);
+        var inset = gap - thickness / 2;
+        dc.DrawRoundedRectangle(null, pen, new Rect(-inset, -inset, ActualWidth + 2 * inset, ActualHeight + 2 * inset),
+            OutlineCornerRadius.TopLeft + gap, OutlineCornerRadius.TopLeft + gap);
     }
 
     public bool IsSelected
@@ -92,6 +103,7 @@ public sealed class NodeHost : ContentControl
     internal void RefreshTheme()
     {
         if (Node != null) UpdateDefaultVisual(Node);
+        InvalidateVisual();
     }
 
     private void BuildContent(Node node)

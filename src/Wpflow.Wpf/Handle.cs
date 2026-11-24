@@ -27,9 +27,40 @@ public class Handle : Control
 
     internal const double Size = 8;
 
+    private static readonly Brush DefaultFill = Freeze(new SolidColorBrush(Color.FromRgb(0x9c, 0xa3, 0xaf)));
+
     static Handle()
     {
-        DefaultStyleKeyProperty.OverrideMetadata(typeof(Handle), new FrameworkPropertyMetadata(typeof(Handle)));
+        // Aucun gabarit : le handle se dessine lui-même dans OnRender (un seul élément visuel au lieu de quatre).
+        BackgroundProperty.OverrideMetadata(typeof(Handle), new FrameworkPropertyMetadata(DefaultFill));
+        BorderBrushProperty.OverrideMetadata(typeof(Handle), new FrameworkPropertyMetadata(Brushes.White));
+        BorderThicknessProperty.OverrideMetadata(typeof(Handle), new FrameworkPropertyMetadata(new Thickness(1)));
+    }
+
+    private static Brush Freeze(Brush b)
+    {
+        b.Freeze();
+        return b;
+    }
+
+    // Zone de clic élargie autour du point visible, sans effet sur la mesure ni sur la mise en page.
+    private const double HitMargin = 6;
+
+    protected override void OnRender(DrawingContext dc)
+    {
+        dc.DrawRectangle(Brushes.Transparent, null,
+            new Rect(-HitMargin, -HitMargin, ActualWidth + 2 * HitMargin, ActualHeight + 2 * HitMargin));
+        var thickness = BorderThickness.Left;
+        var pen = BorderBrush != null && thickness > 0 ? new Pen(BorderBrush, thickness) : null;
+        dc.DrawEllipse(Background, pen, new Point(ActualWidth / 2, ActualHeight / 2),
+            (ActualWidth - thickness) / 2, (ActualHeight - thickness) / 2);
+    }
+
+    protected override void OnPropertyChanged(DependencyPropertyChangedEventArgs e)
+    {
+        base.OnPropertyChanged(e);
+        if (e.Property == BackgroundProperty || e.Property == BorderBrushProperty || e.Property == BorderThicknessProperty)
+            InvalidateVisual();
     }
 
     public Handle()
