@@ -155,5 +155,33 @@ internal static class SelfTest
         colorState.ColorHex = "#ff0071";
         await Task.Delay(300);
         log($"sélecteur: les cubes ont été redessinés = {!frameBlue.SequenceEqual(Snapshot(field))}");
+
+        // 13. Forme : clic sur le radio "pyramid" -> les solides passent en pyramides.
+        var shapeHost = Find<NodeHost>(flow).First(h => h.Node?.Id == "shape");
+        var radios = Find<System.Windows.Controls.RadioButton>(shapeHost).ToList();
+        var shapeState = (DemoState)flow.Nodes.First(n => n.Id == "shape").Data!;
+        var cubeFrame = Snapshot(field);
+        await Click(Center(radios[1]));
+        await Task.Delay(400);
+        log($"forme: clic pyramid -> IsCube={shapeState.IsCube}, EffectiveIsCube={shapeState.EffectiveIsCube}, radios cochés={string.Join(",", radios.Select(r => r.IsChecked))}");
+        var pyramidFrame = Snapshot(field);
+        log($"forme: le rendu a changé = {!cubeFrame.SequenceEqual(pyramidFrame)}, pixels colorés cube={Colored(cubeFrame)} pyramide={Colored(pyramidFrame)}");
+        var encoder = new System.Windows.Media.Imaging.PngBitmapEncoder();
+        var target = new System.Windows.Media.Imaging.RenderTargetBitmap((int)field.ActualWidth, (int)field.ActualHeight, 96, 96, PixelFormats.Pbgra32);
+        target.Render(field);
+        encoder.Frames.Add(System.Windows.Media.Imaging.BitmapFrame.Create(target));
+        using (var fs = System.IO.File.Create(System.IO.Path.ChangeExtension(Environment.GetEnvironmentVariable("WPFLOW_SCREENSHOT")!, ".pyramid.png")))
+            encoder.Save(fs);
+        await Click(Center(radios[0]));
+        await Task.Delay(300);
+        log($"forme: clic cube -> IsCube={shapeState.IsCube}");
+    }
+
+    private static int Colored(byte[] bgra)
+    {
+        var count = 0;
+        for (var i = 0; i < bgra.Length; i += 4)
+            if (bgra[i + 3] > 0) count++;
+        return count;
     }
 }
