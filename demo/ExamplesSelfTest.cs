@@ -37,7 +37,11 @@ internal static class ExamplesSelfTest
 
         await Tab(0);
         await Shot("edges");
-        Check("edges: 9 nodes et 5 edges affichés", win.Edges.Nodes.Count == 10 && win.Edges.Edges.Count == 5);
+        Check("edges: 10 nodes et 5 edges affichés", win.Edges.Nodes.Count == 10 && win.Edges.Edges.Count == 5);
+        var overridden = (win.Edges.ThemeBrush("Flow.Edge") as SolidColorBrush)?.Color;
+        var inherited = (win.Edges.ThemeBrush("Flow.Background") as SolidColorBrush)?.Color;
+        Check("thème: la clé surchargée dans FlowView.Resources l'emporte, le reste vient du thème",
+            overridden == Color.FromRgb(0xff, 0x00, 0x71) && inherited == Colors.White, $"Flow.Edge={overridden}, Flow.Background={inherited}");
 
         await Groups();
         await Tools();

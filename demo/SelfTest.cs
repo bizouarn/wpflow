@@ -104,6 +104,60 @@ internal static class SelfTest
         var s2 = flow.Nodes.First(n => n.Id == "output");
         log($"resize TL: pos {sizeAfter.Position} -> {s2.Position}, size {s2.Width:0.#}x{s2.Height:0.#}");
         log($"outline visible: selected={s2.Selected}");
+
+        // 10. Animation des cubes : l'angle avance et l'image change d'une capture à l'autre.
+        flow.Viewport = new Viewport(560, 150, 1.1);
+        await Task.Delay(300);
+        var field = Find<demo.CubeField>(Find<NodeHost>(flow).First(h => h.Node?.Id == "output")).First();
+        var angle0 = field.Angle;
+        var frameA = Snapshot(field);
+        await Task.Delay(400);
+        var frameB = Snapshot(field);
+        log($"cubes animés: angle {angle0:0.00} -> {field.Angle:0.00}, images différentes = {!frameA.SequenceEqual(frameB)}");
+
+        // 11. Zoom relié : on tire le vrai slider ; le zoom affiché des cubes suit ; sans edge il retombe à la valeur par défaut.
+        var state = (DemoState)flow.Nodes.First(n => n.Id == "zoom").Data!;
+        var slider = Find<System.Windows.Controls.Slider>(Find<NodeHost>(flow).First(h => h.Node?.Id == "zoom")).First();
+        var thumb = Find<System.Windows.Controls.Primitives.Thumb>(slider).First();
+        var thumbFrom = Screen(thumb, new Point(thumb.ActualWidth / 2, thumb.ActualHeight / 2));
+        var zoomBefore2 = state.Zoom;
+        await Drag(thumbFrom, (thumbFrom.X + 200, thumbFrom.Y));
+        await Task.Delay(1200);
+        log($"slider: state.Zoom {zoomBefore2:0.00} -> {state.Zoom:0.00}, zoom affiché {field.DisplayedZoom:0.00} (attendu ~{state.Zoom:0.00})");
+
+        var edgesWithZoom = flow.Edges;
+        flow.Edges = flow.Edges.Where(e => e.Id != "e-zoom").ToList();
+        await Task.Delay(1500);
+        log($"edge zoom supprimé: UseZoom={state.UseZoom}, zoom affiché {field.DisplayedZoom:0.00} (attendu {DemoState.DefaultZoom:0.00})");
+        flow.Edges = edgesWithZoom;
+        await Task.Delay(1500);
+        log($"edge zoom rétabli: UseZoom={state.UseZoom}, zoom affiché {field.DisplayedZoom:0.00} (attendu ~{state.Zoom:0.00})");
+
+        // Couleur et forme suivent aussi leurs edges.
+        flow.Edges = flow.Edges.Where(e => e.Id != "e-color" && e.Id != "e-shape").ToList();
+        await Task.Delay(200);
+        log($"edges couleur/forme supprimés: UseColor={state.UseColor}, UseShape={state.UseShape}, couleur effective {state.EffectiveColor}");
+        flow.Edges = edgesWithZoom;
+
+        // 12. Sélecteur de couleur : on ouvre la pastille, on clique un preset, les cubes changent de couleur.
+        var colorHost = Find<NodeHost>(flow).First(h => h.Node?.Id == "color");
+        var swatch = Find<System.Windows.Controls.Primitives.ToggleButton>(colorHost).First();
+        var sp = Screen(swatch, new Point(swatch.ActualWidth / 2, swatch.ActualHeight / 2));
+        await Drag(sp, (sp.X, sp.Y));
+        await Task.Delay(500);
+        var popup = Find<System.Windows.Controls.Primitives.Popup>(colorHost).First();
+        log($"sélecteur: popup ouvert = {popup.IsOpen}");
+        var presetButtons = Find<System.Windows.Controls.Button>(popup.Child).ToList();
+        var blue = presetButtons[5];
+        var bp = Screen(blue, new Point(blue.ActualWidth / 2, blue.ActualHeight / 2));
+        await Drag(bp, (bp.X, bp.Y));
+        await Task.Delay(300);
+        var colorState = (DemoState)flow.Nodes.First(n => n.Id == "color").Data!;
+        log($"sélecteur: preset bleu -> ColorHex={colorState.ColorHex}, couleur effective des cubes {colorState.EffectiveColor}");
+        var frameBlue = Snapshot(field);
+        colorState.ColorHex = "#ff0071";
+        await Task.Delay(300);
+        log($"sélecteur: les cubes ont été redessinés = {!frameBlue.SequenceEqual(Snapshot(field))}");
     }
 
     private static Point Screen(UIElement e, Point local) => e.PointToScreen(local);
@@ -134,5 +188,15 @@ internal static class SelfTest
             if (child is T t) yield return t;
             foreach (var d in Find<T>(child)) yield return d;
         }
+    }
+
+    private static byte[] Snapshot(FrameworkElement e)
+    {
+        var bmp = new System.Windows.Media.Imaging.RenderTargetBitmap(
+            Math.Max(1, (int)e.ActualWidth), Math.Max(1, (int)e.ActualHeight), 96, 96, PixelFormats.Pbgra32);
+        bmp.Render(e);
+        var pixels = new byte[bmp.PixelWidth * bmp.PixelHeight * 4];
+        bmp.CopyPixels(pixels, bmp.PixelWidth * 4, 0);
+        return pixels;
     }
 }

@@ -56,6 +56,10 @@
         <TabItem Header="Types d'edges">
             <flow:FlowView x:Name="EdgesFlow" FitViewOnInit="True" FitViewPadding="0.15"
                            EdgeLabelTemplate="{StaticResource PillLabel}">
+                <flow:FlowView.Resources>
+                    <!-- Surcharge locale d'une clé du thème : elle doit rester prioritaire. -->
+                    <SolidColorBrush x:Key="Flow.Edge" Color="#FF0071" />
+                </flow:FlowView.Resources>
                 <flow:FlowPanel PanelPosition="TopLeft">
                     <TextBlock Text="straight · bezier · step · smoothstep · marqueurs · edges animés · labels personnalisés"
                                Foreground="#666" />

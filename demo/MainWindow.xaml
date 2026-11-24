@@ -101,9 +101,50 @@
                     <StackPanel>
                         <TextBlock Text="shape color" Style="{StaticResource CardTitle}" />
                         <StackPanel Orientation="Horizontal" Margin="0,9,0,0">
-                            <Rectangle Width="13" Height="13" RadiusX="2" RadiusY="2" Fill="{Binding Data.Brush}" />
+                            <ToggleButton x:Name="swatch" Width="15" Height="15" Cursor="Hand" Focusable="False"
+                                          ToolTip="Choisir la couleur">
+                                <ToggleButton.Template>
+                                    <ControlTemplate TargetType="ToggleButton">
+                                        <Border CornerRadius="3" Background="{Binding Data.Brush}" BorderBrush="#DDD"
+                                                BorderThickness="1" />
+                                    </ControlTemplate>
+                                </ToggleButton.Template>
+                            </ToggleButton>
+                            <Popup IsOpen="{Binding IsChecked, ElementName=swatch, Mode=TwoWay}" StaysOpen="False"
+                                   PlacementTarget="{Binding ElementName=swatch}" Placement="Bottom" AllowsTransparency="True"
+                                   VerticalOffset="6">
+                                <Border Background="White" CornerRadius="8" Padding="10" Margin="8" BorderBrush="#EEEEF2"
+                                        BorderThickness="1" Effect="{StaticResource CardShadow}">
+                                    <StackPanel Width="132">
+                                        <ItemsControl ItemsSource="{Binding Data.Presets}">
+                                            <ItemsControl.ItemsPanel>
+                                                <ItemsPanelTemplate><WrapPanel /></ItemsPanelTemplate>
+                                            </ItemsControl.ItemsPanel>
+                                            <ItemsControl.ItemTemplate>
+                                                <DataTemplate>
+                                                    <Button Width="22" Height="22" Margin="2" Cursor="Hand" Focusable="False"
+                                                            Command="{Binding DataContext.Data.SetColorCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                                            CommandParameter="{Binding}">
+                                                        <Button.Template>
+                                                            <ControlTemplate TargetType="Button">
+                                                                <Border CornerRadius="11" Background="{TemplateBinding Background}" />
+                                                            </ControlTemplate>
+                                                        </Button.Template>
+                                                        <Button.Background>
+                                                            <SolidColorBrush Color="{Binding}" />
+                                                        </Button.Background>
+                                                    </Button>
+                                                </DataTemplate>
+                                            </ItemsControl.ItemTemplate>
+                                        </ItemsControl>
+                                        <TextBlock Text="teinte" Style="{StaticResource CardTitle}" Margin="0,8,0,4" />
+                                        <Slider Minimum="0" Maximum="359" Value="{Binding Data.Hue, Mode=TwoWay}"
+                                                Style="{StaticResource PinkSlider}" />
+                                    </StackPanel>
+                                </Border>
+                            </Popup>
                             <TextBox Text="{Binding Data.ColorHex, UpdateSourceTrigger=PropertyChanged}"
-                                     Margin="8,0,0,0" Width="80" FontSize="9" BorderThickness="0" Padding="0"
+                                     Margin="8,0,0,0" Width="78" FontSize="9" BorderThickness="0" Padding="0"
                                      VerticalAlignment="Center" Foreground="#444" />
                         </StackPanel>
                     </StackPanel>

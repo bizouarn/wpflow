@@ -144,4 +144,4 @@ Les chemins d'edges ont été comparés au code source de `@xyflow/system` (béz
 
 ## Développement
 
-Voir `CLAUDE.md` (architecture, commandes, auto-tests visuels pilotant la vraie souris) et `work-doc/` (roadmap, décisions d'architecture).
+**Documentation** : [`doc/`](doc/README.md) (guides « Learn », référence de l'API, exemples, organisés comme reactflow.dev). Pour contribuer : `CLAUDE.md` (architecture, commandes, auto-tests visuels pilotant la vraie souris) et `work-doc/` (roadmap, décisions d'architecture).

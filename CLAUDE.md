@@ -8,6 +8,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 The `demo` must keep resembling the homepage demo of https://reactflow.dev/ (dotted background, white rounded cards with real WPF controls, dashed animated bezier edges, minimap, controls). A reference screenshot is in `work-doc/screenshots/demo.png`.
 
+User documentation lives in `doc/` (Learn / API Reference / Examples, in French, mirroring reactflow.dev); keep it in sync when changing the public API. Link check: every relative link in `doc/**/*.md` must resolve.
+
 Solution `wpflow.sln`, Windows only:
 
 - `src/Wpflow.Core` (net8.0, **no WPF dependency**) — logic ported from `@xyflow/system`: immutable model (`Node`, `Edge`, `HandleInfo`), viewport math, edge path generation (SVG path strings), bounds/handle helpers, and `Changes.Apply` (NodeChange/EdgeChange). New logic goes here first, with tests.

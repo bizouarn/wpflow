@@ -379,6 +379,7 @@ public class FlowView : ContentControl
     public override void OnApplyTemplate()
     {
         base.OnApplyTemplate();
+        EnsureTheme();
         _background = GetTemplateChild("PART_Background") as FlowBackground;
         _viewportGrid = GetTemplateChild("PART_Viewport") as Grid;
         _edgeLayer = GetTemplateChild("PART_Edges") as EdgeLayer;
@@ -590,17 +591,37 @@ public class FlowView : ContentControl
     public Brush ThemeBrush(string key) =>
         TryFindResource(key) as Brush ?? LightFallbacks.GetValueOrDefault(key) ?? Brushes.Gray;
 
+    private ResourceDictionary? _themeDictionary;
+
     private void ApplyColorMode()
     {
         var uri = new Uri(
             $"pack://application:,,,/Wpflow.Wpf;component/Themes/{(ColorMode == ColorMode.Dark ? "Dark" : "Light")}.xaml");
-        Resources.MergedDictionaries.Clear();
-        Resources.MergedDictionaries.Add(new ResourceDictionary { Source = uri });
+        // On ne retire que notre dictionnaire : les clés Flow.* définies par l'utilisateur dans Resources restent prioritaires.
+        if (_themeDictionary != null) Resources.MergedDictionaries.Remove(_themeDictionary);
+        _themeDictionary = new ResourceDictionary { Source = uri };
+        Resources.MergedDictionaries.Add(_themeDictionary);
 
         ConfigureBackground();
         foreach (var host in _hosts.Values) host.RefreshTheme();
         _edgeLayer?.Refresh(this);
         RaiseStateChanged();
+    }
+
+    // Le XAML peut remplacer FlowView.Resources après le constructeur : on remet alors le thème dans le nouveau dictionnaire.
+    private void EnsureTheme()
+    {
+        if (_themeDictionary == null || !Resources.MergedDictionaries.Contains(_themeDictionary))
+        {
+            _themeDictionary = null;
+            ApplyColorMode();
+        }
+    }
+
+    protected override void OnInitialized(EventArgs e)
+    {
+        base.OnInitialized(e);
+        EnsureTheme();
     }
 
     #endregion

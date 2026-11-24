@@ -29,6 +29,20 @@ public partial class MainWindow : Window
         ];
         Flow.Viewport = new Viewport(560, 150, 1.1);
 
+        // « Relier » : le node output n'utilise couleur, forme et zoom que si le node correspondant lui est connecté.
+        void SyncConnections()
+        {
+            bool Linked(string handle) => Flow.Edges.Any(e => e.Target == "output" && e.TargetHandle == handle);
+            state.UseColor = Linked("color");
+            state.UseShape = Linked("shape");
+            state.UseZoom = Linked("zoom");
+        }
+
+        System.ComponentModel.DependencyPropertyDescriptor
+            .FromProperty(Wpflow.Wpf.FlowView.EdgesProperty, typeof(Wpflow.Wpf.FlowView))
+            .AddValueChanged(Flow, (_, _) => SyncConnections());
+        SyncConnections();
+
         // Outil de vérification visuelle : WPFLOW_SCREENSHOT=chemin.png capture la fenêtre puis quitte.
         if (Environment.GetEnvironmentVariable("WPFLOW_SCREENSHOT") is { Length: > 0 } path)
         {
