@@ -32,30 +32,37 @@ public sealed record EdgeReplaceChange(string Id, Edge Item) : EdgeChange;
 /// <summary>Applique des changes à une liste immuable (équivalent de <c>applyNodeChanges</c> / <c>applyEdgeChanges</c>).</summary>
 public static class Changes
 {
+    // Au-delà de ce nombre de changes, on construit un index id -> position : sinon chaque change coûte O(n)
+    // (le chargement de N nodes émet N NodeDimensionsChange d'un coup).
+    private const int IndexThreshold = 8;
+
     public static IReadOnlyList<Node> Apply(IEnumerable<NodeChange> changes, IReadOnlyList<Node> nodes)
     {
-        var result = nodes.ToList();
-        foreach (var change in changes)
+        var list = changes as IReadOnlyList<NodeChange> ?? changes.ToList();
+        if (list.Count == 0) return nodes;
+
+        var items = new IdList<Node>(nodes, n => n.Id, list.Count >= IndexThreshold);
+        foreach (var change in list)
         {
             switch (change)
             {
                 case NodeAddChange add:
-                    result.Add(add.Item);
+                    items.Add(add.Item);
                     break;
                 case NodeRemoveChange remove:
-                    result.RemoveAll(n => n.Id == remove.Id);
+                    items.Remove(remove.Id);
                     break;
                 case NodeReplaceChange replace:
-                    Update(result, replace.Id, _ => replace.Item);
+                    items.Update(replace.Id, _ => replace.Item);
                     break;
                 case NodePositionChange pos:
-                    Update(result, pos.Id, n => n with { Position = pos.Position });
+                    items.Update(pos.Id, n => n with { Position = pos.Position });
                     break;
                 case NodeDimensionsChange dim:
-                    Update(result, dim.Id, n => n with { Width = dim.Width, Height = dim.Height });
+                    items.Update(dim.Id, n => n with { Width = dim.Width, Height = dim.Height });
                     break;
                 case NodeResizeChange resize:
-                    Update(result, resize.Id, n => n with
+                    items.Update(resize.Id, n => n with
                     {
                         FixedWidth = resize.Width, FixedHeight = resize.Height,
                         Width = resize.Width, Height = resize.Height,
@@ -63,49 +70,80 @@ public static class Changes
                     });
                     break;
                 case NodeSelectChange sel:
-                    Update(result, sel.Id, n => n with { Selected = sel.Selected });
+                    items.Update(sel.Id, n => n with { Selected = sel.Selected });
                     break;
             }
         }
 
-        return result;
+        return items.Items;
     }
 
     public static IReadOnlyList<Edge> Apply(IEnumerable<EdgeChange> changes, IReadOnlyList<Edge> edges)
     {
-        var result = edges.ToList();
-        foreach (var change in changes)
+        var list = changes as IReadOnlyList<EdgeChange> ?? changes.ToList();
+        if (list.Count == 0) return edges;
+
+        var items = new IdList<Edge>(edges, e => e.Id, list.Count >= IndexThreshold);
+        foreach (var change in list)
         {
             switch (change)
             {
                 case EdgeAddChange add:
-                    result.Add(add.Item);
+                    items.Add(add.Item);
                     break;
                 case EdgeRemoveChange remove:
-                    result.RemoveAll(e => e.Id == remove.Id);
+                    items.Remove(remove.Id);
                     break;
                 case EdgeReplaceChange replace:
-                    Update(result, replace.Id, _ => replace.Item);
+                    items.Update(replace.Id, _ => replace.Item);
                     break;
                 case EdgeSelectChange sel:
-                    Update(result, sel.Id, e => e with { Selected = sel.Selected });
+                    items.Update(sel.Id, e => e with { Selected = sel.Selected });
                     break;
             }
         }
 
-        return result;
+        return items.Items;
     }
 
-    private static void Update<T>(List<T> list, string id, Func<T, T> update) where T : class
+    /// <summary>Copie modifiable d'une liste, avec recherche par id (linéaire, ou indexée pour les gros lots).</summary>
+    private sealed class IdList<T>(IReadOnlyList<T> source, Func<T, string> idOf, bool indexed) where T : class
     {
-        var index = list.FindIndex(item => IdOf(item) == id);
-        if (index >= 0) list[index] = update(list[index]);
-    }
+        private Dictionary<string, int>? _index;
 
-    private static string IdOf<T>(T item) => item switch
-    {
-        Node n => n.Id,
-        Edge e => e.Id,
-        _ => throw new ArgumentException("Type non supporté.", nameof(item))
-    };
+        public List<T> Items { get; } = source.ToList();
+
+        private int Find(string id)
+        {
+            if (!indexed) return Items.FindIndex(item => idOf(item) == id);
+            if (_index == null)
+            {
+                // Premier élément gagnant en cas de doublon, comme FindIndex.
+                _index = new Dictionary<string, int>(Items.Count);
+                for (var i = 0; i < Items.Count; i++) _index.TryAdd(idOf(Items[i]), i);
+            }
+
+            return _index.TryGetValue(id, out var found) ? found : -1;
+        }
+
+        public void Add(T item)
+        {
+            Items.Add(item);
+            _index?.TryAdd(idOf(item), Items.Count - 1);
+        }
+
+        public void Remove(string id)
+        {
+            if (Items.RemoveAll(item => idOf(item) == id) > 0) _index = null; // les positions ont changé
+        }
+
+        public void Update(string id, Func<T, T> update)
+        {
+            var i = Find(id);
+            if (i < 0) return;
+            var updated = update(Items[i]);
+            if (_index != null && idOf(updated) != id) _index = null; // un remplacement peut changer l'id
+            Items[i] = updated;
+        }
+    }
 }

@@ -9,10 +9,6 @@ namespace Wpflow.Wpf;
 /// <summary>Vue d'ensemble du graphe ; cliquer/glisser déplace le viewport. À placer dans le contenu (overlay) d'un <see cref="FlowView" />.</summary>
 public sealed class MiniMap : FrameworkElement
 {
-    private static readonly Brush NodeFill = Frozen(new SolidColorBrush(Color.FromRgb(0xe2, 0xe2, 0xe2)));
-    private static readonly Brush NodeSelectedFill = Frozen(new SolidColorBrush(Color.FromRgb(0xb1, 0xb1, 0xb7)));
-    private static readonly Brush MaskFill = Frozen(new SolidColorBrush(Color.FromArgb(0x99, 0xf0, 0xf0, 0xf0)));
-    private static readonly Brush Background = Frozen(new SolidColorBrush(Colors.White));
     private static readonly Pen BorderPen = Frozen(new Pen(new SolidColorBrush(Color.FromArgb(0x30, 0, 0, 0)), 1));
 
     private FlowView? _flow;
@@ -53,7 +49,7 @@ public sealed class MiniMap : FrameworkElement
     {
         var w = ActualWidth;
         var h = ActualHeight;
-        dc.DrawRoundedRectangle(_flow?.ThemeBrush("Flow.MiniMapBackground") ?? Background, BorderPen, new Rect(0, 0, w, h), 4, 4);
+        dc.DrawRoundedRectangle(_flow?.ThemeBrush("Flow.MiniMapBackground") ?? Brushes.White, BorderPen, new Rect(0, 0, w, h), 4, 4);
         if (_flow == null || w <= 0 || h <= 0) return;
 
         var visible = ViewportMath.GetVisibleRect(_flow.Viewport, _flow.ActualWidth, _flow.ActualHeight);
@@ -70,11 +66,14 @@ public sealed class MiniMap : FrameworkElement
         _originX = vbX;
         _originY = vbY;
 
+        // Les brosses sont lues une fois : une recherche de ressource par node et par image coûterait très cher.
+        var nodeBrush = _flow.ThemeBrush("Flow.MiniMapNode");
+        var selectedBrush = _flow.ThemeBrush("Flow.MiniMapNodeSelected");
         dc.PushClip(new RectangleGeometry(new Rect(0, 0, w, h)));
         foreach (var node in _flow.AbsoluteNodes)
         {
             if (node.Rect is not { } r) continue;
-            dc.DrawRoundedRectangle(node.Selected ? _flow.ThemeBrush("Flow.MiniMapNodeSelected") : _flow.ThemeBrush("Flow.MiniMapNode"), null,
+            dc.DrawRoundedRectangle(node.Selected ? selectedBrush : nodeBrush, null,
                 new Rect((r.X - vbX) * _scale, (r.Y - vbY) * _scale, r.Width * _scale, r.Height * _scale), 3, 3);
         }
 

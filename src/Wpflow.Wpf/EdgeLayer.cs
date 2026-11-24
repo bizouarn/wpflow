@@ -42,9 +42,24 @@ internal sealed class EdgeVisual : Canvas
 
     public string EdgeId { get; }
 
+    private readonly record struct UpdateKey(Edge Edge, string Path, XYPosition Start, Position StartSide, XYPosition End,
+        Position EndSide, EdgeStyle Style);
+
+    private UpdateKey? _lastUpdate;
+
     public void Update(Edge edge, EdgePath path, XYPosition start, Position startSide, XYPosition end, Position endSide,
-        Brush stroke, double thickness, DataTemplate? labelTemplate, Brush labelBackground, Brush labelForeground)
+        EdgeStyle style)
     {
+        // Rien n'a changé (même edge, même tracé, mêmes brosses) : on évite de re-parser la géométrie et de toucher à l'arbre visuel.
+        var key = new UpdateKey(edge, path.Path, start, startSide, end, endSide, style);
+        if (_lastUpdate == key) return;
+        _lastUpdate = key;
+
+        var stroke = edge.Selected ? style.SelectedStroke : style.Stroke;
+        var thickness = style.Thickness;
+        var labelTemplate = style.LabelTemplate;
+        var labelBackground = style.LabelBackground;
+        var labelForeground = style.LabelForeground;
         var geometry = Geometry.Parse(path.Path);
         geometry.Freeze();
         _hit.Data = geometry;
@@ -150,6 +165,9 @@ public sealed class EdgeLayer : Canvas
     /// </summary>
     internal void Refresh(FlowView flow, IReadOnlySet<string>? touchedNodes = null)
     {
+        var style = new EdgeStyle(
+            flow.EdgeStroke ?? flow.ThemeBrush("Flow.Edge"), flow.ThemeBrush("Flow.EdgeSelected"), flow.EdgeStrokeThickness,
+            flow.EdgeLabelTemplate, flow.ThemeBrush("Flow.NodeBackground"), flow.ThemeBrush("Flow.NodeText"));
         var seen = touchedNodes == null ? new HashSet<string>() : null;
         foreach (var edge in flow.Edges)
         {
@@ -180,9 +198,7 @@ public sealed class EdgeLayer : Canvas
                 _ => EdgePaths.Bezier(s, sp, t, tp)
             };
 
-            var stroke = edge.Selected ? flow.ThemeBrush("Flow.EdgeSelected") : flow.EdgeStroke ?? flow.ThemeBrush("Flow.Edge");
-            visual.Update(edge, path, s, sp, t, tp, stroke, flow.EdgeStrokeThickness, flow.EdgeLabelTemplate,
-                flow.ThemeBrush("Flow.NodeBackground"), flow.ThemeBrush("Flow.NodeText"));
+            visual.Update(edge, path, s, sp, t, tp, style);
         }
 
         if (seen == null) return;
@@ -206,3 +222,7 @@ public sealed class EdgeLayer : Canvas
         }
     }
 }
+
+/// <summary>Brosses et réglages d'affichage des edges, résolus une seule fois par rafraîchissement (et non par edge).</summary>
+internal sealed record EdgeStyle(Brush Stroke, Brush SelectedStroke, double Thickness, DataTemplate? LabelTemplate,
+    Brush LabelBackground, Brush LabelForeground);

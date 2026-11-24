@@ -1,4 +1,4 @@
-using System.Runtime.InteropServices;
+using static demo.Sim;
 using System.Windows;
 using System.Windows.Media;
 using Wpflow.Core;
@@ -12,10 +12,7 @@ namespace demo;
 /// </summary>
 internal static class SelfTest
 {
-    [DllImport("user32.dll")] private static extern bool SetCursorPos(int x, int y);
-    [DllImport("user32.dll")] private static extern void mouse_event(uint flags, uint dx, uint dy, uint data, nint extra);
 
-    private const uint LeftDown = 0x0002, LeftUp = 0x0004, Wheel = 0x0800;
 
     public static async Task Run(FlowView flow, Action<string> log)
     {
@@ -42,8 +39,8 @@ internal static class SelfTest
         // 3. Zoom molette au centre de la vue.
         var zoomBefore = flow.Viewport.Zoom;
         var c = Screen(flow, new Point(flow.ActualWidth / 2, flow.ActualHeight / 2));
-        SetCursorPos((int)c.X, (int)c.Y);
-        mouse_event(Wheel, 0, 0, unchecked((uint)120), 0);
+        MoveTo(c);
+        Wheel(120);
         await Task.Delay(300);
         log($"wheel zoom: {zoomBefore:0.00} -> {flow.Viewport.Zoom:0.00}");
 
@@ -158,45 +155,5 @@ internal static class SelfTest
         colorState.ColorHex = "#ff0071";
         await Task.Delay(300);
         log($"sélecteur: les cubes ont été redessinés = {!frameBlue.SequenceEqual(Snapshot(field))}");
-    }
-
-    private static Point Screen(UIElement e, Point local) => e.PointToScreen(local);
-
-    private static async Task Drag(Point from, (double X, double Y) to)
-    {
-        SetCursorPos((int)from.X, (int)from.Y);
-        await Task.Delay(120);
-        mouse_event(LeftDown, 0, 0, 0, 0);
-        await Task.Delay(80);
-        const int steps = 12;
-        for (var i = 1; i <= steps; i++)
-        {
-            SetCursorPos((int)(from.X + (to.X - from.X) * i / steps), (int)(from.Y + (to.Y - from.Y) * i / steps));
-            await Task.Delay(25);
-        }
-
-        await Task.Delay(80);
-        mouse_event(LeftUp, 0, 0, 0, 0);
-        await Task.Delay(250);
-    }
-
-    private static IEnumerable<T> Find<T>(DependencyObject root) where T : DependencyObject
-    {
-        for (var i = 0; i < VisualTreeHelper.GetChildrenCount(root); i++)
-        {
-            var child = VisualTreeHelper.GetChild(root, i);
-            if (child is T t) yield return t;
-            foreach (var d in Find<T>(child)) yield return d;
-        }
-    }
-
-    private static byte[] Snapshot(FrameworkElement e)
-    {
-        var bmp = new System.Windows.Media.Imaging.RenderTargetBitmap(
-            Math.Max(1, (int)e.ActualWidth), Math.Max(1, (int)e.ActualHeight), 96, 96, PixelFormats.Pbgra32);
-        bmp.Render(e);
-        var pixels = new byte[bmp.PixelWidth * bmp.PixelHeight * 4];
-        bmp.CopyPixels(pixels, bmp.PixelWidth * 4, 0);
-        return pixels;
     }
 }

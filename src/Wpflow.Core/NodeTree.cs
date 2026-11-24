@@ -30,13 +30,6 @@ public static class NodeTree
         return pos;
     }
 
-    /// <summary>Copie des nodes dont <see cref="Node.Position" /> est absolue (pratique pour dessiner edges et handles).</summary>
-    public static List<Node> ToAbsolute(IReadOnlyList<Node> nodes)
-    {
-        var abs = AbsolutePositions(nodes);
-        return nodes.Select(n => n.ParentId == null ? n : n with { Position = abs[n.Id] }).ToList();
-    }
-
     /// <summary>Profondeur dans la hiérarchie (0 pour une racine) ; sert à ordonner l'empilement (parents sous leurs enfants).</summary>
     public static Dictionary<string, int> Depths(IEnumerable<Node> nodes)
     {
@@ -64,19 +57,21 @@ public static class NodeTree
     /// <summary>Identifiants de tous les descendants (enfants, petits-enfants…) d'un node.</summary>
     public static HashSet<string> Descendants(string id, IEnumerable<Node> nodes)
     {
-        var list = nodes.ToList();
-        var result = new HashSet<string>();
-        var queue = new Queue<string>();
-        queue.Enqueue(id);
-        while (queue.Count > 0)
-        {
-            var current = queue.Dequeue();
-            foreach (var child in list.Where(n => n.ParentId == current))
-                if (result.Add(child.Id))
-                    queue.Enqueue(child.Id);
-        }
+        var result = DescendantsOf([id], nodes);
+        result.Remove(id); // un cycle ne doit pas faire de ce node son propre descendant
+        return result;
+    }
 
-        result.Remove(id);
+    /// <summary>Descendants d'un ensemble de nodes en un seul parcours (l'index parent → enfants n'est construit qu'une fois).</summary>
+    public static HashSet<string> DescendantsOf(IEnumerable<string> ids, IEnumerable<Node> nodes)
+    {
+        var children = nodes.Where(n => n.ParentId != null).ToLookup(n => n.ParentId!, n => n.Id);
+        var result = new HashSet<string>();
+        var queue = new Queue<string>(ids);
+        while (queue.Count > 0)
+            foreach (var child in children[queue.Dequeue()])
+                if (result.Add(child))
+                    queue.Enqueue(child);
         return result;
     }
 

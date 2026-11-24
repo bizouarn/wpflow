@@ -1,4 +1,4 @@
-using System.Runtime.InteropServices;
+using static demo.Sim;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
@@ -14,12 +14,7 @@ namespace demo;
 /// </summary>
 internal static class ExamplesSelfTest
 {
-    [DllImport("user32.dll")] private static extern bool SetCursorPos(int x, int y);
-    [DllImport("user32.dll")] private static extern void mouse_event(uint flags, uint dx, uint dy, uint data, nint extra);
-    [DllImport("user32.dll")] private static extern void keybd_event(byte vk, byte scan, uint flags, nint extra);
 
-    private const uint LeftDown = 0x0002, LeftUp = 0x0004;
-    private const byte VkSpace = 0x20, VkTab = 0x09, VkControl = 0x11, VkEscape = 0x1B, VkLeft = 0x25, VkRight = 0x27, VkDelete = 0x2E, VkZ = 0x5A;
 
     private static Action<string> _log = _ => { };
     private static ExamplesWindow _win = null!;
@@ -224,9 +219,9 @@ internal static class ExamplesSelfTest
         var nodePos = f.Nodes.First(x => x.Id == "oB").Position;
         var vpBefore = f.Viewport;
         var nb = Screen(nodeB, new Point(nodeB.ActualWidth / 2, 12));
-        keybd_event(VkSpace, 0, 0, 0);
+        KeyDown(VkSpace);
         await Drag(nb, (nb.X + 50, nb.Y + 30));
-        keybd_event(VkSpace, 0, 2, 0);
+        KeyRelease(VkSpace);
         await Task.Delay(200);
         Check("espace + glisser: déplace la vue sans bouger le node",
             f.Nodes.First(x => x.Id == "oB").Position == nodePos && Math.Abs(f.Viewport.X - vpBefore.X - 50) < 2,
@@ -304,43 +299,4 @@ internal static class ExamplesSelfTest
     private static NodeHost Host(FlowView f, string id) => Find<NodeHost>(f).First(h => h.Node?.Id == id);
 
     private static XYPosition Abs(FlowView f, string id) => f.AbsoluteNodes.First(n => n.Id == id).Position;
-
-    private static Point Screen(UIElement e, Point local) => e.PointToScreen(local);
-
-    private static async Task Click(Point p) => await Drag(p, (p.X, p.Y), steps: 1);
-
-    private static async Task Drag(Point from, (double X, double Y) to, int steps = 12, int delay = 25)
-    {
-        SetCursorPos((int)from.X, (int)from.Y);
-        await Task.Delay(120);
-        mouse_event(LeftDown, 0, 0, 0, 0);
-        await Task.Delay(80);
-        for (var i = 1; i <= steps; i++)
-        {
-            SetCursorPos((int)(from.X + (to.X - from.X) * i / steps), (int)(from.Y + (to.Y - from.Y) * i / steps));
-            await Task.Delay(delay);
-        }
-
-        await Task.Delay(80);
-        mouse_event(LeftUp, 0, 0, 0, 0);
-        await Task.Delay(250);
-    }
-
-    private static void Key(byte vk, bool ctrl = false)
-    {
-        if (ctrl) keybd_event(VkControl, 0, 0, 0);
-        keybd_event(vk, 0, 0, 0);
-        keybd_event(vk, 0, 2, 0);
-        if (ctrl) keybd_event(VkControl, 0, 2, 0);
-    }
-
-    private static IEnumerable<T> Find<T>(DependencyObject root) where T : DependencyObject
-    {
-        for (var i = 0; i < VisualTreeHelper.GetChildrenCount(root); i++)
-        {
-            var child = VisualTreeHelper.GetChild(root, i);
-            if (child is T t) yield return t;
-            foreach (var d in Find<T>(child)) yield return d;
-        }
-    }
 }

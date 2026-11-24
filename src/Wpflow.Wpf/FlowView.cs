@@ -387,6 +387,11 @@ public class FlowView : ContentControl
         _connectionPath = GetTemplateChild("PART_Connection") as Path;
         _selectionBox = GetTemplateChild("PART_Selection") as Border;
 
+        // Un nouveau gabarit repart d'un canvas vide : les hôtes de l'ancien ne sont plus dans l'arbre.
+        _hosts.Clear();
+        _handleMap.Clear();
+        _measured.Clear();
+
         _fitPending = FitViewOnInit;
         ConfigureBackground();
         OnViewportChanged();
@@ -409,7 +414,7 @@ public class FlowView : ContentControl
 
     public void Undo()
     {
-        if (_undo.Count == 0) return;
+        if (!AutoApplyChanges || _undo.Count == 0) return; // en mode contrôlé, l'historique appartient à l'appelant
         _redo.Add((Nodes, Edges));
         Restore(_undo[^1]);
         _undo.RemoveAt(_undo.Count - 1);
@@ -417,7 +422,7 @@ public class FlowView : ContentControl
 
     public void Redo()
     {
-        if (_redo.Count == 0) return;
+        if (!AutoApplyChanges || _redo.Count == 0) return;
         _undo.Add((Nodes, Edges));
         Restore(_redo[^1]);
         _redo.RemoveAt(_redo.Count - 1);
@@ -498,9 +503,7 @@ public class FlowView : ContentControl
         }
 
         // Ajout/retrait de node : recalcul complet ; sinon seuls les edges des nodes modifiés (et de leurs descendants).
-        if (hasTree && !structural)
-            foreach (var id in changed.ToList())
-                changed.UnionWith(NodeTree.Descendants(id, nodes));
+        if (hasTree && !structural) changed.UnionWith(NodeTree.DescendantsOf(changed.ToList(), nodes));
         _edgeLayer?.Refresh(this, structural ? null : changed);
         UpdateVisibility();
         RaiseStateChanged();
@@ -769,7 +772,7 @@ public class FlowView : ContentControl
         if (nodeIds.Count == 0 && !Edges.Any(e => e.Selected)) return;
         PushHistory();
         // Supprimer un parent supprime ses descendants.
-        foreach (var id in nodeIds.ToList()) nodeIds.UnionWith(NodeTree.Descendants(id, Nodes));
+        nodeIds.UnionWith(NodeTree.DescendantsOf(nodeIds.ToList(), Nodes));
         var edgeChanges = Edges.Where(e => e.Selected || nodeIds.Contains(e.Source) || nodeIds.Contains(e.Target))
             .Select(e => (EdgeChange)new EdgeRemoveChange(e.Id)).ToList();
         ApplyEdgeChanges(edgeChanges);
@@ -784,11 +787,8 @@ public class FlowView : ContentControl
     {
         base.OnMouseLeftButtonDown(e);
         Focus();
-        var source = e.OriginalSource as DependencyObject;
+        var (host, handle, edge) = HitTarget(e.OriginalSource as DependencyObject);
         var pos = e.GetPosition(this);
-        var host = FindAncestor<NodeHost>(source);
-        var handle = FindAncestor<Handle>(source);
-        var edge = FindAncestor<EdgeVisual>(source);
         var additive = Keyboard.Modifiers.HasFlag(ModifierKeys.Control) || Keyboard.Modifiers.HasFlag(ModifierKeys.Shift);
 
         _mouseStart = pos;
@@ -956,12 +956,12 @@ public class FlowView : ContentControl
         }
         else if (ctrl && e.Key == Key.Z && !Keyboard.Modifiers.HasFlag(ModifierKeys.Shift))
         {
-            if (AutoApplyChanges) Undo();
+            Undo();
             e.Handled = true;
         }
         else if (ctrl && (e.Key == Key.Y || (e.Key == Key.Z && Keyboard.Modifiers.HasFlag(ModifierKeys.Shift))))
         {
-            if (AutoApplyChanges) Redo();
+            Redo();
             e.Handled = true;
         }
         else if (ctrl && e.Key == Key.A)
@@ -1127,15 +1127,28 @@ public class FlowView : ContentControl
 
     #region Visual tree helpers
 
+    private static DependencyObject? ParentOf(DependencyObject d) =>
+        d is Visual or System.Windows.Media.Media3D.Visual3D ? VisualTreeHelper.GetParent(d) : LogicalTreeHelper.GetParent(d);
+
     internal static T? FindAncestor<T>(DependencyObject? d) where T : DependencyObject
     {
-        while (d != null)
-        {
+        for (; d != null; d = ParentOf(d))
             if (d is T t) return t;
-            d = d is Visual or System.Windows.Media.Media3D.Visual3D ? VisualTreeHelper.GetParent(d) : LogicalTreeHelper.GetParent(d);
+        return null;
+    }
+
+    /// <summary>Un seul parcours vers la racine : le handle (le plus proche) et le node ou l'edge qui le contient.</summary>
+    private static (NodeHost? Host, Handle? Handle, EdgeVisual? Edge) HitTarget(DependencyObject? d)
+    {
+        Handle? handle = null;
+        for (; d != null; d = ParentOf(d))
+        {
+            handle ??= d as Handle;
+            if (d is NodeHost host) return (host, handle, null);
+            if (d is EdgeVisual edge) return (null, handle, edge);
         }
 
-        return null;
+        return (null, handle, null);
     }
 
     internal static IEnumerable<T> FindDescendants<T>(DependencyObject root) where T : DependencyObject

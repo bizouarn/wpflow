@@ -64,12 +64,6 @@ public sealed class NodeHost : ContentControl
     /// <summary>Handles mesurés, relatifs au coin du node.</summary>
     internal IReadOnlyList<HandleInfo> Handles { get; private set; } = Array.Empty<HandleInfo>();
 
-    private static T Frozen<T>(T f) where T : Freezable
-    {
-        f.Freeze();
-        return f;
-    }
-
     /// <summary>Position absolue (coordonnées flow) actuellement appliquée ; diffère de <see cref="Node.Position" /> pour un enfant.</summary>
     internal XYPosition AbsolutePosition { get; private set; }
 

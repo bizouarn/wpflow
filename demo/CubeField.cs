@@ -40,8 +40,17 @@ public sealed class CubeField : FrameworkElement
             return (x, y, z, rng.NextDouble() * Math.PI * 2, 0.4 + rng.NextDouble() * 0.9, 0.07 + rng.NextDouble() * 0.06);
         }).ToArray();
 
-        Loaded += (_, _) => CompositionTarget.Rendering += OnFrame;
-        Unloaded += (_, _) => CompositionTarget.Rendering -= OnFrame;
+        // L'abonnement à l'état et à la boucle de rendu ne vit que tant que le contrôle est dans l'arbre (pas de fuite quand le node disparaît).
+        Loaded += (_, _) =>
+        {
+            CompositionTarget.Rendering += OnFrame;
+            if (State != null) State.PropertyChanged += OnStatePropertyChanged;
+        };
+        Unloaded += (_, _) =>
+        {
+            CompositionTarget.Rendering -= OnFrame;
+            if (State != null) State.PropertyChanged -= OnStatePropertyChanged;
+        };
     }
 
     public DemoState? State
@@ -59,6 +68,7 @@ public sealed class CubeField : FrameworkElement
     private static void OnStateChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
     {
         var field = (CubeField)d;
+        if (!field.IsLoaded) return;
         if (e.OldValue is DemoState old) old.PropertyChanged -= field.OnStatePropertyChanged;
         if (e.NewValue is DemoState @new) @new.PropertyChanged += field.OnStatePropertyChanged;
     }

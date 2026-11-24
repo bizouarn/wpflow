@@ -73,9 +73,9 @@ bool IsEdgeVisible(Rect sourceNode, Rect targetNode, Rect visible);
 
 ```csharp
 Dictionary<string, XYPosition> AbsolutePositions(IEnumerable<Node> nodes);
-List<Node> ToAbsolute(IReadOnlyList<Node> nodes);
 Dictionary<string, int> Depths(IEnumerable<Node> nodes);
 HashSet<string> Descendants(string id, IEnumerable<Node> nodes);
+HashSet<string> DescendantsOf(IEnumerable<string> ids, IEnumerable<Node> nodes);   // plusieurs racines, un seul parcours
 XYPosition ClampToParent(Node child, XYPosition relativePosition, Node? parent);   // extent: 'parent'
 ```
 

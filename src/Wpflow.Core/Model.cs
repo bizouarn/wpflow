@@ -27,7 +27,6 @@ public sealed record Node(
     bool Selected = false,
     bool Draggable = true,
     bool Selectable = true,
-    IReadOnlyList<HandleInfo>? Handles = null,
     double? FixedWidth = null,
     double? FixedHeight = null,
     string? ParentId = null,
