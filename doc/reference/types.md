@@ -29,12 +29,14 @@ public Rect? Rect { get; }          // rectangle (position relative) ; null tant
 public sealed record Edge(
     string Id, string Source, string Target,
     string? SourceHandle = null, string? TargetHandle = null,
-    string Type = "default",        // default | straight | step | smoothstep
+    string Type = "default",        // default | straight | step | smoothstep, ou un type personnalisé (voir Personnaliser)
     string? Label = null,
     bool Animated = false,
     bool Selected = false,
     EdgeMarker MarkerEnd = EdgeMarker.None,
-    EdgeMarker MarkerStart = EdgeMarker.None);
+    EdgeMarker MarkerStart = EdgeMarker.None,
+    string? MarkerEndKey = null,       // marqueur personnalisé : ressource wpflow-marker-{clé}
+    string? MarkerStartKey = null);
 
 public enum EdgeMarker { None, Arrow, ArrowClosed }
 ```

@@ -122,19 +122,24 @@ internal static class SelfTest
         await Task.Delay(1200);
         log($"slider: state.Zoom {zoomBefore2:0.00} -> {state.Zoom:0.00}, zoom affiché {field.DisplayedZoom:0.00} (attendu ~{state.Zoom:0.00})");
 
-        var edgesWithZoom = flow.Edges;
-        flow.Edges = flow.Edges.Where(e => e.Id != "e-zoom").ToList();
+        var vm = (HomeViewModel)flow.DataContext;
+        var allLinks = vm.Links.ToList();
+        void RestoreLinks()
+        {
+            foreach (var link in allLinks.Where(l => !vm.Links.Contains(l))) vm.Links.Add(link);
+        }
+        vm.Links.Remove(vm.Links.First(l => l.Id == "e-zoom"));
         await Task.Delay(1500);
         log($"edge zoom supprimé: UseZoom={state.UseZoom}, zoom affiché {field.DisplayedZoom:0.00} (attendu {DemoState.DefaultZoom:0.00})");
-        flow.Edges = edgesWithZoom;
+        RestoreLinks();
         await Task.Delay(1500);
         log($"edge zoom rétabli: UseZoom={state.UseZoom}, zoom affiché {field.DisplayedZoom:0.00} (attendu ~{state.Zoom:0.00})");
 
         // Couleur et forme suivent aussi leurs edges.
-        flow.Edges = flow.Edges.Where(e => e.Id != "e-color" && e.Id != "e-shape").ToList();
+        foreach (var link in vm.Links.Where(l => l.Id is "e-color" or "e-shape").ToList()) vm.Links.Remove(link);
         await Task.Delay(200);
         log($"edges couleur/forme supprimés: UseColor={state.UseColor}, UseShape={state.UseShape}, couleur effective {state.EffectiveColor}");
-        flow.Edges = edgesWithZoom;
+        RestoreLinks();
 
         // 12. Sélecteur de couleur : on ouvre la pastille, on clique un preset, les cubes changent de couleur.
         var colorHost = Find<NodeHost>(flow).First(h => h.Node?.Id == "color");

@@ -37,7 +37,7 @@ public sealed class NodeHost : ContentControl
     {
         base.OnRender(dc);
         if (!IsSelected || !ShowOutline || ActualWidth <= 0) return;
-        const double gap = 3, thickness = 1.5;
+        double gap = _flow.SelectionOutlineGap, thickness = _flow.SelectionOutlineThickness;
         var pen = new Pen(_flow.ThemeBrush("Flow.Outline"), thickness);
         var inset = gap - thickness / 2;
         dc.DrawRoundedRectangle(null, pen, new Rect(-inset, -inset, ActualWidth + 2 * inset, ActualHeight + 2 * inset),

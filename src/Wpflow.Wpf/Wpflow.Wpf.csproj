@@ -15,6 +15,11 @@
   </ItemGroup>
 
   <ItemGroup>
+    <InternalsVisibleTo Include="Wpflow.Wpf.Tests" />
+    <InternalsVisibleTo Include="demo" />
+  </ItemGroup>
+
+  <ItemGroup>
     <None Include="../../README.md" Pack="true" PackagePath="\" Visible="false" />
   </ItemGroup>
 

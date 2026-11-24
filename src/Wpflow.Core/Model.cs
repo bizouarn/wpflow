@@ -36,7 +36,10 @@ public sealed record Node(
     public Rect? Rect => Width is { } w && Height is { } h ? new Rect(Position.X, Position.Y, w, h) : null;
 }
 
-/// <summary>Edge immuable entre deux nodes.</summary>
+/// <summary>
+///     Edge immuable entre deux nodes. <c>MarkerEndKey</c> / <c>MarkerStartKey</c> désignent un marqueur personnalisé
+///     (ressource <c>wpflow-marker-{clé}</c>) et l'emportent sur <c>MarkerEnd</c> / <c>MarkerStart</c>.
+/// </summary>
 public sealed record Edge(
     string Id,
     string Source,
@@ -48,7 +51,9 @@ public sealed record Edge(
     bool Animated = false,
     bool Selected = false,
     EdgeMarker MarkerEnd = EdgeMarker.None,
-    EdgeMarker MarkerStart = EdgeMarker.None);
+    EdgeMarker MarkerStart = EdgeMarker.None,
+    string? MarkerEndKey = null,
+    string? MarkerStartKey = null);
 
 /// <summary>Marqueur de fin d'edge (équivalent de <c>MarkerType</c>).</summary>
 public enum EdgeMarker

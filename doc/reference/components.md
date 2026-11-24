@@ -13,17 +13,17 @@ Point de connexion, à placer dans le template d'un node (enfant du `Grid` racin
 | `HandleId` | `string?` | `null` | Identifiant (`Edge.SourceHandle` / `TargetHandle`). |
 | `Offset` | `double` | `NaN` | Décalage le long du côté depuis le haut (gauche/droite) ou la gauche (haut/bas) ; `NaN` = centré. |
 
-Le handle fait 8 × 8 et déborde de 4 px sur le bord de son conteneur ; sa zone de clic est élargie de 6 px. Il se stylise comme un `Control` (`Background`, `BorderBrush`, `BorderThickness`) : ciblez `flow:Handle` dans un `Style`.
+Le handle fait 8 × 8 par défaut (`Width` / `Height` modifiables) et déborde de la moitié de sa taille sur le bord de son conteneur ; sa zone de clic est élargie de 6 px. Il se stylise comme un `Control` (`Background`, `BorderBrush`, `BorderThickness`, `Width`, `Height`) et un `Template` remplace son dessin : ciblez `flow:Handle` dans un `Style` (voir [Personnaliser](../learn/14-customization.md#handles)).
 
 ## MiniMap
 
-Vue d'ensemble du graphe ; cliquer ou glisser recentre le viewport. À placer dans le `Content` de `FlowView`.
+Vue d'ensemble du graphe ; cliquer ou glisser recentre le viewport. À placer dans le `Content` de `FlowView`, ou ailleurs avec `Flow="{Binding ElementName=Flow}"`.
 
 Valeurs par défaut : 200 × 150, en bas à droite, marge de 15. Redimensionnez avec `Width`/`Height`, repositionnez avec `HorizontalAlignment`/`VerticalAlignment`/`Margin`. Couleurs : `Flow.MiniMapBackground`, `Flow.MiniMapNode`, `Flow.MiniMapNodeSelected`, `Flow.MiniMapMask`.
 
 ## FlowControls
 
-Boutons zoom +, zoom −, cadrage (`FitView`) et verrou (`IsLocked`). Placé en bas à gauche par défaut. Couleurs : `Flow.Controls*`. Le cadenas reflète `FlowView.IsLocked` (y compris quand il est modifié ailleurs).
+Boutons zoom +, zoom −, cadrage (`FitView`) et verrou (`IsLocked`). Placé en bas à gauche par défaut ; la vue pilotée est celle qui le contient, ou `Flow="{Binding ElementName=Flow}"`. Couleurs : `Flow.Controls*`. Le cadenas reflète `FlowView.IsLocked` (y compris quand il est modifié ailleurs).
 
 ## FlowPanel
 

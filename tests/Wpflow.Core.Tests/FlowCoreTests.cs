@@ -240,3 +240,43 @@ public class GraphLayoutTests
         Assert.Equal(2, GraphLayout.LayeredLeftToRight(nodes, edges).Count);
     }
 }
+
+public class EdgeProvidersTests
+{
+    private static readonly EdgeGeometry G = new(new XYPosition(0, 0), Position.Right, new XYPosition(100, 50), Position.Left);
+
+    [Fact]
+    public void Built_in_providers_match_the_path_functions()
+    {
+        Assert.Equal(EdgePaths.Straight(G.Source, G.Target), EdgePathProviders.ForType("straight").GetPath(G));
+        Assert.Equal(EdgePaths.Step(G.Source, G.SourcePosition, G.Target, G.TargetPosition), EdgePathProviders.ForType("step").GetPath(G));
+        Assert.Equal(EdgePaths.SmoothStep(G.Source, G.SourcePosition, G.Target, G.TargetPosition), EdgePathProviders.ForType("smoothstep").GetPath(G));
+        Assert.Equal(EdgePaths.Bezier(G.Source, G.SourcePosition, G.Target, G.TargetPosition), EdgePathProviders.ForType("default").GetPath(G));
+    }
+
+    [Fact]
+    public void Unknown_type_falls_back_to_bezier_and_is_not_built_in()
+    {
+        Assert.Equal(EdgePathProviders.ForType("default").GetPath(G), EdgePathProviders.ForType("inconnu").GetPath(G));
+        Assert.False(EdgePathProviders.IsBuiltIn("inconnu"));
+        Assert.True(EdgePathProviders.IsBuiltIn("step"));
+    }
+
+    [Fact]
+    public void Delegate_provider_is_called_with_the_geometry()
+    {
+        var provider = new DelegateEdgePathProvider(g => new EdgePath($"M{g.Source.X},{g.Source.Y}L{g.Target.X},{g.Target.Y}", 1, 2, 0, 0));
+        Assert.Equal("M0,0L100,50", provider.GetPath(G).Path);
+    }
+
+    [Fact]
+    public void Custom_marker_keys_survive_json()
+    {
+        var edges = new[] { new Edge("e", "a", "b", MarkerEndKey: "dot", MarkerStart: EdgeMarker.Arrow) };
+        var json = GraphSerializer.ToJson([], edges, Viewport.Identity);
+        var back = GraphSerializer.FromJson(json).Edges[0];
+        Assert.Equal("dot", back.MarkerEndKey);
+        Assert.Equal(EdgeMarker.None, back.MarkerEnd);
+        Assert.Equal(EdgeMarker.Arrow, back.MarkerStart);
+    }
+}

@@ -48,3 +48,15 @@ Brush brush = Flow.ThemeBrush("Flow.Edge");
 ```
 
 Aucune autre clé n'est requise : celles que vous ne redéfinissez pas viennent du thème.
+
+## Clés de remplacement de contenu
+
+En plus des couleurs `Flow.*`, ces clés remplacent des **éléments** (voir [Personnaliser](../learn/14-customization.md)) :
+
+| Clé | Ressource |
+|---|---|
+| `wpflow-node-{type}` | `DataTemplate` du node |
+| `wpflow-edge-{type}` | `IEdgePathProvider` (tracé) |
+| `wpflow-edge-template-{type}` | `DataTemplate` du rendu complet de l'edge |
+| `wpflow-edge-label-{type}` | `DataTemplate` du label |
+| `wpflow-marker-{clé}` | `Geometry` du marqueur |

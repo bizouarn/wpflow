@@ -86,6 +86,14 @@ Types intégrés : `default` (handle haut + bas), `input` (source seule), `outpu
 
 `new Node("enfant", position, ParentId: "groupe", ExtentParent: true)` : la position est relative au parent, l'enfant le suit et reste dans le groupe ; supprimer le parent supprime ses descendants.
 
+### MVVM
+
+Avec des ViewModels, liez des collections au lieu de passer des `record` : `NodesSource="{Binding Tasks}"`, `EdgesSource="{Binding Links}"`, `SelectedNodes="{Binding Selection, Mode=OneWay}"`. Le ViewModel expose `Id`, `X`, `Y` (autres propriétés via `NodeMapping` / `EdgeMapping`) ; glisser un node écrit `X`/`Y`, Suppr retire le ViewModel, et `Node.Data` est le ViewModel dans les templates. Voir [doc/learn/13-mvvm.md](doc/learn/13-mvvm.md). Les actions deviennent des `ICommand` (`ConnectCommand`, `NodesDeleteCommand`, `NodeClickCommand`…), `FlowCommands` fournit des commandes routées (Annuler, Supprimer, Cadrer…) pour des boutons sans code-behind, `Zoom`, `IsConnecting` et `CanUndo` sont liables, et un `IFlowController` remis par liaison permet de piloter la vue sans la connaître.
+
+### Personnalisation
+
+Tout se remplace par des ressources, sans toucher à la bibliothèque : un node (`wpflow-node-{type}`, y compris `default`), le tracé d'un type d'edge (`wpflow-edge-{type}`, un `IEdgePathProvider`), son rendu complet (`wpflow-edge-template-{type}`), son label (`wpflow-edge-label-{type}`), un marqueur (`wpflow-marker-{clé}` + `Edge.MarkerEndKey`), l'apparence des handles (style `flow:Handle` avec `Template`). Voir [doc/learn/14-customization.md](doc/learn/14-customization.md).
+
 ### Connexions
 
 `ConnectionMode` : `Strict` (source → cible) ou `Loose` (tout handle vers tout handle). `IsValidConnection` (`Func<Connection,bool>`) refuse des connexions. `ConnectionRadius` règle la distance d'accroche. Un edge se **reconnecte** en attrapant son extrémité.
@@ -130,6 +138,7 @@ Types intégrés : `default` (handle haut + bas), `input` (source seule), `outpu
 | `useReactFlow().fitView` / `zoomIn` | `FitView()` / `ZoomIn()` |
 | `connectionMode`, `isValidConnection` | `ConnectionMode`, `IsValidConnection` |
 | `translateExtent`, `nodeExtent` | `TranslateExtent`, `NodeExtent` |
+| `edgeTypes`, marqueurs personnalisés | ressources `wpflow-edge-{type}` / `wpflow-marker-{clé}` |
 | `onlyRenderVisibleElements` | `OnlyRenderVisibleElements` |
 | `colorMode` | `ColorMode` |
 
@@ -139,7 +148,8 @@ Les chemins d'edges ont été comparés au code source de `@xyflow/system` (béz
 
 - WPF uniquement (Windows). Le noyau `Wpflow.Core` n'a aucune dépendance UI.
 - Le pincement tactile est implémenté mais n'a pas pu être testé sur un écran tactile.
-- Pas encore : `isValidConnection` asynchrone, edges personnalisés par type (seuls les 4 types intégrés), marqueurs personnalisés, sélection d'edges au rectangle, minimap zoomable, `NodeResizer` avec ratio d'aspect.
+- MVVM : sources observables, sélection, commandes, contrôleur et historique du ViewModel faits (voir doc/learn/13-mvvm.md).
+- Pas encore : `isValidConnection` asynchrone, sélection d'edges au rectangle, minimap zoomable, `NodeResizer` avec ratio d'aspect.
 - Licence : [MIT](LICENSE). Le portage de xyflow (lui aussi MIT) est signalé dans [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md).
 
 ## Développement

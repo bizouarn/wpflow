@@ -17,7 +17,7 @@
                             <Grid x:Name="PART_Viewport">
                                 <local:EdgeLayer x:Name="PART_Edges" />
                                 <Canvas x:Name="PART_Nodes" />
-                                <Path x:Name="PART_Connection" Stroke="#b1b1b7" StrokeThickness="1.5"
+                                <Path x:Name="PART_Connection" Style="{Binding ConnectionLineStyle, RelativeSource={RelativeSource TemplatedParent}}"
                                       IsHitTestVisible="False" />
                             </Grid>
                             <Border x:Name="PART_Selection" Visibility="Collapsed" HorizontalAlignment="Left"

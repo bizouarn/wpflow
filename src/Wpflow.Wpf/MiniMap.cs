@@ -25,16 +25,32 @@ public sealed class MiniMap : FrameworkElement
         Cursor = Cursors.Hand;
         Effect = new System.Windows.Media.Effects.DropShadowEffect
             { BlurRadius = 6, ShadowDepth = 0, Opacity = 0.15 };
-        Loaded += (_, _) =>
-        {
-            _flow = FlowView.FindAncestor<FlowView>(this);
-            if (_flow != null) _flow.StateChanged += OnFlowChanged;
-            InvalidateVisual();
-        };
-        Unloaded += (_, _) =>
-        {
-            if (_flow != null) _flow.StateChanged -= OnFlowChanged;
-        };
+        Loaded += (_, _) => Attach();
+        Unloaded += (_, _) => Detach();
+    }
+
+    /// <summary>La <see cref="FlowView" /> représentée ; par défaut, la vue qui contient la minimap. À renseigner hors de la vue : <c>Flow="{Binding ElementName=Flow}"</c>.</summary>
+    public static readonly DependencyProperty FlowProperty = DependencyProperty.Register(
+        nameof(Flow), typeof(FlowView), typeof(MiniMap), new PropertyMetadata(null, (d, _) => ((MiniMap)d).Attach()));
+
+    public FlowView? Flow
+    {
+        get => (FlowView?)GetValue(FlowProperty);
+        set => SetValue(FlowProperty, value);
+    }
+
+    private void Attach()
+    {
+        Detach();
+        _flow = Flow ?? (IsLoaded ? FlowView.FindAncestor<FlowView>(this) : null);
+        if (_flow != null) _flow.StateChanged += OnFlowChanged;
+        InvalidateVisual();
+    }
+
+    private void Detach()
+    {
+        if (_flow != null) _flow.StateChanged -= OnFlowChanged;
+        _flow = null;
     }
 
     private static T Frozen<T>(T f) where T : Freezable

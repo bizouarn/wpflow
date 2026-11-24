@@ -13,35 +13,8 @@ public partial class MainWindow : Window
     {
         InitializeComponent();
 
-        var state = new DemoState();
-        Flow.Nodes =
-        [
-            new Node("color", new XYPosition(0, 0), "color", state),
-            new Node("shape", new XYPosition(-35, 85), "shape", state),
-            new Node("zoom", new XYPosition(-10, 190), "zoom", state),
-            new Node("output", new XYPosition(215, 25), "output", state, FixedWidth: 300, FixedHeight: 250)
-        ];
-        Flow.Edges =
-        [
-            new Edge("e-color", "color", "output", TargetHandle: "color", Animated: true),
-            new Edge("e-shape", "shape", "output", TargetHandle: "shape", Animated: true),
-            new Edge("e-zoom", "zoom", "output", TargetHandle: "zoom", Animated: true)
-        ];
-        Flow.Viewport = new Viewport(560, 150, 1.1);
-
-        // « Relier » : le node output n'utilise couleur, forme et zoom que si le node correspondant lui est connecté.
-        void SyncConnections()
-        {
-            bool Linked(string handle) => Flow.Edges.Any(e => e.Target == "output" && e.TargetHandle == handle);
-            state.UseColor = Linked("color");
-            state.UseShape = Linked("shape");
-            state.UseZoom = Linked("zoom");
-        }
-
-        System.ComponentModel.DependencyPropertyDescriptor
-            .FromProperty(Wpflow.Wpf.FlowView.EdgesProperty, typeof(Wpflow.Wpf.FlowView))
-            .AddValueChanged(Flow, (_, _) => SyncConnections());
-        SyncConnections();
+        // Tout le comportement est dans HomeViewModel ; la vue ne fait qu'ouvrir la fenêtre d'exemples qu'il demande.
+        ((HomeViewModel)DataContext).ExamplesRequested += () => new ExamplesWindow { Owner = this }.Show();
 
         // Outil de vérification visuelle : WPFLOW_SCREENSHOT=chemin.png capture la fenêtre puis quitte.
         if (Environment.GetEnvironmentVariable("WPFLOW_SCREENSHOT") is { Length: > 0 } path)
@@ -85,12 +58,6 @@ public partial class MainWindow : Window
                 Application.Current.Shutdown();
             };
         }
-    }
-
-    private void OnOpenExamples(object sender, System.Windows.Input.MouseButtonEventArgs e)
-    {
-        new ExamplesWindow { Owner = this }.Show();
-        e.Handled = true;
     }
 
     private void Capture(string path)

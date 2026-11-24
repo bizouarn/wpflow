@@ -67,3 +67,5 @@ Le node par défaut affiche `Data.ToString()` : pour un `JsonElement` de type ch
 ## Exemple complet
 
 La fenêtre d'exemples (onglet « Options et JSON ») exporte et réimporte le graphe affiché ; l'auto-test vérifie que positions et identifiants sont identiques après l'aller-retour.
+
+Suivant : [MVVM](13-mvvm.md).

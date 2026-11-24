@@ -20,16 +20,32 @@ public sealed class FlowControls : Control
         HorizontalAlignment = HorizontalAlignment.Left;
         VerticalAlignment = VerticalAlignment.Bottom;
         Margin = new Thickness(15);
-        Loaded += (_, _) =>
-        {
-            _flow = FlowView.FindAncestor<FlowView>(this);
-            if (_flow != null) _flow.StateChanged += OnFlowChanged;
-            OnFlowChanged(null, EventArgs.Empty);
-        };
-        Unloaded += (_, _) =>
-        {
-            if (_flow != null) _flow.StateChanged -= OnFlowChanged;
-        };
+        Loaded += (_, _) => Attach();
+        Unloaded += (_, _) => Detach();
+    }
+
+    /// <summary>La <see cref="FlowView" /> pilotée ; par défaut, la vue qui contient ce contrôle. À renseigner pour un contrôle placé hors de la vue : <c>Flow="{Binding ElementName=Flow}"</c>.</summary>
+    public static readonly DependencyProperty FlowProperty = DependencyProperty.Register(
+        nameof(Flow), typeof(FlowView), typeof(FlowControls), new PropertyMetadata(null, (d, _) => ((FlowControls)d).Attach()));
+
+    public FlowView? Flow
+    {
+        get => (FlowView?)GetValue(FlowProperty);
+        set => SetValue(FlowProperty, value);
+    }
+
+    private void Attach()
+    {
+        Detach();
+        _flow = Flow ?? (IsLoaded ? FlowView.FindAncestor<FlowView>(this) : null);
+        if (_flow != null) _flow.StateChanged += OnFlowChanged;
+        OnFlowChanged(null, EventArgs.Empty);
+    }
+
+    private void Detach()
+    {
+        if (_flow != null) _flow.StateChanged -= OnFlowChanged;
+        _flow = null;
     }
 
     public override void OnApplyTemplate()

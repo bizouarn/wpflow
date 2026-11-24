@@ -87,6 +87,6 @@ Ces fonctions sont un port de `getBezierPath` / `getSmoothStepPath` de `@xyflow/
 
 ## Limites actuelles
 
-Les types d'edges sont ceux ci-dessus : il n'y a pas encore d'`edgeTypes` personnalisables (c'est-à-dire de tracé entièrement défini par l'utilisateur).
+Pour un type d'edge à vous (tracé, rendu, marqueurs), voir [Personnaliser](14-customization.md).
 
 Suivant : [Sous-flows et groupes](06-sub-flows.md).

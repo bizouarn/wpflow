@@ -16,12 +16,16 @@ public static class GraphSerializer
 {
     private static readonly JsonSerializerOptions DataOptions = new() { WriteIndented = false };
 
+    /// <summary>
+    ///     Écrit le graphe. <paramref name="data" /> remplace <see cref="Node.Data" /> à l'écriture (par exemple pour écrire un
+    ///     objet de transfert à la place d'un ViewModel) ; <c>null</c> = <see cref="Node.Data" /> tel quel.
+    /// </summary>
     public static string ToJson(IEnumerable<Node> nodes, IEnumerable<Edge> edges, Viewport viewport,
-        bool indented = true)
+        bool indented = true, Func<Node, object?>? data = null)
     {
         var root = new JsonObject
         {
-            ["nodes"] = new JsonArray(nodes.Select(NodeToJson).ToArray()),
+            ["nodes"] = new JsonArray(nodes.Select(n => NodeToJson(n, data)).ToArray()),
             ["edges"] = new JsonArray(edges.Select(EdgeToJson).ToArray()),
             ["viewport"] = new JsonObject { ["x"] = viewport.X, ["y"] = viewport.Y, ["zoom"] = viewport.Zoom }
         };
@@ -47,7 +51,7 @@ public static class GraphSerializer
         return new FlowGraph(nodes, edges, viewport);
     }
 
-    private static JsonNode NodeToJson(Node n)
+    private static JsonNode NodeToJson(Node n, Func<Node, object?>? dataOf)
     {
         var o = new JsonObject
         {
@@ -55,7 +59,8 @@ public static class GraphSerializer
             ["type"] = n.Type,
             ["position"] = new JsonObject { ["x"] = n.Position.X, ["y"] = n.Position.Y }
         };
-        if (n.Data != null) o["data"] = JsonSerializer.SerializeToNode(n.Data, DataOptions);
+        var payload = dataOf != null ? dataOf(n) : n.Data;
+        if (payload != null) o["data"] = JsonSerializer.SerializeToNode(payload, DataOptions);
         if (n.FixedWidth is { } w) o["width"] = w;
         if (n.FixedHeight is { } h) o["height"] = h;
         if (n.Selected) o["selected"] = true;
@@ -96,39 +101,47 @@ public static class GraphSerializer
         if (e.Label != null) o["label"] = e.Label;
         if (e.Animated) o["animated"] = true;
         if (e.Selected) o["selected"] = true;
-        if (e.MarkerEnd != EdgeMarker.None) o["markerEnd"] = MarkerToJson(e.MarkerEnd);
-        if (e.MarkerStart != EdgeMarker.None) o["markerStart"] = MarkerToJson(e.MarkerStart);
+        if (e.MarkerEnd != EdgeMarker.None || e.MarkerEndKey != null) o["markerEnd"] = MarkerToJson(e.MarkerEnd, e.MarkerEndKey);
+        if (e.MarkerStart != EdgeMarker.None || e.MarkerStartKey != null) o["markerStart"] = MarkerToJson(e.MarkerStart, e.MarkerStartKey);
         return o;
     }
 
-    private static JsonNode MarkerToJson(EdgeMarker m) =>
-        new JsonObject { ["type"] = m == EdgeMarker.ArrowClosed ? "arrowclosed" : "arrow" };
+    private static JsonNode MarkerToJson(EdgeMarker m, string? key) =>
+        new JsonObject { ["type"] = key ?? (m == EdgeMarker.ArrowClosed ? "arrowclosed" : "arrow") };
 
-    // React Flow accepte une chaîne ("arrowclosed") ou un objet { type: "arrowclosed" }.
-    private static EdgeMarker MarkerFromJson(JsonElement e, string name)
+    // React Flow accepte une chaîne ("arrowclosed") ou un objet { type: "arrowclosed" } ; un autre type est une clé de marqueur personnalisé.
+    private static (EdgeMarker Marker, string? Key) MarkerFromJson(JsonElement e, string name)
     {
-        if (!e.TryGetProperty(name, out var m)) return EdgeMarker.None;
+        if (!e.TryGetProperty(name, out var m)) return (EdgeMarker.None, null);
         var type = m.ValueKind == JsonValueKind.String ? m.GetString() : Str(m, "type");
         return type switch
         {
-            "arrowclosed" => EdgeMarker.ArrowClosed,
-            "arrow" => EdgeMarker.Arrow,
-            _ => EdgeMarker.None
+            "arrowclosed" => (EdgeMarker.ArrowClosed, null),
+            "arrow" => (EdgeMarker.Arrow, null),
+            null or "" => (EdgeMarker.None, null),
+            _ => (EdgeMarker.None, type)
         };
     }
 
-    private static Edge EdgeFromJson(JsonElement e) => new(
-        Id: Str(e, "id") ?? throw new JsonException("Edge sans id."),
-        Source: Str(e, "source") ?? throw new JsonException("Edge sans source."),
-        Target: Str(e, "target") ?? throw new JsonException("Edge sans target."),
-        SourceHandle: Str(e, "sourceHandle"),
-        TargetHandle: Str(e, "targetHandle"),
-        Type: Str(e, "type") ?? "default",
-        Label: Str(e, "label"),
-        Animated: Bool(e, "animated") ?? false,
-        Selected: Bool(e, "selected") ?? false,
-        MarkerEnd: MarkerFromJson(e, "markerEnd"),
-        MarkerStart: MarkerFromJson(e, "markerStart"));
+    private static Edge EdgeFromJson(JsonElement e)
+    {
+        var end = MarkerFromJson(e, "markerEnd");
+        var start = MarkerFromJson(e, "markerStart");
+        return new Edge(
+            Id: Str(e, "id") ?? throw new JsonException("Edge sans id."),
+            Source: Str(e, "source") ?? throw new JsonException("Edge sans source."),
+            Target: Str(e, "target") ?? throw new JsonException("Edge sans target."),
+            SourceHandle: Str(e, "sourceHandle"),
+            TargetHandle: Str(e, "targetHandle"),
+            Type: Str(e, "type") ?? "default",
+            Label: Str(e, "label"),
+            Animated: Bool(e, "animated") ?? false,
+            Selected: Bool(e, "selected") ?? false,
+            MarkerEnd: end.Marker,
+            MarkerStart: start.Marker,
+            MarkerEndKey: end.Key,
+            MarkerStartKey: start.Key);
+    }
 
     private static string? Str(JsonElement e, string name) =>
         e.ValueKind == JsonValueKind.Object && e.TryGetProperty(name, out var v) && v.ValueKind == JsonValueKind.String

@@ -24,6 +24,8 @@ internal static class PerfTest
 
         var baseline = Heap();
         var sw = Stopwatch.StartNew();
+        flow.NodesSource = null; // les nodes générés remplacent ceux du ViewModel
+        flow.EdgesSource = null;
         flow.Edges = edges;
         flow.Nodes = nodes;
         flow.Viewport = new Viewport(0, 0, 0.5);

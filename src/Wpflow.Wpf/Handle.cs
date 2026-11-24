@@ -31,7 +31,10 @@ public class Handle : Control
 
     static Handle()
     {
-        // Aucun gabarit : le handle se dessine lui-même dans OnRender (un seul élément visuel au lieu de quatre).
+        // Sans gabarit, le handle se dessine lui-même dans OnRender (un seul élément visuel au lieu de quatre) ; un Template le remplace.
+        // Taille par défaut : une valeur par défaut (et non locale), pour qu'un Style ou un gabarit puisse la changer.
+        WidthProperty.OverrideMetadata(typeof(Handle), new FrameworkPropertyMetadata(Size));
+        HeightProperty.OverrideMetadata(typeof(Handle), new FrameworkPropertyMetadata(Size));
         BackgroundProperty.OverrideMetadata(typeof(Handle), new FrameworkPropertyMetadata(DefaultFill));
         BorderBrushProperty.OverrideMetadata(typeof(Handle), new FrameworkPropertyMetadata(Brushes.White));
         BorderThicknessProperty.OverrideMetadata(typeof(Handle), new FrameworkPropertyMetadata(new Thickness(1)));
@@ -50,6 +53,7 @@ public class Handle : Control
     {
         dc.DrawRectangle(Brushes.Transparent, null,
             new Rect(-HitMargin, -HitMargin, ActualWidth + 2 * HitMargin, ActualHeight + 2 * HitMargin));
+        if (Template != null) return; // dessiné par le gabarit : seule la zone de clic ci-dessus reste
         var thickness = BorderThickness.Left;
         var pen = BorderBrush != null && thickness > 0 ? new Pen(BorderBrush, thickness) : null;
         dc.DrawEllipse(Background, pen, new Point(ActualWidth / 2, ActualHeight / 2),
@@ -59,14 +63,13 @@ public class Handle : Control
     protected override void OnPropertyChanged(DependencyPropertyChangedEventArgs e)
     {
         base.OnPropertyChanged(e);
-        if (e.Property == BackgroundProperty || e.Property == BorderBrushProperty || e.Property == BorderThicknessProperty)
+        if (e.Property == WidthProperty || e.Property == HeightProperty) ApplyAlignment();
+        else if (e.Property == TemplateProperty || e.Property == BackgroundProperty || e.Property == BorderBrushProperty || e.Property == BorderThicknessProperty)
             InvalidateVisual();
     }
 
     public Handle()
     {
-        Width = Size;
-        Height = Size;
         Cursor = System.Windows.Input.Cursors.Cross;
         ApplyAlignment();
         Loaded += (_, _) => NodeHost?.RequestMeasure();
@@ -108,7 +111,8 @@ public class Handle : Control
 
     private void ApplyAlignment()
     {
-        var half = Size / 2;
+        var w = double.IsNaN(Width) ? Size : Width;
+        var h = double.IsNaN(Height) ? Size : Height;
         var hasOffset = !double.IsNaN(Offset);
         switch (Position)
         {
@@ -116,14 +120,14 @@ public class Handle : Control
             case Position.Right:
                 HorizontalAlignment = Position == Position.Left ? HorizontalAlignment.Left : HorizontalAlignment.Right;
                 VerticalAlignment = hasOffset ? VerticalAlignment.Top : VerticalAlignment.Center;
-                Margin = new Thickness(Position == Position.Left ? -half : 0, hasOffset ? Offset - half : 0,
-                    Position == Position.Right ? -half : 0, 0);
+                Margin = new Thickness(Position == Position.Left ? -w / 2 : 0, hasOffset ? Offset - h / 2 : 0,
+                    Position == Position.Right ? -w / 2 : 0, 0);
                 break;
             default:
                 VerticalAlignment = Position == Position.Top ? VerticalAlignment.Top : VerticalAlignment.Bottom;
                 HorizontalAlignment = hasOffset ? HorizontalAlignment.Left : HorizontalAlignment.Center;
-                Margin = new Thickness(hasOffset ? Offset - half : 0, Position == Position.Top ? -half : 0, 0,
-                    Position == Position.Bottom ? -half : 0);
+                Margin = new Thickness(hasOffset ? Offset - w / 2 : 0, Position == Position.Top ? -h / 2 : 0, 0,
+                    Position == Position.Bottom ? -h / 2 : 0);
                 break;
         }
     }

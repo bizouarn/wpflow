@@ -1,0 +1,82 @@
+<UserControl x:Class="demo.CustomizationExample"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:flow="clr-namespace:Wpflow.Wpf;assembly=Wpflow.Wpf"
+             xmlns:demo="clr-namespace:demo">
+    <flow:FlowView x:Name="Flow" FitViewOnInit="True" FitViewPadding="0.2" EdgeHitWidth="16" SelectionOutlineGap="6"
+                   SelectionOutlineThickness="2">
+        <flow:FlowView.Resources>
+            <!-- Un node « default » entièrement redéfini : une bande de couleur et le texte du node. -->
+            <DataTemplate x:Key="wpflow-node-default">
+                <Grid>
+                    <Border Tag="custom-default" Background="{DynamicResource Flow.NodeBackground}" CornerRadius="10"
+                            BorderBrush="#FF0071" BorderThickness="1" Padding="0" MinWidth="130">
+                        <StackPanel Orientation="Horizontal">
+                            <Border Width="8" Background="#FF0071" CornerRadius="9,0,0,9" />
+                            <TextBlock Text="{Binding Data}" Margin="12,10" FontWeight="SemiBold"
+                                       Foreground="{DynamicResource Flow.NodeText}" />
+                        </StackPanel>
+                    </Border>
+                    <flow:Handle Type="Target" Position="Left" />
+                    <flow:Handle Type="Source" Position="Right" />
+                </Grid>
+            </DataTemplate>
+
+            <!-- Handles en losange : un style implicite avec un gabarit (et une taille) pour tous les handles du flow. -->
+            <Style TargetType="flow:Handle">
+                <Setter Property="Width" Value="14" />
+                <Setter Property="Height" Value="14" />
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="flow:Handle">
+                            <Rectangle Fill="#FF0071" Stroke="White" StrokeThickness="1.5" RenderTransformOrigin="0.5,0.5">
+                                <Rectangle.RenderTransform>
+                                    <RotateTransform Angle="45" />
+                                </Rectangle.RenderTransform>
+                            </Rectangle>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
+            </Style>
+
+            <!-- Type d'edge « wave » : seulement la géométrie, le rendu reste celui de la bibliothèque. -->
+            <demo:WaveEdge x:Key="wpflow-edge-wave" />
+
+            <!-- Type d'edge « pulse » : rendu entièrement par un template (DataContext = EdgeRenderContext). -->
+            <DataTemplate x:Key="wpflow-edge-template-pulse">
+                <Canvas>
+                    <Path Data="{Binding Geometry}" Stroke="{Binding Stroke}" StrokeThickness="9" Opacity="0.22"
+                          StrokeStartLineCap="Round" StrokeEndLineCap="Round" />
+                    <Path Data="{Binding Geometry}" Stroke="{Binding Stroke}" StrokeThickness="{Binding StrokeThickness}" />
+                </Canvas>
+            </DataTemplate>
+            <DataTemplate x:Key="wpflow-edge-label-pulse">
+                <Border Background="#111827" CornerRadius="9" Padding="8,2">
+                    <TextBlock Text="{Binding Label}" Foreground="White" FontSize="10" FontWeight="SemiBold" />
+                </Border>
+            </DataTemplate>
+
+            <!-- Marqueurs personnalisés : une géométrie dont la pointe est en (0,0) et qui regarde vers +x. -->
+            <Geometry x:Key="wpflow-marker-dot">M-8,0 A4,4 0 1 1 0,0 A4,4 0 1 1 -8,0 Z</Geometry>
+            <Geometry x:Key="wpflow-marker-diamond">M-12,0 L-6,-5 L0,0 L-6,5 Z</Geometry>
+
+            <!-- Aperçu de la connexion en cours. -->
+            <Style x:Key="PinkConnectionLine" TargetType="Path">
+                <Setter Property="Stroke" Value="#FF0071" />
+                <Setter Property="StrokeThickness" Value="2.5" />
+                <Setter Property="StrokeDashArray" Value="2,3" />
+            </Style>
+        </flow:FlowView.Resources>
+        <flow:FlowView.ConnectionLineStyle>
+            <StaticResource ResourceKey="PinkConnectionLine" />
+        </flow:FlowView.ConnectionLineStyle>
+
+        <Grid>
+            <flow:FlowPanel PanelPosition="TopLeft">
+                <TextBlock Margin="12" FontSize="11" Foreground="Gray"
+                           Text="node « default » redéfini · handles en losange · edges wave / pulse · marqueurs dot et diamond · aperçu de connexion en pointillés" />
+            </flow:FlowPanel>
+            <flow:FlowControls />
+        </Grid>
+    </flow:FlowView>
+</UserControl>

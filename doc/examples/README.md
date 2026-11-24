@@ -14,6 +14,8 @@ La page d'accueil reproduit la démo de [reactflow.dev](https://reactflow.dev/) 
 
 *Fichiers : `demo/MainWindow.xaml`, `MainWindow.xaml.cs`, `DemoState.cs`, `CubeField.cs`.*
 
+La page est pilotée par un ViewModel (`HomeViewModel.cs` : nodes, liens et viewport liés, aucune logique dans la vue) — voir [MVVM](../learn/13-mvvm.md).
+
 Trois nodes d'entrée (sélecteur de couleur, forme, zoom) reliés par des edges animés à un node de sortie qui dessine un nuage de solides **3D animés**. Chaque entrée n'agit que si son edge existe : supprimez l'edge du zoom, il retombe à sa valeur par défaut ; reconnectez-le, le curseur reprend la main (le zoom suit avec une inertie).
 
 - Le sélecteur de couleur est un vrai `Popup` (pastilles + curseur de teinte) ; la couleur change aussi à la saisie d'un code hexadécimal.
@@ -69,6 +71,22 @@ Cases à cocher pour : mode sombre, connexion `Loose`, magnétisme à la grille,
 
 Guides : [Thèmes](../learn/08-theming.md), [Interactions](../learn/09-interactions.md), [JSON](../learn/12-serialization.md).
 
+## Personnalisation
+
+*Onglet « Personnalisation » — `demo/CustomizationExample.xaml`, `CustomEdges.cs`.*
+
+Tout vient de ressources, sans toucher à la bibliothèque : le node `default` redéfini, des handles en losange (style implicite avec `Template`), un type d'edge `wave` (un `IEdgePathProvider`), un type `pulse` dessiné par un `DataTemplate` avec son propre label, des marqueurs `dot` et `diamond`, et un aperçu de connexion en pointillés.
+
+Guide : [Personnaliser](../learn/14-customization.md).
+
+## MVVM
+
+*Onglet « MVVM » — `demo/MvvmExample.xaml`, `MvvmViewModel.cs`.*
+
+Les nodes et les liens sont des ViewModels (`NodesSource`, `EdgesSource`) : glisser un node écrit `X`/`Y` dans le ViewModel, les boutons (commandes du ViewModel) ajoutent, suppriment ou replacent des nodes, la sélection est liée à une `ObservableCollection`, et le titre est un `TextBox` lié à `Data.Title`.
+
+Guide : [MVVM](../learn/13-mvvm.md).
+
 ## Performance
 
 *Onglet « Performance ».*
@@ -100,3 +118,4 @@ WPFLOW_PERF=5000 WPFLOW_PERF_VIRT=1 WPFLOW_SCREENSHOT="chemin/perf.png" dotnet r
 | Computing Flows | Page d'accueil |
 | Validation | Options et JSON (`IsValidConnection`) |
 | Stress | Performance |
+| State Management (store) | MVVM |

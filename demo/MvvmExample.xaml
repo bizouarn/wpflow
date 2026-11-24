@@ -1,0 +1,82 @@
+<UserControl x:Class="demo.MvvmExample"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:flow="clr-namespace:Wpflow.Wpf;assembly=Wpflow.Wpf"
+             xmlns:demo="clr-namespace:demo">
+    <UserControl.DataContext>
+        <demo:MvvmViewModel />
+    </UserControl.DataContext>
+    <UserControl.Resources>
+        <!-- Le DataContext du template est le Node ; Data est le ViewModel (TaskVm), donc les bindings sont bidirectionnels. -->
+        <DataTemplate x:Key="wpflow-node-task">
+            <Grid>
+                <Border Background="{DynamicResource Flow.NodeBackground}" BorderBrush="{DynamicResource Flow.NodeBorder}"
+                        BorderThickness="1" CornerRadius="6" Padding="10" MinWidth="170">
+                    <StackPanel>
+                        <TextBox x:Name="TitleBox" Text="{Binding Data.Title, UpdateSourceTrigger=PropertyChanged}" />
+                        <CheckBox Content="Terminé" IsChecked="{Binding Data.Done}" Margin="0,6,0,0" />
+                        <TextBlock FontSize="10" Margin="0,4,0,0" Foreground="Gray">
+                            <Run Text="x =" /><Run Text="{Binding Data.X, Mode=OneWay, StringFormat={}{0:0}}" />
+                            <Run Text="  y =" /><Run Text="{Binding Data.Y, Mode=OneWay, StringFormat={}{0:0}}" />
+                        </TextBlock>
+                    </StackPanel>
+                </Border>
+                <flow:Handle Type="Target" Position="Left" />
+                <flow:Handle Type="Source" Position="Right" />
+            </Grid>
+        </DataTemplate>
+    </UserControl.Resources>
+
+    <DockPanel>
+        <!-- Barre d'outils hors de la vue : les commandes routées ciblent le FlowView par CommandTarget. -->
+        <WrapPanel DockPanel.Dock="Top" Margin="8">
+            <Button Content="Ajouter" Command="{Binding AddCommand}" Padding="10,3" />
+            <Button Content="Supprimer" Command="{x:Static flow:FlowCommands.DeleteSelection}"
+                    CommandTarget="{Binding ElementName=Flow}" Padding="10,3" Margin="6,0,0,0" />
+            <Button Content="Replacer (ViewModel)" Command="{Binding ShuffleCommand}" Padding="10,3" Margin="6,0,0,0" />
+            <Button Content="Annuler" Command="{x:Static flow:FlowCommands.Undo}" CommandTarget="{Binding ElementName=Flow}"
+                    Padding="10,3" Margin="14,0,0,0" />
+            <Button Content="Rétablir" Command="{x:Static flow:FlowCommands.Redo}" CommandTarget="{Binding ElementName=Flow}"
+                    Padding="10,3" Margin="6,0,0,0" />
+            <Button Content="Cadrer" Command="{Binding FitCommand}" Padding="10,3" Margin="14,0,0,0" />
+            <Button Content="Centrer sur le dernier" Command="{Binding CenterLastCommand}" Padding="10,3" Margin="6,0,0,0" />
+            <TextBlock Text="zoom" VerticalAlignment="Center" Margin="14,0,4,0" />
+            <Slider Minimum="0.3" Maximum="2" Width="110" Value="{Binding Zoom, Mode=TwoWay}" VerticalAlignment="Center" />
+        </WrapPanel>
+        <!-- Ligne d'état à hauteur fixe : un texte qui s'allonge ne doit pas faire passer la barre d'outils sur deux lignes (la vue se décalerait). -->
+        <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Height="22" Margin="8,0,8,4">
+            <TextBlock Text="{Binding Summary}" VerticalAlignment="Center" />
+            <TextBlock Text="{Binding Hint}" VerticalAlignment="Center" Margin="16,0,0,0" Foreground="#FF0071" />
+            <TextBlock x:Name="Connecting" Text="connexion en cours…" VerticalAlignment="Center" Margin="12,0,0,0"
+                       Foreground="Gray">
+                <TextBlock.Style>
+                    <Style TargetType="TextBlock">
+                        <Setter Property="Visibility" Value="Collapsed" />
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding IsConnecting, ElementName=Flow}" Value="True">
+                                <Setter Property="Visibility" Value="Visible" />
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </TextBlock.Style>
+            </TextBlock>
+        </StackPanel>
+        <flow:FlowView x:Name="Flow" NodesSource="{Binding Tasks}" EdgesSource="{Binding Links}"
+                       SelectedNodes="{Binding Selection, Mode=OneWay}" EdgeFactory="{Binding LinkFactory}"
+                       Controller="{Binding Flow, Mode=OneWayToSource}" Zoom="{Binding Zoom, Mode=TwoWay}"
+                       ConnectCommand="{Binding ConnectCommand}" NodesDeleteCommand="{Binding NodesDeleteCommand}"
+                       NodeClickCommand="{Binding NodeClickCommand}" PaneClickCommand="{Binding PaneClickCommand}"
+                       NodeDragStopCommand="{Binding NodeDragStopCommand}"
+                       FitViewOnInit="True" FitViewPadding="0.3">
+            <flow:FlowView.NodeMapping>
+                <flow:NodeMapping TypePath="Kind" SelectedPath="IsSelected" />
+            </flow:FlowView.NodeMapping>
+            <flow:FlowView.EdgeMapping>
+                <flow:EdgeMapping />
+            </flow:FlowView.EdgeMapping>
+            <Grid>
+                <flow:FlowControls />
+            </Grid>
+        </flow:FlowView>
+    </DockPanel>
+</UserControl>

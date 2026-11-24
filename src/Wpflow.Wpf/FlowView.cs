@@ -3,6 +3,7 @@ using System.Windows.Automation.Peers;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
+using System.Windows.Shapes;
 using System.Windows.Threading;
 using Wpflow.Core;
 using Path = System.Windows.Shapes.Path;
@@ -30,7 +31,7 @@ public sealed class ConnectEventArgs(Connection connection) : EventArgs
 ///     Par défaut (<see cref="AutoApplyChanges" />) les changements demandés par l'UI sont appliqués à
 ///     <see cref="Nodes" /> / <see cref="Edges" /> ; passer à <c>false</c> pour un mode « contrôlé ».
 /// </summary>
-public class FlowView : ContentControl
+public partial class FlowView : ContentControl
 {
     private enum Mode
     {
@@ -48,12 +49,12 @@ public class FlowView : ContentControl
     public static readonly DependencyProperty NodesProperty = DependencyProperty.Register(
         nameof(Nodes), typeof(IReadOnlyList<Node>), typeof(FlowView),
         new FrameworkPropertyMetadata(Array.Empty<Node>(), FrameworkPropertyMetadataOptions.BindsTwoWayByDefault,
-            (d, _) => ((FlowView)d).OnNodesChanged()));
+            (d, _) => ((FlowView)d).OnNodesPropertyChanged()));
 
     public static readonly DependencyProperty EdgesProperty = DependencyProperty.Register(
         nameof(Edges), typeof(IReadOnlyList<Edge>), typeof(FlowView),
         new FrameworkPropertyMetadata(Array.Empty<Edge>(), FrameworkPropertyMetadataOptions.BindsTwoWayByDefault,
-            (d, _) => ((FlowView)d).OnEdgesChanged()));
+            (d, _) => ((FlowView)d).OnEdgesPropertyChanged()));
 
     public static readonly DependencyProperty ViewportProperty = DependencyProperty.Register(
         nameof(Viewport), typeof(Viewport), typeof(FlowView),
@@ -154,8 +155,6 @@ public class FlowView : ContentControl
         set => SetValue(EdgeLabelTemplateProperty, value);
     }
 
-    /// <summary>Validation personnalisée d'une connexion (<c>isValidConnection</c>) ; renvoyer <c>false</c> la refuse.</summary>
-    public Func<Connection, bool>? IsValidConnection { get; set; }
 
     public static readonly DependencyProperty EdgeStrokeProperty = DependencyProperty.Register(
         nameof(EdgeStroke), typeof(Brush), typeof(FlowView),
@@ -164,6 +163,64 @@ public class FlowView : ContentControl
     public static readonly DependencyProperty EdgeStrokeThicknessProperty = DependencyProperty.Register(
         nameof(EdgeStrokeThickness), typeof(double), typeof(FlowView),
         new PropertyMetadata(1.0, (d, _) => ((FlowView)d)._edgeLayer?.Refresh((FlowView)d)));
+
+    /// <summary>Largeur (en pixels écran) de la zone cliquable d'un edge, autour de son tracé.</summary>
+    public static readonly DependencyProperty EdgeHitWidthProperty = DependencyProperty.Register(
+        nameof(EdgeHitWidth), typeof(double), typeof(FlowView),
+        new PropertyMetadata(10.0, (d, _) => ((FlowView)d)._edgeLayer?.Refresh((FlowView)d)));
+
+    /// <summary>Écart entre un node sélectionné (à template personnalisé) et son contour.</summary>
+    public static readonly DependencyProperty SelectionOutlineGapProperty = DependencyProperty.Register(
+        nameof(SelectionOutlineGap), typeof(double), typeof(FlowView),
+        new PropertyMetadata(3.0, (d, _) => ((FlowView)d).InvalidateNodes()));
+
+    public static readonly DependencyProperty SelectionOutlineThicknessProperty = DependencyProperty.Register(
+        nameof(SelectionOutlineThickness), typeof(double), typeof(FlowView),
+        new PropertyMetadata(1.5, (d, _) => ((FlowView)d).InvalidateNodes()));
+
+    private static readonly Style DefaultConnectionLineStyle = CreateConnectionLineStyle();
+
+    private static Style CreateConnectionLineStyle()
+    {
+        var style = new Style(typeof(Path));
+        style.Setters.Add(new Setter(Shape.StrokeProperty, new SolidColorBrush(Color.FromRgb(0xb1, 0xb1, 0xb7))));
+        style.Setters.Add(new Setter(Shape.StrokeThicknessProperty, 1.5));
+        style.Seal();
+        return style;
+    }
+
+    /// <summary>Style (<c>TargetType="Path"</c>) de l'aperçu de la connexion en cours : couleur, épaisseur, pointillés.</summary>
+    public static readonly DependencyProperty ConnectionLineStyleProperty = DependencyProperty.Register(
+        nameof(ConnectionLineStyle), typeof(Style), typeof(FlowView), new PropertyMetadata(DefaultConnectionLineStyle));
+
+    public double EdgeHitWidth
+    {
+        get => (double)GetValue(EdgeHitWidthProperty);
+        set => SetValue(EdgeHitWidthProperty, value);
+    }
+
+    public double SelectionOutlineGap
+    {
+        get => (double)GetValue(SelectionOutlineGapProperty);
+        set => SetValue(SelectionOutlineGapProperty, value);
+    }
+
+    public double SelectionOutlineThickness
+    {
+        get => (double)GetValue(SelectionOutlineThicknessProperty);
+        set => SetValue(SelectionOutlineThicknessProperty, value);
+    }
+
+    public Style ConnectionLineStyle
+    {
+        get => (Style)GetValue(ConnectionLineStyleProperty);
+        set => SetValue(ConnectionLineStyleProperty, value);
+    }
+
+    private void InvalidateNodes()
+    {
+        foreach (var host in _hosts.Values) host.InvalidateVisual();
+    }
 
     public IReadOnlyList<Node> Nodes
     {
@@ -301,6 +358,8 @@ public class FlowView : ContentControl
     private bool _fitPending;
     private Edge? _reconnecting;
     private bool _dragMoved;
+    private string? _pressedNode, _pressedEdge; // sous le bouton enfoncé : sert aux commandes de clic
+    private bool _pressedPane;
     private bool _flushQueued;
     private readonly Dictionary<string, (double W, double H)> _measured = new();
     private readonly List<(IReadOnlyList<Node> Nodes, IReadOnlyList<Edge> Edges)> _undo = new();
@@ -325,6 +384,7 @@ public class FlowView : ContentControl
     {
         Focusable = true;
         AllowDrop = true;
+        InitCommands();
         IsManipulationEnabled = true; // pincement tactile
         ApplyColorMode();
         SizeChanged += (_, _) =>
@@ -349,7 +409,9 @@ public class FlowView : ContentControl
     protected override void OnDrop(DragEventArgs e)
     {
         base.OnDrop(e);
-        DropRequested?.Invoke(this, new FlowDropEventArgs(ScreenToFlow(e.GetPosition(this)), e.Data));
+        var args = new FlowDropEventArgs(ScreenToFlow(e.GetPosition(this)), e.Data);
+        DropRequested?.Invoke(this, args);
+        Run(DropCommand, args);
         e.Handled = true;
     }
 
@@ -403,37 +465,63 @@ public class FlowView : ContentControl
 
     #region Public API
 
-    public bool CanUndo => _undo.Count > 0;
-    public bool CanRedo => _redo.Count > 0;
 
     /// <summary>Mémorise l'état courant avant une modification structurelle (déplacement, suppression, connexion).</summary>
     internal void PushHistory()
     {
+        if (History is { } history) // historique du ViewModel : il mémorise ce qu'il veut
+        {
+            history.Checkpoint();
+            UpdateHistoryState();
+            return;
+        }
+
         _undo.Add((Nodes, Edges));
         if (_undo.Count > 100) _undo.RemoveAt(0);
         _redo.Clear();
+        UpdateHistoryState();
     }
 
     public void Undo()
     {
+        if (History is { } history)
+        {
+            history.Undo();
+            UpdateHistoryState();
+            return;
+        }
+
         if (!AutoApplyChanges || _undo.Count == 0) return; // en mode contrôlé, l'historique appartient à l'appelant
         _redo.Add((Nodes, Edges));
         Restore(_undo[^1]);
         _undo.RemoveAt(_undo.Count - 1);
+        UpdateHistoryState();
     }
 
     public void Redo()
     {
+        if (History is { } history)
+        {
+            history.Redo();
+            UpdateHistoryState();
+            return;
+        }
+
         if (!AutoApplyChanges || _redo.Count == 0) return;
         _undo.Add((Nodes, Edges));
         Restore(_redo[^1]);
         _redo.RemoveAt(_redo.Count - 1);
+        UpdateHistoryState();
     }
 
     private void Restore((IReadOnlyList<Node> Nodes, IReadOnlyList<Edge> Edges) state)
     {
+        var (before, beforeEdges) = (Nodes, Edges);
         Nodes = state.Nodes;
         Edges = state.Edges;
+        // Avec une source de ViewModels, les records font foi pour l'historique : on reporte la différence dans les ViewModels.
+        _nodeSource?.WriteBack(NodeSourceAdapter.Diff(before, state.Nodes));
+        _edgeSource?.WriteBack(EdgeSourceAdapter.Diff(beforeEdges, state.Edges));
     }
 
     public XYPosition ScreenToFlow(Point p) => ViewportMath.ScreenToFlow(Viewport, new XYPosition(p.X, p.Y));
@@ -531,6 +619,18 @@ public class FlowView : ContentControl
         RaiseStateChanged();
     }
 
+    private void OnNodesPropertyChanged()
+    {
+        OnNodesChanged();
+        UpdateSelectedNodes();
+    }
+
+    private void OnEdgesPropertyChanged()
+    {
+        OnEdgesChanged();
+        UpdateSelectedEdges();
+    }
+
     private void OnEdgesChanged()
     {
         RefreshEdges(null);
@@ -547,6 +647,7 @@ public class FlowView : ContentControl
             _viewportGrid.RenderTransform = new MatrixTransform(v.Zoom, 0, 0, v.Zoom, v.X, v.Y);
         _background?.SetViewport(v);
         UpdateVirtualization();
+        SyncZoom();
         RaiseStateChanged();
     }
 
@@ -762,14 +863,18 @@ public class FlowView : ContentControl
     {
         if (changes.Count == 0) return;
         NodeChangesRequested?.Invoke(this, new NodeChangesEventArgs(changes));
-        if (AutoApplyChanges) Nodes = Changes.Apply(changes, Nodes);
+        if (!AutoApplyChanges) return;
+        Nodes = Changes.Apply(changes, Nodes);
+        WriteBackNodes(changes);
     }
 
     internal void ApplyEdgeChanges(IReadOnlyList<EdgeChange> changes)
     {
         if (changes.Count == 0) return;
         EdgeChangesRequested?.Invoke(this, new EdgeChangesEventArgs(changes));
-        if (AutoApplyChanges) Edges = Changes.Apply(changes, Edges);
+        if (!AutoApplyChanges) return;
+        Edges = Changes.Apply(changes, Edges);
+        WriteBackEdges(changes);
     }
 
     private void Select(IEnumerable<string> nodeIds, IEnumerable<string> edgeIds, bool additive)
@@ -827,18 +932,35 @@ public class FlowView : ContentControl
         return result;
     }
 
-    private void DeleteSelection()
+    internal void DeleteSelection()
     {
         if (IsLocked) return;
         var nodeIds = Nodes.Where(n => n.Selected).Select(n => n.Id).ToHashSet();
-        if (nodeIds.Count == 0 && !Edges.Any(e => e.Selected)) return;
-        PushHistory();
+        var selectedEdges = Edges.Where(e => e.Selected).Select(e => e.Id).ToList();
+        if (nodeIds.Count == 0 && selectedEdges.Count == 0) return;
+
         // Supprimer un parent supprime ses descendants.
         nodeIds.UnionWith(NodeTree.DescendantsOf(nodeIds.ToList(), Nodes));
-        var edgeChanges = Edges.Where(e => e.Selected || nodeIds.Contains(e.Source) || nodeIds.Contains(e.Target))
+
+        // Les commandes du ViewModel, si elles existent, remplacent la suppression automatique de leur partie ;
+        // si l'une refuse (CanExecute faux), rien n'est supprimé.
+        var nodeElements = ElementsOfNodes(nodeIds);
+        var edgeElements = ElementsOfEdges(selectedEdges);
+        var nodesByCommand = NodesDeleteCommand != null && nodeElements.Count > 0;
+        var edgesByCommand = EdgesDeleteCommand != null && edgeElements.Count > 0;
+        if (nodesByCommand && !NodesDeleteCommand!.CanExecute(nodeElements)) return;
+        if (edgesByCommand && !EdgesDeleteCommand!.CanExecute(edgeElements)) return;
+
+        PushHistory();
+        if (edgesByCommand) EdgesDeleteCommand!.Execute(edgeElements);
+        if (nodesByCommand) NodesDeleteCommand!.Execute(nodeElements);
+
+        // Reste à supprimer par la vue : les edges sélectionnés et ceux des nodes supprimés, puis les nodes.
+        var byView = Edges.Where(e => (!edgesByCommand && e.Selected) ||
+                                      (!nodesByCommand && (nodeIds.Contains(e.Source) || nodeIds.Contains(e.Target))))
             .Select(e => (EdgeChange)new EdgeRemoveChange(e.Id)).ToList();
-        ApplyEdgeChanges(edgeChanges);
-        ApplyNodeChanges(nodeIds.Select(id => (NodeChange)new NodeRemoveChange(id)).ToList());
+        ApplyEdgeChanges(byView);
+        if (!nodesByCommand) ApplyNodeChanges(nodeIds.Select(id => (NodeChange)new NodeRemoveChange(id)).ToList());
     }
 
     #endregion
@@ -855,6 +977,9 @@ public class FlowView : ContentControl
 
         _mouseStart = pos;
         _viewportStart = Viewport;
+        _pressedNode = host?.Node?.Id;
+        _pressedEdge = host == null && handle == null ? edgeId : null;
+        _pressedPane = host == null && handle == null && edgeId == null;
 
         // Espace maintenu : le glisser déplace la vue, même au-dessus d'un node.
         if (Keyboard.IsKeyDown(Key.Space))
@@ -908,6 +1033,7 @@ public class FlowView : ContentControl
             _mode = Mode.Pan;
         }
 
+        if (_mode == Mode.Connect) SetConnecting(true);
         if (_mode != Mode.None) CaptureMouse();
         e.Handled = true;
     }
@@ -976,8 +1102,20 @@ public class FlowView : ContentControl
     protected override void OnMouseLeftButtonUp(MouseButtonEventArgs e)
     {
         base.OnMouseLeftButtonUp(e);
-        if (_mode == Mode.Connect) FinishConnection(ScreenToFlow(e.GetPosition(this)));
+        var pos = e.GetPosition(this);
+        var moved = Math.Abs(pos.X - _mouseStart.X) + Math.Abs(pos.Y - _mouseStart.Y) >= 4;
+        var dragged = _mode == Mode.DragNodes && _dragMoved ? _dragStart.Keys.ToList() : null;
+        var (nodeId, edgeId, pane) = (_pressedNode, _pressedEdge, _pressedPane);
+        var wasConnect = _mode == Mode.Connect;
+        if (wasConnect) FinishConnection(ScreenToFlow(pos));
         EndMode();
+
+        // Commandes du ViewModel, une fois l'état de la vue revenu au repos.
+        if (dragged != null) Run(NodeDragStopCommand, ElementsOfNodes(dragged));
+        if (wasConnect || moved) return;
+        if (nodeId != null) Run(NodeClickCommand, NodeElement(nodeId));
+        else if (edgeId != null) Run(EdgeClickCommand, EdgeElement(edgeId));
+        else if (pane) Run(PaneClickCommand, ScreenToFlow(pos));
     }
 
     protected override void OnLostMouseCapture(MouseEventArgs e)
@@ -992,6 +1130,9 @@ public class FlowView : ContentControl
         _connectFrom = null;
         _reconnecting = null;
         _dragMoved = false;
+        _pressedNode = _pressedEdge = null;
+        _pressedPane = false;
+        SetConnecting(false);
         _dragStart = new Dictionary<string, XYPosition>();
         if (_connectionPath != null) _connectionPath.Data = null;
         if (_selectionBox != null) _selectionBox.Visibility = Visibility.Collapsed;
@@ -1116,6 +1257,17 @@ public class FlowView : ContentControl
 
         var connection = Connections.Create(from.NodeId, from.Info.Id, from.Info.Type, target.NodeId, target.Info.Id);
         if (GraphUtils.ConnectionExists(connection, Edges) || !Connections.IsValid(connection, IsValidConnection)) return;
+
+        if (ConnectCommand is { } command)
+        {
+            if (!command.CanExecute(connection)) return; // le ViewModel refuse (validateur)
+            if (_reconnecting == null)
+            {
+                PushHistory();
+                command.Execute(connection); // c'est lui qui ajoute le lien
+                return;
+            }
+        }
 
         if (_reconnecting is { } old)
         {

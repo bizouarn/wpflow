@@ -112,3 +112,7 @@ Toutes les cases ci-dessus sont cochées (24/11/2026). « Terminé » signifie :
 - CI GitHub Actions : écrite, jamais exécutée (pas de dépôt distant configuré).
 - NuGet : packages construits (`dotnet pack`) mais ni installés dans un projet tiers ni publiés . Licence MIT ajoutée.
 - Hors périmètre initial, non faits : edges personnalisés par type (seuls `default`/`straight`/`step`/`smoothstep`), marqueurs personnalisés, sélection d'edges au rectangle, `NodeResizer` à ratio d'aspect, `isValidConnection` asynchrone, comparaison automatisée des chemins d'edges avec la sortie réelle de `@xyflow/system` (la comparaison a été faite à la lecture du code source).
+
+## Suite
+
+Voir [ROADMAP-2-EXTENSIBILITE-MVVM.md](ROADMAP-2-EXTENSIBILITE-MVVM.md) : edges/handles/marqueurs personnalisables et compatibilité MVVM (source observable, sélection bindable, commandes).

@@ -18,6 +18,8 @@ Wpflow porte [xyflow / React Flow](https://reactflow.dev/) vers WPF. Cette docum
 | [10. Calculer avec un flow](learn/10-computing-flows.md) | Computing Flows (la démo de la page d'accueil) |
 | [11. Performance et accessibilité](learn/11-performance-accessibility.md) | Performance, Accessibility |
 | [12. Sauvegarde et JSON](learn/12-serialization.md) | Save and Restore, `toObject` |
+| [13. MVVM](learn/13-mvvm.md) | State Management (ViewModels, binding, sélection) |
+| [14. Personnaliser](learn/14-customization.md) | Custom Nodes, Custom Edges, Custom Markers (`nodeTypes`, `edgeTypes`) |
 
 ## API Reference
 
@@ -32,7 +34,7 @@ Wpflow porte [xyflow / React Flow](https://reactflow.dev/) vers WPF. Cette docum
 
 ## Examples
 
-[Liste des exemples](examples/README.md) : page d'accueil animée, types d'edges, groupes, toolbar et resizer, palette glisser-déposer, disposition automatique, options et JSON, performance.
+[Liste des exemples](examples/README.md) : page d'accueil animée, types d'edges, groupes, toolbar et resizer, palette glisser-déposer, disposition automatique, options et JSON, personnalisation, MVVM, performance.
 
 ## Deux niveaux d'API
 

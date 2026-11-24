@@ -43,6 +43,25 @@ internal static class Sim
         await Task.Delay(250);
     }
 
+    /// <summary>Comme <see cref="Drag" />, mais exécute <paramref name="whileHeld" /> avant de relâcher le bouton (pour observer l'état pendant le geste).</summary>
+    public static async Task DragHolding(Point from, (double X, double Y) to, Func<Task> whileHeld)
+    {
+        SetCursorPos((int)from.X, (int)from.Y);
+        await Task.Delay(120);
+        mouse_event(LeftDown, 0, 0, 0, 0);
+        await Task.Delay(80);
+        for (var i = 1; i <= 12; i++)
+        {
+            SetCursorPos((int)(from.X + (to.X - from.X) * i / 12), (int)(from.Y + (to.Y - from.Y) * i / 12));
+            await Task.Delay(25);
+        }
+
+        await Task.Delay(120);
+        await whileHeld();
+        mouse_event(LeftUp, 0, 0, 0, 0);
+        await Task.Delay(250);
+    }
+
     public static Task Click(Point p) => Drag(p, (p.X, p.Y), steps: 1);
 
     public static void MoveTo(Point p) => SetCursorPos((int)p.X, (int)p.Y);

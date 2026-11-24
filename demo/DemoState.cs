@@ -159,7 +159,7 @@ public sealed class DemoState : INotifyPropertyChanged
 }
 
 /// <summary>Commande à paramètre (le paramètre est celui de <c>CommandParameter</c>).</summary>
-public sealed class ParamCommand(Action<object?> execute) : ICommand
+public sealed class ParamCommand(Action<object?> execute, Func<object?, bool>? canExecute = null) : ICommand
 {
     public event EventHandler? CanExecuteChanged
     {
@@ -167,6 +167,6 @@ public sealed class ParamCommand(Action<object?> execute) : ICommand
         remove { }
     }
 
-    public bool CanExecute(object? parameter) => true;
+    public bool CanExecute(object? parameter) => canExecute?.Invoke(parameter) ?? true;
     public void Execute(object? parameter) => execute(parameter);
 }
