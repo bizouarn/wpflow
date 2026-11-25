@@ -1,11 +1,19 @@
 # Wpflow
 
-Éditeur de graphes node/edge interactif pour **WPF**, porté de [xyflow](https://github.com/xyflow/xyflow) (React Flow) : surface zoomable, nodes déplaçables dont le contenu est n'importe quel contrôle WPF, handles, connexions à la souris, edges (bézier, droits, à angles droits), minimap, contrôles, groupes, redimensionnement, thèmes clair/sombre, sérialisation JSON compatible React Flow.
+Éditeur de graphes node/edge interactif pour **WPF** et pour **Blazor** (Server et WebAssembly), porté de [xyflow](https://github.com/xyflow/xyflow) (React Flow) : surface zoomable, nodes déplaçables dont le contenu est n'importe quel contrôle WPF, handles, connexions à la souris, edges (bézier, droits, à angles droits), minimap, contrôles, groupes, redimensionnement, thèmes clair/sombre, sérialisation JSON compatible React Flow. Les deux versions partagent le même noyau (`Wpflow.Core`) et la même logique d'interaction.
+
+| Paquet NuGet | Contenu |
+|---|---|
+| `Wpflow.Core` | Modèle, changes, chemins d'edges, viewport, connexions, JSON, disposition (sans UI) |
+| `Wpflow.Wpf` | Contrôles WPF |
+| `Wpflow.Blazor` | Composants Blazor (HTML/SVG + petit pont JS) |
 
 ![Démo](work-doc/screenshots/demo.png)
 
 ```bash
 dotnet run --project demo/wpf        # page d'accueil façon reactflow.dev ; le bouton « Exemples » ouvre les autres cas
+ASPNETCORE_ENVIRONMENT=Development dotnet run --project demo/blazor --urls http://localhost:5189   # démo Blazor Server
+dotnet run --project demo/blazor-wasm --urls http://localhost:5190                                 # démo Blazor WebAssembly
 dotnet test tests/Wpflow.Core.Tests
 ```
 
@@ -15,6 +23,7 @@ dotnet test tests/Wpflow.Core.Tests
 |---|---|
 | `src/Wpflow.Core` (net8.0) | Logique **sans UI**, portée de `@xyflow/system` : modèle immuable, viewport, chemins d'edges, connexions, nodes imbriqués, JSON, disposition automatique. Testée (`tests/`). |
 | `src/Wpflow.Wpf` (net8.0-windows) | Contrôles WPF : `FlowView`, `Handle`, `NodeResizer`, `NodeToolbar`, `MiniMap`, `FlowControls`, `FlowPanel`. |
+| `src/Wpflow.Blazor` (net8.0) | Composants Blazor : `FlowView`, `FlowHandle`, `NodeResizer`, `NodeRotator`, `NodeToolbar`, `FlowMiniMap`, `FlowControls`, `FlowPanel`, pont JS (mesure, molette, pointeur, export d'image). Testés avec bUnit et dans un vrai Chrome (Playwright). |
 | `demo/wpf` | Page d'accueil (réplique de reactflow.dev) et fenêtre d'exemples. |
 | `demo/blazor`, `demo/blazor-wasm`, `demo/blazor-shared` | Démo Blazor (hôtes Server et WebAssembly, composant `Demo` partagé). |
 
@@ -48,6 +57,37 @@ Flow.Edges =
 ```
 
 Glisser les nodes, relier les handles, molette pour zoomer, glisser le fond (ou clic milieu, ou **Espace** + glisser) pour se déplacer — tout fonctionne sans autre code.
+
+## Démarrage rapide (Blazor)
+
+Installez `Wpflow.Blazor`, ajoutez la feuille de style dans la page hôte, puis utilisez `FlowView` avec `@bind` :
+
+```html
+<link rel="stylesheet" href="_content/Wpflow.Blazor/wpflow.css" />
+```
+
+```razor
+@using Wpflow.Blazor
+@using Wpflow.Core
+
+<div style="height: 500px">
+    <FlowView @bind-Nodes="_nodes" @bind-Edges="_edges">
+        <FlowMiniMap />
+        <FlowControls />
+    </FlowView>
+</div>
+
+@code {
+    private IReadOnlyList<Node> _nodes =
+    [
+        new Node("1", new XYPosition(0, 0), "input", "Début"),
+        new Node("2", new XYPosition(250, 80), "default", "Étape"),
+    ];
+    private IReadOnlyList<Edge> _edges = [new Edge("e1-2", "1", "2", Animated: true)];
+}
+```
+
+Même modèle d'état que WPF (changes, mode contrôlé avec `AutoApplyChanges="false"` et `OnNodesChange`), mêmes gestes, mêmes types de nodes et d'edges ; les nodes personnalisés se déclarent par des modèles Razor. Seul l'adaptateur MVVM (`NodesSource`) n'existe pas : en Blazor on utilise `@bind` et les `EventCallback`. Guide complet : [doc/blazor.md](doc/blazor.md).
 
 ## Principes
 
@@ -147,7 +187,8 @@ Les chemins d'edges ont été comparés au code source de `@xyflow/system` (béz
 
 ## Limites connues
 
-- WPF uniquement (Windows). Le noyau `Wpflow.Core` n'a aucune dépendance UI.
+- Les contrôles WPF ne tournent que sous Windows ; Blazor fonctionne partout (Server et WebAssembly). Le noyau `Wpflow.Core` n'a aucune dépendance UI.
+- Blazor : lecteurs d'écran, navigateurs autres que Chrome et écran tactile réel non vérifiés (le pincement est testé avec des évènements simulés) ; pas d'adaptateur MVVM.
 - Le pincement tactile est implémenté mais n'a pas pu être testé sur un écran tactile.
 - MVVM : sources observables, sélection, commandes, contrôleur et historique du ViewModel faits (voir doc/learn/13-mvvm.md).
 - Pas encore : `isValidConnection` asynchrone, sélection d'edges au rectangle, minimap zoomable, `NodeResizer` avec ratio d'aspect.

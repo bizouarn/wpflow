@@ -1,7 +1,7 @@
 <Project>
   <PropertyGroup>
     <!-- Remplacée par la version du tag (v1.2.3) dans le workflow de release. -->
-    <Version>1.0.0</Version>
+    <Version>1.0.1</Version>
     <Authors>bizouarn</Authors>
     <Copyright>Copyright (c) bizouarn</Copyright>
     <Product>Wpflow</Product>
