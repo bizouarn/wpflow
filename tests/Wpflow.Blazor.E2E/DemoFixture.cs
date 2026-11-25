@@ -42,8 +42,9 @@ public abstract class DemoFixture : IAsyncLifetime
         await WaitForServer();
 
         _playwright = await Playwright.CreateAsync();
-        // Le Chrome installé : aucun téléchargement de navigateur.
-        Browser = await _playwright.Chromium.LaunchAsync(new BrowserTypeLaunchOptions { Channel = "chrome", Headless = true });
+        // Un navigateur installé (aucun téléchargement) : Chrome par défaut, WPFLOW_BROWSER_CHANNEL=msedge pour Edge.
+        var channel = Environment.GetEnvironmentVariable("WPFLOW_BROWSER_CHANNEL") is { Length: > 0 } c ? c : "chrome";
+        Browser = await _playwright.Chromium.LaunchAsync(new BrowserTypeLaunchOptions { Channel = channel, Headless = true });
     }
 
     public async Task DisposeAsync()
@@ -117,7 +118,9 @@ public sealed class ServerFixture : DemoFixture
     protected override ProcessStartInfo CreateStartInfo(string root, string config, string url)
     {
         var dir = Path.Combine(root, "demo", "blazor");
-        var dll = Path.Combine(dir, "bin", config, "net8.0", "demo-blazor.dll");
+        // La même variable que dans demo-blazor.csproj : elle doit être définie à la construction et au test.
+        var tfm = Environment.GetEnvironmentVariable("WPFLOW_SERVER_DEMO_TFM") is { Length: > 0 } t ? t : "net8.0";
+        var dll = Path.Combine(dir, "bin", config, tfm, "demo-blazor.dll");
         if (!File.Exists(dll)) throw new FileNotFoundException("La démo n'est pas construite : " + dll);
         return new ProcessStartInfo("dotnet", $"\"{dll}\" --urls {url}") { WorkingDirectory = dir };
     }

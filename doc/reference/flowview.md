@@ -80,11 +80,23 @@ Le `Content` est un **overlay** affiché au-dessus du graphe ; il n'accepte qu'u
 | `DropRequested` | `FlowDropEventArgs` (`Position`, `Data`) | Objet déposé ; `Position` en coordonnées flow. |
 | `ConnectStarted` | `ConnectStartEventArgs` (`NodeId`, `HandleId`, `HandleType`, `IsReconnection`) | Un fil est tiré depuis un handle (ou une extrémité d'edge rattrapée). |
 | `ConnectEnded` | `ConnectEndEventArgs` (`Position`, `FromNodeId`, `ToNodeId`, `Connection`, `IsValid`) | Fil relâché, réussi ou non ; `Position` (coordonnées flow) permet de créer un node en lâchant dans le vide. |
-| `NodeDoubleClick` / `EdgeDoubleClick` | `ElementEventArgs` (`Kind`, `Id`, `Element`, `Position`) | Double-clic. |
+| `NodeDoubleClick` / `EdgeDoubleClick` | `ElementEventArgs` (`Kind`, `Id`, `Element`, `Position`, `OriginalSource`, `TargetData`) | Double-clic. |
 | `NodeContextMenuRequested` / `EdgeContextMenuRequested` / `PaneContextMenuRequested` | `ElementEventArgs` | Clic droit (l'événement n'est pas marqué : un `ContextMenu` WPF s'ouvre aussi). |
 | `StateChanged` | `EventArgs` | Nodes, edges, viewport, verrouillage ou thème modifiés. |
 
 Les deux premiers sont déclenchés **avant** l'application, qu'elle ait lieu ou non (mode contrôlé).
+
+### Savoir quelle partie d'un node est visée
+
+Marquez des éléments d'un modèle avec la propriété attachée `FlowView.TargetData` (n'importe quel objet). Au clic, au double-clic et au menu contextuel, `ElementEventArgs.TargetData` donne la marque la plus proche de l'élément pressé (`null` sans marque, et au survol) ; `ElementEventArgs.OriginalSource` donne l'élément WPF pressé. L'élément marqué doit être visible au clic : donnez-lui un `Background`, même `Transparent`.
+
+```xml
+<Border Background="Transparent" flow:FlowView.TargetData="{Binding Data.ColumnName}">
+    <TextBlock Text="{Binding Data.ColumnName}" />
+</Border>
+```
+
+Côté commandes, `CommandsReceiveEventArgs="True"` fait recevoir l'`ElementEventArgs` à `NodeClickCommand`, `EdgeClickCommand`, `PaneClickCommand`, aux commandes de double-clic et à celles de menu contextuel, à la place de leur paramètre habituel.
 
 ## Méthodes
 
@@ -230,5 +242,6 @@ Voir le guide [MVVM](../learn/13-mvvm.md) pour le détail ; aide-mémoire :
 | `NodeDragStopCommand` | `ICommand?` | Paramètre : liste d'éléments déplacés. |
 | `NodeClickCommand` / `EdgeClickCommand` | `ICommand?` | Paramètre : l'élément cliqué. |
 | `PaneClickCommand` | `ICommand?` | Paramètre : `XYPosition` flow. |
+| `CommandsReceiveEventArgs` | `bool` (faux) | Les commandes de clic, de double-clic et de menu contextuel reçoivent l'`ElementEventArgs` (dont `TargetData`). |
 
 `FlowCommands` (classe statique de `RoutedUICommand`) : `FitView`, `ZoomIn`, `ZoomOut`, `Undo`, `Redo`, `SelectAll`, `ClearSelection`, `DeleteSelection`, `ToggleLock`.

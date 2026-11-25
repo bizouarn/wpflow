@@ -39,6 +39,23 @@ jobs:
       - name: Tests Blazor
         run: dotnet test tests/Wpflow.Blazor.Tests -c Release --no-build
 
+      - name: Tests Blazor de bout en bout (Chrome)
+        timeout-minutes: 15
+        run: dotnet test tests/Wpflow.Blazor.E2E -c Release --no-build
+
+      # Vraie souris : demande un bureau interactif. Un échec bloque la publication (voir work-doc/ROADMAP-TESTS.md, lot 0).
+      - name: Auto-tests WPF à la vraie souris
+        timeout-minutes: 15
+        shell: pwsh
+        run: ./tests/run-wpf-selftests.ps1 -Configuration Release -NoBuild
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: selftests-wpf
+          path: artifacts/selftest
+
+      # La validation de paquet (Directory.Build.props) fait échouer le pack si une API publiée a disparu.
       - name: Pack
         run: |
           dotnet pack src/Wpflow.Core -c Release --no-build -p:Version=${{ steps.version.outputs.value }} -o artifacts

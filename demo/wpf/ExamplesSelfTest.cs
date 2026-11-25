@@ -20,8 +20,7 @@ internal static class ExamplesSelfTest
     private static ExamplesWindow _win = null!;
     private static string _base = "";
 
-    private static void Check(string name, bool ok, string detail = "") =>
-        _log($"{(ok ? "OK    " : "ECHEC ")} {name}{(detail.Length > 0 ? " — " + detail : "")}");
+    private static void Check(string name, bool ok, string detail = "") => _log(SelfTestReport.Line(name, ok, detail));
 
     public static async Task Run(ExamplesWindow win, string screenshotPath, Action<string> log)
     {
@@ -50,6 +49,7 @@ internal static class ExamplesSelfTest
         await Options();
         await Gestures();
         await Gestures2();
+        await ClickedElement();
         await Customization();
         await Mvvm();
         await Perf();
@@ -496,6 +496,117 @@ internal static class ExamplesSelfTest
         f.Nodes = f.Nodes.Where(n => n.Id is not ("gripN" or "lockN")).ToList();
         f.FitView();
         await Task.Delay(300);
+    }
+
+    // Une « table » à deux colonnes : chaque ligne est marquée par FlowView.TargetData, l'en-tête ne l'est pas.
+    private static DataTemplate TableTemplate()
+    {
+        var root = new FrameworkElementFactory(typeof(StackPanel));
+        root.SetValue(FrameworkElement.WidthProperty, 160.0);
+        root.SetValue(Panel.BackgroundProperty, Brushes.White);
+        foreach (var column in new[] { null, "id", "client_id" })
+        {
+            var row = new FrameworkElementFactory(typeof(Border));
+            row.SetValue(FrameworkElement.HeightProperty, 26.0);
+            row.SetValue(Border.BackgroundProperty, column == null ? Brushes.LightSkyBlue : Brushes.White);
+            if (column != null) row.SetValue(FlowView.TargetDataProperty, column);
+            // L'élément réellement cliqué est le texte : la donnée est lue sur son parent.
+            var text = new FrameworkElementFactory(typeof(TextBlock));
+            text.SetValue(TextBlock.TextProperty, column ?? "commandes");
+            text.SetValue(FrameworkElement.HorizontalAlignmentProperty, HorizontalAlignment.Center);
+            text.SetValue(FrameworkElement.VerticalAlignmentProperty, VerticalAlignment.Center);
+            row.AppendChild(text);
+            root.AppendChild(row);
+        }
+
+        return new DataTemplate { VisualTree = root };
+    }
+
+    /// <summary>Savoir quel élément d'un node a été cliqué, double-cliqué ou visé par le menu contextuel (évènements et commandes).</summary>
+    private static async Task ClickedElement()
+    {
+        await Tab(5);
+        var f = _win.Options;
+        var saved = f.Nodes;
+        f.Resources["wpflow-node-table"] = TableTemplate();
+        f.Nodes = [..saved, new Node("table", new XYPosition(-250, -140), Type: "table")];
+        await Task.Delay(500);
+        f.FitView();
+        await Task.Delay(500);
+
+        var clicks = new List<ElementEventArgs>();
+        var doubles = new List<ElementEventArgs>();
+        var menus = new List<ElementEventArgs>();
+        var panes = new List<ElementEventArgs>();
+        EventHandler<ElementEventArgs> onClick = (_, e) => clicks.Add(e), onDouble = (_, e) => doubles.Add(e),
+            onMenu = (_, e) => menus.Add(e), onPane = (_, e) => panes.Add(e);
+        f.NodeClick += onClick;
+        f.NodeDoubleClick += onDouble;
+        f.NodeContextMenuRequested += onMenu;
+        f.PaneClick += onPane;
+
+        var texts = Find<TextBlock>(Host(f, "table")).ToList();
+        Point Row(int i) => Center(texts[i]);
+
+        await Click(Row(2));
+        Check("élément cliqué: NodeClick donne la colonne", clicks.Count == 1 && Equals(clicks[0].TargetData, "client_id") && clicks[0].OriginalSource != null,
+            $"{clicks.Count} clic(s), {clicks.LastOrDefault()?.TargetData}");
+        await Task.Delay(600); // au-delà du délai de double-clic
+        await Click(Row(0));
+        Check("élément cliqué: sans marque (en-tête), TargetData est null", clicks.Count == 2 && clicks[1].TargetData == null, $"{clicks.LastOrDefault()?.TargetData}");
+        await Task.Delay(600);
+
+        var zoom = f.Viewport.Zoom;
+        await DoubleClick(Row(1));
+        Check("élément cliqué: NodeDoubleClick donne la colonne, sans zoom",
+            doubles.Count == 1 && Equals(doubles[0].TargetData, "id") && Math.Abs(f.Viewport.Zoom - zoom) < 1e-9,
+            $"{doubles.Count}, {doubles.LastOrDefault()?.TargetData}");
+
+        await RightClick(Row(2));
+        Check("élément cliqué: le menu contextuel donne la colonne", menus.Count == 1 && Equals(menus[0].TargetData, "client_id"),
+            $"{menus.Count}, {menus.LastOrDefault()?.TargetData}");
+
+        await Click(Screen(f, new Point(10, 10)));
+        Check("élément cliqué: sur le fond, TargetData est null", panes.Count == 1 && panes[0].TargetData == null);
+
+        var before = clicks.Count;
+        var from = Row(2);
+        await Drag(from, (from.X + 50, from.Y + 30));
+        Check("élément cliqué: un glisser n'est pas un clic", clicks.Count == before, $"{before} -> {clicks.Count}");
+
+        object? parameter = null;
+        f.NodeClickCommand = new ParameterCommand(p => parameter = p);
+        texts = Find<TextBlock>(Host(f, "table")).ToList();
+        await Task.Delay(600);
+        await Click(Row(1));
+        Check("commandes: par défaut, le paramètre reste l'élément", parameter is Node { Id: "table" }, $"{parameter?.GetType().Name}");
+        f.CommandsReceiveEventArgs = true;
+        await Task.Delay(600);
+        await Click(Row(2));
+        Check("commandes: avec CommandsReceiveEventArgs, la commande reçoit la colonne",
+            parameter is ElementEventArgs { Id: "table", TargetData: "client_id" }, $"{parameter?.GetType().Name}");
+
+        f.CommandsReceiveEventArgs = false;
+        f.NodeClickCommand = null;
+        f.NodeClick -= onClick;
+        f.NodeDoubleClick -= onDouble;
+        f.NodeContextMenuRequested -= onMenu;
+        f.PaneClick -= onPane;
+        f.Nodes = saved;
+        f.FitView();
+        await Task.Delay(300);
+    }
+
+    private sealed class ParameterCommand(Action<object?> execute) : System.Windows.Input.ICommand
+    {
+        public event EventHandler? CanExecuteChanged
+        {
+            add { }
+            remove { }
+        }
+
+        public bool CanExecute(object? parameter) => true;
+        public void Execute(object? parameter) => execute(parameter);
     }
 
     private static async Task Perf()

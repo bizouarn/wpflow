@@ -9,6 +9,7 @@ namespace Wpflow.Wpf;
 public partial class FlowView
 {
     private bool _panMoved, _connectMoved, _selectionStarted;
+    private DependencyObject? _pressedSource;
     private string? _pendingSelect; // node pressé sans être sélectionné (SelectNodesOnDrag faux) : sélectionné au clic
     private HandleRef? _clickConnect; // première extrémité d'une connexion « par deux clics »
     private (FlowElementKind Kind, string? Id)? _hover;
@@ -42,12 +43,13 @@ public partial class FlowView
         _pressedNode = host?.Node?.Id;
         _pressedEdge = host == null && handle == null ? edgeId : null;
         _pressedPane = host == null && handle == null && edgeId == null;
+        _pressedSource = e.OriginalSource as DependencyObject; // au relâchement, la capture a remplacé la source par la vue
         _pendingSelect = null;
 
         if (e.ClickCount == 2)
         {
-            if (host?.Node != null) RaiseElementEvent(FlowElementKind.Node, host.Node.Id, _mouseStartFlow, true);
-            else if (edgeId != null) RaiseElementEvent(FlowElementKind.Edge, edgeId, _mouseStartFlow, true);
+            if (host?.Node != null) RaiseElementEvent(FlowElementKind.Node, host.Node.Id, _mouseStartFlow, true, _pressedSource);
+            else if (edgeId != null) RaiseElementEvent(FlowElementKind.Edge, edgeId, _mouseStartFlow, true, _pressedSource);
             else if (ZoomOnDoubleClick && handle == null)
             {
                 SetViewport(ViewportMath.ZoomAt(Viewport, new XYPosition(pos.X, pos.Y), Viewport.Zoom * 2, MinZoom, MaxZoom),
@@ -371,6 +373,7 @@ public partial class FlowView
         var dragged = _mode == Mode.DragNodes && _dragMoved ? DragArgs(pos) : null;
         var (nodeId, edgeId, pane) = (_pressedNode, _pressedEdge, _pressedPane);
         var pendingSelect = _pendingSelect;
+        var source = _pressedSource;
         var wasConnect = _mode == Mode.Connect;
         var wasSelect = _mode == Mode.Select;
         var wasPan = _mode == Mode.Pan && _panMoved;
@@ -410,18 +413,21 @@ public partial class FlowView
         if (pendingSelect != null) Select([pendingSelect], [], false);
         if (nodeId != null)
         {
-            NodeClick?.Invoke(this, new ElementEventArgs(FlowElementKind.Node, nodeId, NodeElement(nodeId), flow));
-            Run(NodeClickCommand, NodeElement(nodeId));
+            var args = PressArgs(FlowElementKind.Node, nodeId, flow, source);
+            NodeClick?.Invoke(this, args);
+            RunElementCommand(NodeClickCommand, args, NodeElement(nodeId));
         }
         else if (edgeId != null)
         {
-            EdgeClick?.Invoke(this, new ElementEventArgs(FlowElementKind.Edge, edgeId, EdgeElement(edgeId), flow));
-            Run(EdgeClickCommand, EdgeElement(edgeId));
+            var args = PressArgs(FlowElementKind.Edge, edgeId, flow, source);
+            EdgeClick?.Invoke(this, args);
+            RunElementCommand(EdgeClickCommand, args, EdgeElement(edgeId));
         }
         else if (pane)
         {
-            PaneClick?.Invoke(this, new ElementEventArgs(FlowElementKind.Pane, null, null, flow));
-            Run(PaneClickCommand, flow);
+            var args = PressArgs(FlowElementKind.Pane, null, flow, source);
+            PaneClick?.Invoke(this, args);
+            RunElementCommand(PaneClickCommand, args, flow);
         }
     }
 
@@ -441,6 +447,7 @@ public partial class FlowView
         _pendingSelect = null;
         _pressedNode = _pressedEdge = null;
         _pressedPane = false;
+        _pressedSource = null;
         SetConnecting(false);
         _dragStart = new Dictionary<string, XYPosition>();
         StopAutoPan();
@@ -599,6 +606,6 @@ public partial class FlowView
     private bool IsSelectionMenu(string nodeId) => Nodes.Count(n => n.Selected) > 1 && Nodes.Any(n => n.Id == nodeId && n.Selected);
 
     // Appelé par OnMouseRightButtonUp.
-    private void RaiseSelectionContextMenu(XYPosition position) =>
-        SelectionContextMenuRequested?.Invoke(this, new ElementEventArgs(FlowElementKind.Node, null, null, position));
+    private void RaiseSelectionContextMenu(XYPosition position, DependencyObject? source) =>
+        SelectionContextMenuRequested?.Invoke(this, PressArgs(FlowElementKind.Node, null, position, source));
 }

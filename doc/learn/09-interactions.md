@@ -113,7 +113,7 @@ Flow.Nodes = Flow.Nodes.Select(n => n with { Selected = n.Id == "2" }).ToList();
 
 ## Événements supplémentaires
 
-`ConnectStarted` / `ConnectEnded` (position du relâchement et connexion réalisée, pour « créer un node en lâchant le fil dans le vide »), `NodeDoubleClick`, `NodeContextMenuRequested` (et `Edge…`, `Pane…`, `SelectionContextMenuRequested`), `NodeMouseEnter`/`Move`/`Leave`, `NodeDragStarted`/`NodeDragging`/`NodeDragStopped`, `ViewportMoveStarted`/`Ended`, `FlowInitialized`, `BeforeDelete` (annulable), `ErrorOccurred`… La liste complète est dans la [référence de `FlowView`](../reference/flowview.md#événements-supplémentaires).
+`ConnectStarted` / `ConnectEnded` (position du relâchement et connexion réalisée, pour « créer un node en lâchant le fil dans le vide »), `NodeDoubleClick`, `NodeContextMenuRequested` (et `Edge…`, `Pane…`, `SelectionContextMenuRequested`), `NodeMouseEnter`/`Move`/`Leave`, `NodeDragStarted`/`NodeDragging`/`NodeDragStopped`, `ViewportMoveStarted`/`Ended`, `FlowInitialized`, `BeforeDelete` (annulable), `ErrorOccurred`… La liste complète est dans la [référence de `FlowView`](../reference/flowview.md#événements-supplémentaires). Pour savoir quelle colonne ou quelle zone d'un node est visée, marquez-la avec `flow:FlowView.TargetData` ([détails](../reference/flowview.md#savoir-quelle-partie-dun-node-est-visée)).
 
 ## Réglages d'interaction
 

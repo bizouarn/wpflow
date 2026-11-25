@@ -59,6 +59,19 @@ public sealed class ElementEventArgs(FlowElementKind kind, string? id, object? e
 
     /// <summary>Position du clic en coordonnées flow.</summary>
     public XYPosition Position { get; } = position;
+
+    /// <summary>
+    ///     L'élément WPF réellement pressé (par exemple le <c>TextBlock</c> d'une colonne). Renseigné pour le clic, le
+    ///     double-clic et le menu contextuel ; <c>null</c> au survol.
+    /// </summary>
+    public DependencyObject? OriginalSource { get; init; }
+
+    /// <summary>
+    ///     La valeur <see cref="FlowView.TargetDataProperty" /> la plus proche de <see cref="OriginalSource" />, cherchée sur
+    ///     lui et ses parents jusqu'au <see cref="FlowView" /> : de quoi savoir quelle partie d'un node a été visée.
+    ///     <c>null</c> sans marque, et au survol.
+    /// </summary>
+    public object? TargetData { get; init; }
 }
 
 // Options d'interaction globales, événements de connexion, double-clic, menu contextuel et auto-défilement.
@@ -295,8 +308,32 @@ public partial class FlowView
         set => SetValue(PaneContextMenuCommandProperty, value);
     }
 
-    /// <summary>Notifie un double-clic ou un clic droit sur l'élément désigné (ou le fond).</summary>
-    private void RaiseElementEvent(FlowElementKind kind, string? id, XYPosition position, bool doubleClick)
+    /// <summary>
+    ///     Marque un élément d'un modèle de node (ou d'un label d'edge) : la valeur la plus proche de l'élément cliqué arrive
+    ///     dans <see cref="ElementEventArgs.TargetData" />. Exemple : <c>flow:FlowView.TargetData="{Binding Column}"</c>.
+    /// </summary>
+    public static readonly DependencyProperty TargetDataProperty = DependencyProperty.RegisterAttached(
+        "TargetData", typeof(object), typeof(FlowView), new PropertyMetadata(null));
+
+    public static object? GetTargetData(DependencyObject element) => element.GetValue(TargetDataProperty);
+    public static void SetTargetData(DependencyObject element, object? value) => element.SetValue(TargetDataProperty, value);
+
+    /// <summary>
+    ///     Faux par défaut. Vrai : les commandes de clic, de double-clic et de menu contextuel reçoivent
+    ///     l'<see cref="ElementEventArgs" /> (élément, position, <see cref="ElementEventArgs.TargetData" />) au lieu de
+    ///     l'élément seul (ou de la position pour le fond).
+    /// </summary>
+    public static readonly DependencyProperty CommandsReceiveEventArgsProperty = DependencyProperty.Register(
+        nameof(CommandsReceiveEventArgs), typeof(bool), typeof(FlowView), new PropertyMetadata(false));
+
+    public bool CommandsReceiveEventArgs
+    {
+        get => (bool)GetValue(CommandsReceiveEventArgsProperty);
+        set => SetValue(CommandsReceiveEventArgsProperty, value);
+    }
+
+    /// <summary>Les arguments d'un évènement déclenché par une pression sur <paramref name="source" />.</summary>
+    private ElementEventArgs PressArgs(FlowElementKind kind, string? id, XYPosition position, DependencyObject? source)
     {
         var element = kind switch
         {
@@ -304,28 +341,41 @@ public partial class FlowView
             FlowElementKind.Edge when id != null => EdgeElement(id),
             _ => null
         };
-        var args = new ElementEventArgs(kind, id, element, position);
+        object? data = null;
+        for (var d = source; d != null && !ReferenceEquals(d, this) && data == null; d = ParentOf(d))
+            data = GetTargetData(d);
+        return new ElementEventArgs(kind, id, element, position) { OriginalSource = source, TargetData = data };
+    }
+
+    private void RunElementCommand(ICommand? command, ElementEventArgs args, object? parameter) =>
+        Run(command, CommandsReceiveEventArgs ? args : parameter);
+
+    /// <summary>Notifie un double-clic ou un clic droit sur l'élément désigné (ou le fond).</summary>
+    private void RaiseElementEvent(FlowElementKind kind, string? id, XYPosition position, bool doubleClick, DependencyObject? source)
+    {
+        var args = PressArgs(kind, id, position, source);
+        var element = args.Element;
         switch (kind, doubleClick)
         {
             case (FlowElementKind.Node, true):
                 NodeDoubleClick?.Invoke(this, args);
-                Run(NodeDoubleClickCommand, element);
+                RunElementCommand(NodeDoubleClickCommand, args, element);
                 break;
             case (FlowElementKind.Edge, true):
                 EdgeDoubleClick?.Invoke(this, args);
-                Run(EdgeDoubleClickCommand, element);
+                RunElementCommand(EdgeDoubleClickCommand, args, element);
                 break;
             case (FlowElementKind.Node, false):
                 NodeContextMenuRequested?.Invoke(this, args);
-                Run(NodeContextMenuCommand, element);
+                RunElementCommand(NodeContextMenuCommand, args, element);
                 break;
             case (FlowElementKind.Edge, false):
                 EdgeContextMenuRequested?.Invoke(this, args);
-                Run(EdgeContextMenuCommand, element);
+                RunElementCommand(EdgeContextMenuCommand, args, element);
                 break;
             case (FlowElementKind.Pane, false):
                 PaneContextMenuRequested?.Invoke(this, args);
-                Run(PaneContextMenuCommand, position);
+                RunElementCommand(PaneContextMenuCommand, args, position);
                 break;
         }
     }
@@ -360,15 +410,16 @@ public partial class FlowView
             }
         }
 
-        var (host, _, edgeId) = HitTarget(e.OriginalSource as DependencyObject);
+        var source = e.OriginalSource as DependencyObject;
+        var (host, _, edgeId) = HitTarget(source);
         var position = ScreenToFlow(e.GetPosition(this));
         if (host?.Node != null)
         {
-            if (IsSelectionMenu(host.Node.Id)) RaiseSelectionContextMenu(position);
-            RaiseElementEvent(FlowElementKind.Node, host.Node.Id, position, false);
+            if (IsSelectionMenu(host.Node.Id)) RaiseSelectionContextMenu(position, source);
+            RaiseElementEvent(FlowElementKind.Node, host.Node.Id, position, false, source);
         }
-        else if (edgeId != null) RaiseElementEvent(FlowElementKind.Edge, edgeId, position, false);
-        else RaiseElementEvent(FlowElementKind.Pane, null, position, false);
+        else if (edgeId != null) RaiseElementEvent(FlowElementKind.Edge, edgeId, position, false, source);
+        else RaiseElementEvent(FlowElementKind.Pane, null, position, false, source);
     }
 
     #endregion

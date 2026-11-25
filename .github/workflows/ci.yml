@@ -24,7 +24,6 @@ jobs:
       - name: Build
         run: dotnet build wpflow.sln -c Release --no-restore
 
-      # Les auto-tests à la vraie souris (WPFLOW_SELFTEST, WPFLOW_EXAMPLES) ne tournent pas ici : pas de bureau interactif.
       - name: Tests du noyau
         run: dotnet test tests/Wpflow.Core.Tests -c Release --no-build
 
@@ -39,8 +38,10 @@ jobs:
         timeout-minutes: 15
         run: dotnet test tests/Wpflow.Blazor.E2E -c Release --no-build
 
+      # Avec la validation de paquet : une API retirée par rapport à la version publiée fait échouer cette étape.
       - name: Pack (vérification)
         run: |
+          dotnet pack src/Wpflow.Core -c Release --no-build -o artifacts
           dotnet pack src/Wpflow.Wpf -c Release --no-build -o artifacts
           dotnet pack src/Wpflow.Blazor -c Release --no-build -o artifacts
 
@@ -48,3 +49,43 @@ jobs:
         with:
           name: packages
           path: artifacts/*.nupkg
+
+  # Les paquets de ce commit, installés dans des applications neuves hors de la solution (aucune référence de projet).
+  consumers:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: |
+            8.0.x
+            10.0.x
+
+      - name: Consommer les paquets
+        timeout-minutes: 25
+        shell: pwsh
+        run: ./tests/consumers/run.ps1
+
+  # Vraie souris et vrai clavier Win32 : demande un bureau interactif sur le runner.
+  selftests-wpf:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: |
+            8.0.x
+            10.0.x
+
+      - name: Auto-tests WPF
+        timeout-minutes: 15
+        shell: pwsh
+        run: ./tests/run-wpf-selftests.ps1 -Configuration Release
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: selftests-wpf
+          path: artifacts/selftest

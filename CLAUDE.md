@@ -35,6 +35,8 @@ Headless visual check of the demo (captures the window to a PNG and exits); `WPF
 WPFLOW_SCREENSHOT="D:/git/wpflow/work-doc/screenshots/out.png" WPFLOW_SELFTEST=1 dotnet run --project demo/wpf --no-build
 ```
 
+All real-mouse WPF self-tests at once, with a failing exit code on any `ECHEC` line, exception or timeout (also run in CI and before publishing): `powershell -File tests/run-wpf-selftests.ps1`. Packages consumed like a user would (fresh `dotnet new` apps outside the solution, README quickstart code): `powershell -File tests/consumers/run.ps1 [-Only wpf|blazor]`. Without Chrome, set `WPFLOW_BROWSER_CHANNEL=msedge`; without the .NET 8 runtime, run Blazor tests with `DOTNET_ROLL_FORWARD=Major WPFLOW_SERVER_DEMO_TFM=net10.0`. Public API changes go in `CHANGELOG.md`; `dotnet pack` validates the API against `PackageValidationBaselineVersion` (intended breaks: `CompatibilitySuppressions.xml`).
+
 ## Architecture (WPF layer)
 
 - **State flows through changes, like React Flow.** `FlowView.Nodes` / `Edges` are immutable record lists. UI interactions never mutate them: they build `NodeChange`/`EdgeChange` lists, raise `NodeChangesRequested`/`EdgeChangesRequested`, and — if `AutoApplyChanges` (default true) — apply them via `Changes.Apply`. Set `AutoApplyChanges=false` for a controlled mode.

@@ -189,6 +189,39 @@ public class MvvmTests
         });
     }
 
+    /// <summary>Défaut vu dans une application consommatrice : la vue changeait, le ViewModel gardait l'ancienne valeur.</summary>
+    [Fact]
+    public void UpdateNode_and_UpdateEdge_are_written_back_to_the_view_models()
+    {
+        Sta.Run(() =>
+        {
+            var a = Vm("a");
+            var link = new LabeledEdgeVm { Id = "e", Source = "a", Target = "b" };
+            var flow = CustomizationTests.Realize(); // sans gabarit, la vue n'indexe pas ses nodes
+            flow.NodeMapping = new NodeMapping { SelectedPath = "IsSelected", WidthPath = "Width" };
+            flow.EdgeMapping = new EdgeMapping { SelectedPath = "IsSelected", LabelPath = "Label", AnimatedPath = "Animated" };
+            flow.NodesSource = new ObservableCollection<NodeVm> { a, Vm("b") };
+            flow.EdgesSource = new ObservableCollection<LabeledEdgeVm> { link };
+
+            flow.UpdateNode("a", n => n with { Position = new XYPosition(7, 9), Selected = true, FixedWidth = 150 });
+            flow.UpdateEdge("e", e => e with { Label = "oui", Animated = true, Selected = true });
+
+            Assert.Equal((7, 9, true, 150), (a.X, a.Y, a.IsSelected, a.Width));
+            Assert.Equal(("oui", true, true), (link.Label, link.Animated, link.IsSelected));
+
+            // Un changement venant ensuite du ViewModel ne ramène pas les anciennes valeurs.
+            a.Y = 20;
+            Assert.Equal(new XYPosition(7, 20), flow.GetNode("a")!.Position);
+            Assert.True(flow.GetNode("a")!.Selected);
+        });
+    }
+
+    private sealed class LabeledEdgeVm : EdgeVm
+    {
+        public string? Label { get; set; }
+        public bool Animated { get; set; }
+    }
+
     [Fact]
     public void Drag_is_written_back_to_the_view_model()
     {

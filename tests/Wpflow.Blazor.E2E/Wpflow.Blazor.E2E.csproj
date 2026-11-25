@@ -20,7 +20,8 @@
 
   <ItemGroup>
     <!-- La démo est lancée par les tests : elle doit être construite avant eux. -->
-    <ProjectReference Include="..\..\demo\blazor\demo-blazor.csproj" ReferenceOutputAssembly="false" />
+    <!-- SkipGetTargetFrameworkProperties : la démo Server peut être construite en net10.0 (WPFLOW_SERVER_DEMO_TFM). -->
+    <ProjectReference Include="..\..\demo\blazor\demo-blazor.csproj" ReferenceOutputAssembly="false" SkipGetTargetFrameworkProperties="true" UndefineProperties="TargetFramework" />
     <ProjectReference Include="..\..\demo\blazor-wasm\demo-blazor-wasm.csproj" ReferenceOutputAssembly="false" />
   </ItemGroup>
 

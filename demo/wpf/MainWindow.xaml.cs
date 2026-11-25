@@ -25,37 +25,23 @@ public partial class MainWindow : Window
                 await Task.Delay(2000);
                 if (int.TryParse(Environment.GetEnvironmentVariable("WPFLOW_PERF"), out var perfCount))
                 {
-                    var perfLines = new List<string>();
-                    try
-                    {
-                        await PerfTest.Run(Flow, perfCount, perfLines.Add);
-                    }
-                    catch (Exception ex)
-                    {
-                        perfLines.Add("ERROR " + ex);
-                    }
-
-                    File.WriteAllLines(System.IO.Path.ChangeExtension(path, ".perf.log"), perfLines);
+                    await SelfTestReport.Run(this, System.IO.Path.ChangeExtension(path, ".perf.log"), TimeSpan.FromSeconds(180),
+                        log => PerfTest.Run(Flow, perfCount, log), () => Capture(path));
                 }
                 else if (selfTest)
                 {
-                    var logPath = System.IO.Path.ChangeExtension(path, ".log");
-                    var lines = new List<string>();
-                    try
-                    {
-                        await SelfTest.Run(Flow, lines.Add);
-                    }
-                    catch (Exception ex)
-                    {
-                        lines.Add("ERROR " + ex);
-                    }
-
-                    File.WriteAllLines(logPath, lines);
-                    await Task.Delay(500);
+                    await SelfTestReport.Run(this, System.IO.Path.ChangeExtension(path, ".log"), TimeSpan.FromSeconds(120),
+                        async log =>
+                        {
+                            await SelfTest.Run(Flow, log);
+                            await Task.Delay(500);
+                        }, () => Capture(path));
                 }
-
-                Capture(path);
-                Application.Current.Shutdown();
+                else
+                {
+                    Capture(path);
+                    Application.Current.Shutdown();
+                }
             };
         }
     }

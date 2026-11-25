@@ -1,0 +1,10 @@
+        <local:WaveEdge xmlns:local="clr-namespace:Consumer" x:Key="wpflow-edge-wave" />
+        <Geometry x:Key="wpflow-marker-dot">M-8,-4 L0,0 L-8,4 Z</Geometry>
+        <DataTemplate x:Key="wpflow-node-card">
+            <Grid Width="150" Height="56">
+                <Border Background="{DynamicResource Flow.NodeBackground}" BorderBrush="Gray" BorderThickness="1" />
+                <TextBlock Tag="card" Text="{Binding Data}" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                <flow:Handle Type="Target" Position="Left" />
+                <flow:Handle Type="Source" Position="Right" />
+            </Grid>
+        </DataTemplate>

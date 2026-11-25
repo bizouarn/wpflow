@@ -327,6 +327,10 @@ public partial class FlowView
         _viewportGrid.RenderTransform = Transform.Identity;
         try
         {
+            // Un nouveau RenderTransform n'est appliqué à l'arbre de rendu qu'au passage de mise en page suivant : sans lui,
+            // l'image est prise avec le viewport courant (décalée, tronquée, voire vide).
+            _viewportGrid.InvalidateArrange();
+            UpdateLayout();
             var brush = new VisualBrush(_viewportGrid)
             {
                 Stretch = Stretch.None, AlignmentX = AlignmentX.Left, AlignmentY = AlignmentY.Top,

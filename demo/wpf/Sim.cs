@@ -15,7 +15,7 @@ internal static class Sim
     [DllImport("user32.dll")] private static extern void mouse_event(uint flags, uint dx, uint dy, uint data, nint extra);
     [DllImport("user32.dll")] private static extern void keybd_event(byte vk, byte scan, uint flags, nint extra);
 
-    private const uint LeftDown = 0x0002, LeftUp = 0x0004, WheelFlag = 0x0800;
+    private const uint LeftDown = 0x0002, LeftUp = 0x0004, RightDown = 0x0008, RightUp = 0x0010, WheelFlag = 0x0800;
     private const uint KeyUp = 2;
 
     public const byte VkTab = 0x09, VkControl = 0x11, VkEscape = 0x1B, VkSpace = 0x20, VkLeft = 0x25, VkRight = 0x27,
@@ -78,6 +78,16 @@ internal static class Sim
         }
 
         await Task.Delay(400);
+    }
+
+    public static async Task RightClick(Point p)
+    {
+        SetCursorPos((int)p.X, (int)p.Y);
+        await Task.Delay(150);
+        mouse_event(RightDown, 0, 0, 0, 0);
+        await Task.Delay(60);
+        mouse_event(RightUp, 0, 0, 0, 0);
+        await Task.Delay(300);
     }
 
     public static void MoveTo(Point p) => SetCursorPos((int)p.X, (int)p.Y);

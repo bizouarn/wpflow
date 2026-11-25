@@ -420,6 +420,36 @@ public class P2Tests
         });
     }
 
+    /// <summary>L'export montre le graphe entier quelle que soit la vue : défaut vu dans une application consommatrice (image blanche).</summary>
+    [Fact]
+    public void RenderToBitmap_does_not_depend_on_the_viewport()
+    {
+        Sta.Run(() =>
+        {
+            var flow = Flow();
+            flow.Viewport = new Viewport(0, 0, 1);
+            flow.UpdateLayout();
+            var reference = Pixels(flow);
+            // L'image n'est pas vide : le graphe est bien dessiné.
+            Assert.True(reference.Distinct().Count() > 4);
+
+            flow.Viewport = new Viewport(420, 260, 1.7);
+            flow.UpdateLayout();
+            var moved = Pixels(flow);
+
+            Assert.Equal(reference, moved);
+            Assert.Equal(new Viewport(420, 260, 1.7), flow.Viewport);
+        });
+
+        static int[] Pixels(FlowView flow)
+        {
+            var bitmap = flow.RenderToBitmap(padding: 10, scale: 1)!;
+            var pixels = new int[bitmap.PixelWidth * bitmap.PixelHeight];
+            bitmap.CopyPixels(pixels, bitmap.PixelWidth * 4, 0);
+            return pixels;
+        }
+    }
+
     [Fact]
     public void Keyboard_options_are_configurable()
     {

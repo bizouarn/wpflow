@@ -1,0 +1,16 @@
+<UserControl x:Class="Graphs.GraphControl"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:flow="clr-namespace:Wpflow.Wpf;assembly=Wpflow.Wpf">
+    <UserControl.Resources>
+        <DataTemplate x:Key="wpflow-node-card">
+            <Grid Width="150" Height="56">
+                <Border Background="{DynamicResource Flow.NodeBackground}" BorderBrush="Gray" BorderThickness="1" />
+                <TextBlock Tag="library-card" Text="{Binding Data}" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                <flow:Handle Type="Target" Position="Left" />
+                <flow:Handle Type="Source" Position="Right" />
+            </Grid>
+        </DataTemplate>
+    </UserControl.Resources>
+    <flow:FlowView x:Name="View" FitViewOnInit="True" />
+</UserControl>

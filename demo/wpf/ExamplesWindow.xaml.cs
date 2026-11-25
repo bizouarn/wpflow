@@ -50,20 +50,8 @@ public partial class ExamplesWindow : Window
             ContentRendered += async (_, _) =>
             {
                 await Task.Delay(1500);
-                var logPath = System.IO.Path.ChangeExtension(path, ".log");
-                File.WriteAllText(logPath, "");
-                void Log(string s) => File.AppendAllText(logPath, s + Environment.NewLine);
-                _ = Task.Delay(170000).ContinueWith(_ => Dispatcher.Invoke(() => { Log("WATCHDOG: arrêt forcé"); Application.Current.Shutdown(); }));
-                try
-                {
-                    await ExamplesSelfTest.Run(this, path, Log);
-                }
-                catch (Exception ex)
-                {
-                    Log("ERROR " + ex);
-                }
-
-                Application.Current.Shutdown();
+                await SelfTestReport.Run(this, System.IO.Path.ChangeExtension(path, ".log"), TimeSpan.FromSeconds(240),
+                    log => ExamplesSelfTest.Run(this, path, log));
             };
         }
     }

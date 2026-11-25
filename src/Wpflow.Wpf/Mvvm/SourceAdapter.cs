@@ -267,6 +267,15 @@ internal sealed class NodeSourceAdapter : SourceAdapter<Node>
                     case NodeSelectChange s when ModelOf(s.Id) is { } m:
                         Reflect.Set(m, _map.SelectedPath, s.Selected);
                         break;
+                    case NodeReplaceChange r when ModelOf(r.Id) is { } m: // UpdateNode / UpdateNodeData
+                        Align(m, r.Item);
+                        Reflect.Set(m, _map.HiddenPath, r.Item.Hidden);
+                        Reflect.Set(m, _map.DraggablePath, r.Item.Draggable);
+                        Reflect.Set(m, _map.SelectablePath, r.Item.Selectable);
+                        Reflect.Set(m, _map.ConnectablePath, r.Item.Connectable);
+                        Reflect.Set(m, _map.DeletablePath, r.Item.Deletable);
+                        if (_map.DataPath != null) Reflect.Set(m, _map.DataPath, r.Item.Data);
+                        break;
                     case NodeRemoveChange r:
                         (removed ??= []).Add(r.Id);
                         break;
@@ -380,11 +389,11 @@ internal sealed class EdgeSourceAdapter : SourceAdapter<Edge>
                     case EdgeSelectChange s when ModelOf(s.Id) is { } m:
                         Reflect.Set(m, _map.SelectedPath, s.Selected);
                         break;
-                    case EdgeReplaceChange r when ModelOf(r.Id) is { } m: // reconnexion
-                        Reflect.Set(m, _map.SourcePath, r.Item.Source);
-                        Reflect.Set(m, _map.TargetPath, r.Item.Target);
-                        Reflect.Set(m, _map.SourceHandlePath, r.Item.SourceHandle);
-                        Reflect.Set(m, _map.TargetHandlePath, r.Item.TargetHandle);
+                    case EdgeReplaceChange r when ModelOf(r.Id) is { } m: // reconnexion, UpdateEdge
+                        Align(m, r.Item);
+                        Reflect.Set(m, _map.HiddenPath, r.Item.Hidden);
+                        Reflect.Set(m, _map.SelectablePath, r.Item.Selectable);
+                        Reflect.Set(m, _map.DeletablePath, r.Item.Deletable);
                         break;
                     case EdgeRemoveChange r:
                         (removed ??= []).Add(r.Id);

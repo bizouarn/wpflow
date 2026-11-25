@@ -16,6 +16,9 @@ internal static class SelfTest
 
     public static async Task Run(FlowView flow, Action<string> log)
     {
+        void Check(string name, bool ok, string detail = "") => log(SelfTestReport.Line(name, ok, detail));
+        // Écart toléré : le curseur Windows se pose sur des pixels entiers.
+        static bool Near(double actual, double expected, double tolerance = 2) => Math.Abs(actual - expected) <= tolerance;
         await Task.Delay(1000);
 
         // 1. Déplacement du node "shape" de (-80, +60) pixels écran.
@@ -24,7 +27,8 @@ internal static class SelfTest
         var center = Screen(shape, new Point(shape.ActualWidth / 2, 8));
         await Drag(center, (center.X - 80, center.Y + 60));
         var after = flow.Nodes.First(n => n.Id == "shape").Position;
-        log($"drag: {before} -> {after} (zoom {flow.Viewport.Zoom})");
+        Check("drag: le node suit la souris", Near(after.X - before.X, -80 / flow.Viewport.Zoom) && Near(after.Y - before.Y, 60 / flow.Viewport.Zoom),
+            $"{before} -> {after} (zoom {flow.Viewport.Zoom})");
 
         // 2. Connexion color -> output (handle "zoom") : un 4e edge doit apparaître.
         var edgesBefore = flow.Edges.Count;
@@ -34,7 +38,7 @@ internal static class SelfTest
         var from = Screen(src, new Point(src.ActualWidth / 2, src.ActualHeight / 2));
         var to = Screen(dst, new Point(dst.ActualWidth / 2 + 4, dst.ActualHeight / 2));
         await Drag(from, (to.X, to.Y));
-        log($"connect: edges {edgesBefore} -> {flow.Edges.Count}");
+        Check("connexion: un edge de plus", flow.Edges.Count == edgesBefore + 1, $"edges {edgesBefore} -> {flow.Edges.Count}");
 
         // 3. Zoom molette au centre de la vue.
         var zoomBefore = flow.Viewport.Zoom;
@@ -42,19 +46,21 @@ internal static class SelfTest
         MoveTo(c);
         Wheel(120);
         await Task.Delay(300);
-        log($"wheel zoom: {zoomBefore:0.00} -> {flow.Viewport.Zoom:0.00}");
+        Check("molette: zoom avant", flow.Viewport.Zoom > zoomBefore, $"{zoomBefore:0.00} -> {flow.Viewport.Zoom:0.00}");
 
         // 4. Pan par glisser sur le fond.
         var vpBefore = flow.Viewport;
         var empty = Screen(flow, new Point(300, 80));
         await Drag(empty, (empty.X + 50, empty.Y + 30));
-        log($"pan: ({vpBefore.X:0},{vpBefore.Y:0}) -> ({flow.Viewport.X:0},{flow.Viewport.Y:0})");
+        Check("pan: la vue suit la souris sans zoomer",
+            Near(flow.Viewport.X - vpBefore.X, 50) && Near(flow.Viewport.Y - vpBefore.Y, 30) && flow.Viewport.Zoom == vpBefore.Zoom,
+            $"({vpBefore.X:0},{vpBefore.Y:0}) -> ({flow.Viewport.X:0},{flow.Viewport.Y:0})");
 
         // 5. Sélection puis suppression avec la touche Suppr.
         var zoomNode = Find<NodeHost>(flow).First(h => h.Node?.Id == "zoom");
         var zc = Screen(zoomNode, new Point(zoomNode.ActualWidth / 2, 8));
         await Drag(zc, (zc.X, zc.Y)); // simple clic
-        log($"select: zoom.Selected={flow.Nodes.First(n => n.Id == "zoom").Selected}");
+        Check("clic: le node est sélectionné", flow.Nodes.First(n => n.Id == "zoom").Selected);
 
         // 6. Reconnexion : on attrape l'edge "e-shape" près de sa cible et on le dépose sur le handle "color".
         var output = Find<NodeHost>(flow).First(h => h.Node?.Id == "output");
@@ -66,17 +72,20 @@ internal static class SelfTest
         var drop = Screen(colorHandle, new Point(colorHandle.ActualWidth / 2, colorHandle.ActualHeight / 2));
         await Drag(grab, (drop.X, drop.Y));
         var reconnected = flow.Edges.First(e => e.Id == "e-shape");
-        log($"reconnect: e-shape target handle = {reconnected.TargetHandle} (attendu: color)");
+        Check("reconnexion: l'extrémité change de handle", reconnected.TargetHandle == "color", $"handle = {reconnected.TargetHandle}");
 
         // 7. Undo x3 : reconnexion, connexion, déplacement.
         flow.Undo();
-        log($"undo 1: e-shape target handle = {flow.Edges.First(e => e.Id == "e-shape").TargetHandle} (attendu: shape)");
+        var undoneHandle = flow.Edges.First(e => e.Id == "e-shape").TargetHandle;
+        Check("annuler 1: la reconnexion", undoneHandle == "shape", $"handle = {undoneHandle}");
         flow.Undo();
-        log($"undo 2: edges = {flow.Edges.Count} (attendu: 3)");
+        Check("annuler 2: la connexion", flow.Edges.Count == edgesBefore, $"edges = {flow.Edges.Count}");
         flow.Undo();
-        log($"undo 3: shape = {flow.Nodes.First(n => n.Id == "shape").Position} (attendu: {before})");
+        var undonePosition = flow.Nodes.First(n => n.Id == "shape").Position;
+        Check("annuler 3: le déplacement", undonePosition == before, $"{undonePosition} (attendu {before})");
         flow.Redo();
-        log($"redo: shape = {flow.Nodes.First(n => n.Id == "shape").Position} (attendu: {after})");
+        var redonePosition = flow.Nodes.First(n => n.Id == "shape").Position;
+        Check("rétablir: le déplacement", redonePosition == after, $"{redonePosition} (attendu {after})");
 
         // 8. Redimensionnement : on sélectionne "output" (clic sur son titre) puis on tire son coin bas-droit.
         flow.Viewport = new Viewport(560, 150, 1.1); // le node doit être entièrement visible
@@ -91,16 +100,19 @@ internal static class SelfTest
         var z = flow.Viewport.Zoom;
         await Drag(cp, (cp.X + 44, cp.Y + 33));
         var sizeAfter = flow.Nodes.First(n => n.Id == "output");
-        log($"resize BR: {sizeBefore.Width:0.#}x{sizeBefore.Height:0.#} -> {sizeAfter.Width:0.#}x{sizeAfter.Height:0.#} " +
-            $"(attendu +{44 / z:0.#} / +{33 / z:0.#})");
+        Check("redimensionnement: coin bas-droit",
+            Near(sizeAfter.Width!.Value - sizeBefore.Width!.Value, 44 / z) && Near(sizeAfter.Height!.Value - sizeBefore.Height!.Value, 33 / z),
+            $"{sizeBefore.Width:0.#}x{sizeBefore.Height:0.#} -> {sizeAfter.Width:0.#}x{sizeAfter.Height:0.#} (attendu +{44 / z:0.#} / +{33 / z:0.#})");
 
         // 9. Coin haut-gauche : la taille augmente ET la position bouge.
         var tl = resizer.GetThumb(ResizeDirection.TopLeft)!;
         var tp = Screen(tl, new Point(tl.ActualWidth / 2, tl.ActualHeight / 2));
         await Drag(tp, (tp.X - 22, tp.Y - 11));
         var s2 = flow.Nodes.First(n => n.Id == "output");
-        log($"resize TL: pos {sizeAfter.Position} -> {s2.Position}, size {s2.Width:0.#}x{s2.Height:0.#}");
-        log($"outline visible: selected={s2.Selected}");
+        Check("redimensionnement: le coin haut-gauche agrandit et déplace",
+            s2.Position.X < sizeAfter.Position.X && s2.Position.Y < sizeAfter.Position.Y && s2.Width > sizeAfter.Width && s2.Height > sizeAfter.Height,
+            $"pos {sizeAfter.Position} -> {s2.Position}, taille {s2.Width:0.#}x{s2.Height:0.#}");
+        Check("redimensionnement: le node reste sélectionné", s2.Selected);
 
         // 10. Animation des cubes : l'angle avance et l'image change d'une capture à l'autre.
         flow.Viewport = new Viewport(560, 150, 1.1);
@@ -110,7 +122,7 @@ internal static class SelfTest
         var frameA = Snapshot(field);
         await Task.Delay(400);
         var frameB = Snapshot(field);
-        log($"cubes animés: angle {angle0:0.00} -> {field.Angle:0.00}, images différentes = {!frameA.SequenceEqual(frameB)}");
+        Check("cubes: animés", field.Angle != angle0 && !frameA.SequenceEqual(frameB), $"angle {angle0:0.00} -> {field.Angle:0.00}");
 
         // 11. Zoom relié : on tire le vrai slider ; le zoom affiché des cubes suit ; sans edge il retombe à la valeur par défaut.
         var state = (DemoState)flow.Nodes.First(n => n.Id == "zoom").Data!;
@@ -120,7 +132,8 @@ internal static class SelfTest
         var zoomBefore2 = state.Zoom;
         await Drag(thumbFrom, (thumbFrom.X + 200, thumbFrom.Y));
         await Task.Delay(1200);
-        log($"slider: state.Zoom {zoomBefore2:0.00} -> {state.Zoom:0.00}, zoom affiché {field.DisplayedZoom:0.00} (attendu ~{state.Zoom:0.00})");
+        Check("curseur: glisser change le zoom des cubes", state.Zoom != zoomBefore2 && Near(field.DisplayedZoom, state.Zoom, 0.05),
+            $"state.Zoom {zoomBefore2:0.00} -> {state.Zoom:0.00}, affiché {field.DisplayedZoom:0.00}");
 
         var vm = (HomeViewModel)flow.DataContext;
         var allLinks = vm.Links.ToList();
@@ -130,15 +143,18 @@ internal static class SelfTest
         }
         vm.Links.Remove(vm.Links.First(l => l.Id == "e-zoom"));
         await Task.Delay(1500);
-        log($"edge zoom supprimé: UseZoom={state.UseZoom}, zoom affiché {field.DisplayedZoom:0.00} (attendu {DemoState.DefaultZoom:0.00})");
+        Check("edge zoom supprimé: retour à la valeur par défaut", !state.UseZoom && Near(field.DisplayedZoom, DemoState.DefaultZoom, 0.05),
+            $"UseZoom={state.UseZoom}, affiché {field.DisplayedZoom:0.00} (attendu {DemoState.DefaultZoom:0.00})");
         RestoreLinks();
         await Task.Delay(1500);
-        log($"edge zoom rétabli: UseZoom={state.UseZoom}, zoom affiché {field.DisplayedZoom:0.00} (attendu ~{state.Zoom:0.00})");
+        Check("edge zoom rétabli: la valeur du curseur revient", state.UseZoom && Near(field.DisplayedZoom, state.Zoom, 0.05),
+            $"UseZoom={state.UseZoom}, affiché {field.DisplayedZoom:0.00} (attendu {state.Zoom:0.00})");
 
         // Couleur et forme suivent aussi leurs edges.
         foreach (var link in vm.Links.Where(l => l.Id is "e-color" or "e-shape").ToList()) vm.Links.Remove(link);
         await Task.Delay(200);
-        log($"edges couleur/forme supprimés: UseColor={state.UseColor}, UseShape={state.UseShape}, couleur effective {state.EffectiveColor}");
+        Check("edges couleur et forme supprimés: les cubes ne les suivent plus", !state.UseColor && !state.UseShape,
+            $"UseColor={state.UseColor}, UseShape={state.UseShape}, couleur effective {state.EffectiveColor}");
         RestoreLinks();
 
         // 12. Sélecteur de couleur : on ouvre la pastille, on clique un preset, les cubes changent de couleur.
@@ -148,18 +164,20 @@ internal static class SelfTest
         await Drag(sp, (sp.X, sp.Y));
         await Task.Delay(500);
         var popup = Find<System.Windows.Controls.Primitives.Popup>(colorHost).First();
-        log($"sélecteur: popup ouvert = {popup.IsOpen}");
+        Check("sélecteur: la pastille ouvre le popup", popup.IsOpen);
         var presetButtons = Find<System.Windows.Controls.Button>(popup.Child).ToList();
         var blue = presetButtons[5];
         var bp = Screen(blue, new Point(blue.ActualWidth / 2, blue.ActualHeight / 2));
+        var colorState = (DemoState)flow.Nodes.First(n => n.Id == "color").Data!;
+        var colorBefore = colorState.ColorHex;
         await Drag(bp, (bp.X, bp.Y));
         await Task.Delay(300);
-        var colorState = (DemoState)flow.Nodes.First(n => n.Id == "color").Data!;
-        log($"sélecteur: preset bleu -> ColorHex={colorState.ColorHex}, couleur effective des cubes {colorState.EffectiveColor}");
+        Check("sélecteur: un preset change la couleur des cubes", colorState.ColorHex != colorBefore,
+            $"ColorHex {colorBefore} -> {colorState.ColorHex}, couleur effective {colorState.EffectiveColor}");
         var frameBlue = Snapshot(field);
         colorState.ColorHex = "#ff0071";
         await Task.Delay(300);
-        log($"sélecteur: les cubes ont été redessinés = {!frameBlue.SequenceEqual(Snapshot(field))}");
+        Check("sélecteur: les cubes sont redessinés", !frameBlue.SequenceEqual(Snapshot(field)));
 
         // 13. Forme : clic sur le radio "pyramid" -> les solides passent en pyramides.
         var shapeHost = Find<NodeHost>(flow).First(h => h.Node?.Id == "shape");
@@ -168,9 +186,11 @@ internal static class SelfTest
         var cubeFrame = Snapshot(field);
         await Click(Center(radios[1]));
         await Task.Delay(400);
-        log($"forme: clic pyramid -> IsCube={shapeState.IsCube}, EffectiveIsCube={shapeState.EffectiveIsCube}, radios cochés={string.Join(",", radios.Select(r => r.IsChecked))}");
+        Check("forme: le radio « pyramide » change la forme", !shapeState.IsCube && !shapeState.EffectiveIsCube,
+            $"IsCube={shapeState.IsCube}, radios cochés={string.Join(",", radios.Select(r => r.IsChecked))}");
         var pyramidFrame = Snapshot(field);
-        log($"forme: le rendu a changé = {!cubeFrame.SequenceEqual(pyramidFrame)}, pixels colorés cube={Colored(cubeFrame)} pyramide={Colored(pyramidFrame)}");
+        Check("forme: le rendu change", !cubeFrame.SequenceEqual(pyramidFrame),
+            $"pixels colorés cube={Colored(cubeFrame)} pyramide={Colored(pyramidFrame)}");
         var encoder = new System.Windows.Media.Imaging.PngBitmapEncoder();
         var target = new System.Windows.Media.Imaging.RenderTargetBitmap((int)field.ActualWidth, (int)field.ActualHeight, 96, 96, PixelFormats.Pbgra32);
         target.Render(field);
@@ -179,7 +199,7 @@ internal static class SelfTest
             encoder.Save(fs);
         await Click(Center(radios[0]));
         await Task.Delay(300);
-        log($"forme: clic cube -> IsCube={shapeState.IsCube}");
+        Check("forme: le radio « cube » la rétablit", shapeState.IsCube);
     }
 
     private static int Colored(byte[] bgra)

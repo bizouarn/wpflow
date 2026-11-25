@@ -2,7 +2,10 @@
 
   <!-- Hôte Blazor Server de la démo (le composant est dans demo-blazor-shared). -->
   <PropertyGroup>
+    <!-- Sur un poste sans runtime .NET 8, WPFLOW_SERVER_DEMO_TFM=net10.0 : une application net8.0 exécutée par roll-forward
+         sur ASP.NET 10 ne sert pas _framework/blazor.web.js (404). -->
     <TargetFramework>net8.0</TargetFramework>
+    <TargetFramework Condition="'$(WPFLOW_SERVER_DEMO_TFM)' != ''">$(WPFLOW_SERVER_DEMO_TFM)</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <RootNamespace>DemoBlazor</RootNamespace>

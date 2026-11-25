@@ -43,13 +43,13 @@ Ordre conseillé : 0, 1, 2, puis le reste. Les tailles sont relatives (S, M, L).
 
 ### Lot 0 — Barrière avant publication (M)
 
-- [ ] Blazor : `release.yml` lance les tests de bout en bout avant `Pack`.
-- [ ] WPF : les auto-tests à la vraie souris rendent un **code de sortie** en échec sur toute ligne `ECHEC`, une exception ou un délai dépassé, et un script unique les enchaîne.
-- [ ] WPF : les exécuter automatiquement demande un bureau interactif. Essayer le runner `windows-latest`, sinon une machine auto-hébergée avec session ouverte, sinon une exécution locale obligatoire avant le tag.
-- [ ] WPF : donner l'équivalent de `TargetData` (élément d'origine du clic, du double-clic et du menu contextuel, dans les évènements et les commandes), avec un test à la vraie souris qui échoue d'abord.
-- [ ] Activer la validation de paquet (`EnablePackageValidation` et `PackageValidationBaselineVersion`) pour les trois paquets : une rupture d'API fait échouer le pack.
-- [ ] Décider du numéro de la version qui contient `26b32b3`. En versionnage sémantique, la rupture demande 2.0.0 ; sinon, rétablir `EdgeGeometry.Options` en `[Obsolete]` et publier en 1.1.0.
-- [ ] Tenir un `CHANGELOG.md` avec les ruptures.
+- [x] Blazor : `release.yml` lance les tests de bout en bout avant `Pack`. *(workflow écrit, pas encore exécuté sur GitHub)*
+- [ ] WPF : les auto-tests à la vraie souris rendent un **code de sortie** en échec sur toute ligne `ECHEC`, une exception ou un délai dépassé, et un script unique les enchaîne. *(écrit : `tests/run-wpf-selftests.ps1` ; compile, **jamais exécuté** depuis la conversion de `SelfTest` en vérifications)*
+- [ ] WPF : les exécuter automatiquement demande un bureau interactif. Essayer le runner `windows-latest`, sinon une machine auto-hébergée avec session ouverte, sinon une exécution locale obligatoire avant le tag. *(jobs écrits dans `ci.yml` et `release.yml`, à valider au premier push)*
+- [ ] WPF : donner l'équivalent de `TargetData` (élément d'origine du clic, du double-clic et du menu contextuel, dans les évènements et les commandes), avec un test à la vraie souris qui échoue d'abord. *(API faite : `FlowView.TargetData`, `ElementEventArgs.TargetData`/`OriginalSource`, `CommandsReceiveEventArgs` ; test à la vraie souris écrit, **jamais exécuté**)*
+- [x] Activer la validation de paquet (`EnablePackageValidation` et `PackageValidationBaselineVersion`) pour les trois paquets : une rupture d'API fait échouer le pack. *(vérifié : le pack du noyau échouait sur les quatre membres retirés avant leur déclaration)*
+- [x] Décider du numéro de la version qui contient `26b32b3` : **1.1.0**, avec la rupture assumée (`EdgeGeometry.Options` retiré, sans `[Obsolete]`), déclarée dans `CompatibilitySuppressions.xml` et le `CHANGELOG.md`.
+- [x] Tenir un `CHANGELOG.md` avec les ruptures.
 
 **Fini quand** : un test à entrée réelle cassé, WPF ou Blazor, ou une API retirée bloque la publication.
 
@@ -76,12 +76,21 @@ Un script (`tests/consumers/run.ps1`) fabrique les paquets dans une source local
 | Server publié, `ASPNETCORE_ENVIRONMENT=Production` | ressources `_content/Wpflow.Blazor/` servies |
 | .NET 8 et .NET 10 | compilation sans avertissement, exécution |
 
-- [ ] Script et applications témoins WPF.
-- [ ] Script et applications témoins Blazor.
-- [ ] Test qui compile les extraits de code, C#, XAML et Razor, du README et de `doc/`.
-- [ ] Après publication : relancer le script avec les paquets de nuget.org.
+- [x] Script et applications témoins WPF. *(2026-11-25 : 8/8 en local)*
+- [x] Script et applications témoins Blazor. *(2026-11-25 : 7/7 en local avec Edge)*
+- [ ] Test qui compile les extraits de code, C#, XAML et Razor, du README et de `doc/`. *(seuls les deux « Démarrage rapide » du README le sont, par le script)*
+- [ ] Après publication : relancer le script avec les paquets de nuget.org (`-FromNuget -Version …`).
 
-**Fini quand** : le script passe en CI sur les paquets du build, sans aucune référence de projet.
+**Fini quand** : le script passe en CI sur les paquets du build, sans aucune référence de projet. *(job `consumers` écrit dans `ci.yml`, pas encore exécuté sur GitHub)*
+
+Restent hors du script : le concepteur XAML de Visual Studio (manuel) et l'**exécution en .NET 8**, faute de runtime sur le poste (WPF net8.0 exécuté par roll-forward sur le runtime 10 ; Blazor net8.0 seulement compilé).
+
+Défauts trouvés (2026-11-25), tous deux WPF, corrigés avec un test d'abord en échec :
+
+1. `RenderToBitmap` / `SaveImage` : image prise avec le viewport courant (décalée, tronquée ou blanche). Le test existant ne contrôlait que la taille du bitmap. Côté Blazor, l'export SVG est produit depuis le modèle et n'est pas concerné par cette cause ; `SaveImage` Blazor (capture dans le navigateur) n'est pas vérifié par le script.
+2. MVVM : `UpdateNode` n'écrivait rien dans le ViewModel, `UpdateEdge` seulement les extrémités. Blazor n'a pas d'adaptateur MVVM.
+
+Ticket d'API : `FlowView.ApplyNodeChanges` / `ApplyEdgeChanges` sont publics en Blazor, mais internes en WPF (visibles des seuls tests du dépôt).
 
 ### Lot 2 — Application témoin réaliste : éditeur de schéma de base (L)
 
