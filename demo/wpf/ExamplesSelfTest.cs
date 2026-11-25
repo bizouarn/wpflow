@@ -152,13 +152,6 @@ internal static class ExamplesSelfTest
         var from = Screen(item, new Point(item.ActualWidth / 2, item.ActualHeight / 2));
         var to = Screen(f, new Point(f.ActualWidth / 2, f.ActualHeight / 2));
         await Drag(from, (to.X, to.Y), steps: 25, delay: 30);
-        if (f.Nodes.Count != 2)
-        {
-            // Le glisser-déposer OLE dépend du focus de la fenêtre : un second essai écarte les faux négatifs.
-            await Task.Delay(500);
-            await Drag(from, (to.X, to.Y), steps: 25, delay: 40);
-        }
-
         await Task.Delay(500);
         Check("palette: glisser-déposer ajoute un node", f.Nodes.Count == 2, $"{f.Nodes.Count} nodes");
         if (f.Nodes.Count == 2)

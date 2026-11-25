@@ -27,37 +27,46 @@ internal static class Sim
     public static Point Center(FrameworkElement e) => e.PointToScreen(new Point(e.ActualWidth / 2, e.ActualHeight / 2));
 
     /// <summary>Glisse avec le bouton gauche de <paramref name="from" /> à <paramref name="to" /> ; un clic est un glisser sur place.</summary>
-    public static async Task Drag(Point from, (double X, double Y) to, int steps = 12, int delay = 25)
+    /// <remarks>
+    ///     Le geste est joué hors du thread d'interface, comme une main. Un glisser-déposer OLE (<c>DragDrop.DoDragDrop</c>)
+    ///     occupe ce thread avec sa propre boucle : un geste qui attend d'y revenir entre deux pas reste figé jusqu'à ce que la
+    ///     vraie souris bouge, puisque c'est lui qui devait envoyer le mouvement suivant.
+    /// </remarks>
+    public static Task Drag(Point from, (double X, double Y) to, int steps = 12, int delay = 25) => Task.Run(() =>
     {
         SetCursorPos((int)from.X, (int)from.Y);
-        await Task.Delay(120);
+        Thread.Sleep(120);
         mouse_event(LeftDown, 0, 0, 0, 0);
-        await Task.Delay(80);
+        Thread.Sleep(80);
         for (var i = 1; i <= steps; i++)
         {
             SetCursorPos((int)(from.X + (to.X - from.X) * i / steps), (int)(from.Y + (to.Y - from.Y) * i / steps));
-            await Task.Delay(delay);
+            Thread.Sleep(delay);
         }
 
-        await Task.Delay(80);
+        Thread.Sleep(80);
         mouse_event(LeftUp, 0, 0, 0, 0);
-        await Task.Delay(250);
-    }
+        Thread.Sleep(250);
+    });
 
     /// <summary>Comme <see cref="Drag" />, mais exécute <paramref name="whileHeld" /> avant de relâcher le bouton (pour observer l'état pendant le geste).</summary>
     public static async Task DragHolding(Point from, (double X, double Y) to, Func<Task> whileHeld)
     {
-        SetCursorPos((int)from.X, (int)from.Y);
-        await Task.Delay(120);
-        mouse_event(LeftDown, 0, 0, 0, 0);
-        await Task.Delay(80);
-        for (var i = 1; i <= 12; i++)
+        // Même raison que Drag : le déplacement est joué hors du thread d'interface ; seule l'observation y revient.
+        await Task.Run(() =>
         {
-            SetCursorPos((int)(from.X + (to.X - from.X) * i / 12), (int)(from.Y + (to.Y - from.Y) * i / 12));
-            await Task.Delay(25);
-        }
+            SetCursorPos((int)from.X, (int)from.Y);
+            Thread.Sleep(120);
+            mouse_event(LeftDown, 0, 0, 0, 0);
+            Thread.Sleep(80);
+            for (var i = 1; i <= 12; i++)
+            {
+                SetCursorPos((int)(from.X + (to.X - from.X) * i / 12), (int)(from.Y + (to.Y - from.Y) * i / 12));
+                Thread.Sleep(25);
+            }
 
-        await Task.Delay(120);
+            Thread.Sleep(120);
+        });
         await whileHeld();
         mouse_event(LeftUp, 0, 0, 0, 0);
         await Task.Delay(250);

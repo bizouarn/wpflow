@@ -444,12 +444,6 @@ internal static class Runner
         var item = (ListBoxItem)_window.Tables.Items[0];
         var target = Screen(F, new Point(80, F.ActualHeight - 80));
         await Drag(Center(item), (target.X, target.Y), steps: 25, delay: 30);
-        if (Store.Nodes.Count == 4)
-        {
-            await Task.Delay(500);
-            await Drag(Center(item), (target.X, target.Y), steps: 25, delay: 40);
-        }
-
         await Task.Delay(500);
         var added = Store.Nodes.Skip(4).Select(n => n.Id).ToList();
         var hosts = Find<NodeHost>(F).Select(h => h.Node?.Id).ToList();
