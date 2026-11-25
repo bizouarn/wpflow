@@ -64,7 +64,22 @@ Chaque propriété de `NodeMapping` / `EdgeMapping` est le **nom d'une propriét
 | `ParentIdPath` | — | Groupe parent |
 | `DataPath` | — | Valeur donnée à `Node.Data` (le ViewModel lui-même si `null`) |
 
-`EdgeMapping` : `IdPath` (`Id`), `SourcePath` (`Source`), `TargetPath` (`Target`), `SourceHandlePath`, `TargetHandlePath`, `TypePath`, `LabelPath`, `AnimatedPath`, `SelectedPath`.
+`EdgeMapping` : `IdPath` (`Id`), `SourcePath` (`Source`), `TargetPath` (`Target`), `SourceHandlePath`, `TargetHandlePath`, `TypePath`, `LabelPath`, `AnimatedPath`, `SelectedPath`, `DataPath`, `MarkerStartPath`, `MarkerEndPath`.
+
+- `DataPath` donne la valeur de `Edge.Data`, celle que lisent un [fournisseur de tracé](05-edges.md) ou un modèle d'edge. Contrairement à `NodeMapping.DataPath`, `null` **ne met pas** le ViewModel dans `Data`.
+- `MarkerStartPath` et `MarkerEndPath` désignent des propriétés de type `EdgeMarker`.
+
+Quand le tracé ou les marqueurs dépendent d'une propriété calculée, levez `PropertyChanged` pour **cette** propriété (pas seulement pour celle dont elle dérive) :
+
+```csharp
+public string Cardinality
+{
+    get => _cardinality;
+    set { SetProperty(ref _cardinality, value); OnPropertyChanged(nameof(Data)); OnPropertyChanged(nameof(MarkerEnd)); }
+}
+public Relation Data => new(Cardinality);                 // EdgeMapping.DataPath
+public EdgeMarker MarkerEnd => Cardinality == "1-n" ? EdgeMarker.ArrowClosed : EdgeMarker.None;
+```
 
 Les types numériques sont convertis (un `int` ou un `float` fonctionne pour `X`). Un mappage se fixe avant ou après la source : la source est reconstruite quand il change, mais **modifier ses propriétés après coup n'est pas détecté**.
 
@@ -91,7 +106,21 @@ flow.NodeFactory = node => new TaskVm { Id = node.Id, X = node.Position.X, Y = n
 
 Sans fabrique ni commande, une connexion ou un dépôt n'ajoute rien à la source (les événements `ConnectRequested` / `DropRequested` restent disponibles).
 
-Les écritures ne reviennent pas en boucle : les `PropertyChanged` émis par la vue elle-même sont ignorés.
+Les écritures ne reviennent pas en boucle.
+
+### Refuser ou ajuster un changement
+
+Un ViewModel a le dernier mot. S'il lève `PropertyChanged` pendant que la vue lui écrit une valeur, la vue le **relit** après l'écriture et affiche ce qu'il contient : un setter qui borne une position, l'aligne sur une grille ou la refuse (élément verrouillé) est suivi. Pour refuser, ne changez pas le champ mais **levez quand même** `PropertyChanged` ; sans notification, la vue garde la valeur qu'elle a écrite.
+
+```csharp
+public double X
+{
+    get => _x;
+    set { if (!IsLocked) _x = value; OnPropertyChanged(); }
+}
+```
+
+Pour refuser une suppression, utilisez `NodesDeleteCommand` / `EdgesDeleteCommand` ; une connexion, le `CanExecute` de `ConnectCommand` ([commandes](#commandes)).
 
 > **Pendant un glisser**, `X` et `Y` sont écrits à chaque mouvement de souris. Si leur setter est coûteux (sauvegarde, recalcul), ne le faites pas dans le setter.
 
@@ -135,6 +164,12 @@ Les actions de l'utilisateur sont exposées en `ICommand` (propriétés de dépe
 | `NodeClickCommand` | l'élément (ViewModel) | Clic sans déplacement sur un node |
 | `EdgeClickCommand` | l'élément | Clic sur un edge |
 | `PaneClickCommand` | `XYPosition` (coordonnées flow) | Clic sur le fond |
+| `NodeDoubleClickCommand`, `EdgeDoubleClickCommand` | l'élément | Double-clic |
+| `NodeContextMenuCommand`, `EdgeContextMenuCommand` | l'élément | Clic droit |
+| `PaneContextMenuCommand` | `XYPosition` | Clic droit sur le fond |
+| `SelectionContextMenuCommand` | liste des éléments sélectionnés | Clic droit sur une sélection de plusieurs nodes (la commande du node est appelée aussi) |
+
+Avec `CommandsReceiveEventArgs="True"`, les commandes de clic, de double-clic et de menu contextuel reçoivent à la place un `ElementEventArgs` : élément, position et `TargetData`, la partie du modèle visée (voir [Interactions](09-interactions.md)).
 
 ```xml
 <flow:FlowView ConnectCommand="{Binding ConnectCommand}" NodesDeleteCommand="{Binding DeleteCommand}"

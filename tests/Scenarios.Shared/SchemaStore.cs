@@ -2,11 +2,29 @@ using Wpflow.Core;
 
 namespace Scenarios;
 
+/// <summary>Ce que les scénarios demandent au détenteur du schéma : le service (mode contrôlé) ou des ViewModels (MVVM).</summary>
+public interface ISchemaModel
+{
+    IReadOnlyList<Node> Nodes { get; }
+    IReadOnlyList<Edge> Edges { get; }
+    IReadOnlyList<string> Refused { get; }
+    Table Table(string id);
+    void Load(Schema schema);
+    void Apply(IReadOnlyList<NodeChange> changes);
+    void AddColumn(string table, Column column, int index);
+    void RemoveColumn(string table, string column);
+    void MoveColumn(string table, string column, int delta);
+    void ToggleCollapsed(string table);
+    void RenameColumn(string table, string oldName, string newName);
+    void SetCardinality(string relation, string cardinality);
+    void Tick(string table);
+}
+
 /// <summary>
 ///     Le service qui détient l'état (mode contrôlé) : la vue propose des changes, lui les applique ou les refuse.
 ///     <see cref="Changed" /> signale toute modification, y compris celles venues d'ailleurs que la vue.
 /// </summary>
-public sealed class SchemaStore
+public sealed class SchemaStore : ISchemaModel
 {
     private readonly List<string> _refused = [];
 
@@ -66,14 +84,17 @@ public sealed class SchemaStore
         if (_refused.Count == 0 || _refused[^1] != what) _refused.Add(what);
     }
 
-    private Column? Column(string table, string? column) =>
-        Nodes.FirstOrDefault(n => n.Id == table)?.Data is Table t ? t.Columns.FirstOrDefault(c => c.Name == column) : null;
+    private Column? Column(string table, string? column) => Schemas.ColumnOf(Nodes, table, column);
 
-    /// <summary>Deux tables différentes, deux colonnes de même type, pas de doublon.</summary>
-    public bool CanConnect(Connection c) =>
-        c.Source != c.Target
-        && Column(c.Source, c.SourceHandle) is { } from && Column(c.Target, c.TargetHandle) is { } to && from.Type == to.Type
-        && !Edges.Any(e => e.Source == c.Source && e.Target == c.Target && e.SourceHandle == c.SourceHandle && e.TargetHandle == c.TargetHandle);
+    public bool CanConnect(Connection c) => Schemas.CanConnect(Nodes, Edges, c);
+
+    public void SetCardinality(string relation, string cardinality)
+    {
+        Edges = Edges.Select(e => e.Id == relation
+            ? Schemas.RelationEdge(e.Id, e.Source, e.SourceHandle!, e.Target, e.TargetHandle!, cardinality) with { Selected = e.Selected }
+            : e).ToList();
+        Changed?.Invoke();
+    }
 
     public void Connect(Connection c)
     {

@@ -54,6 +54,19 @@ public sealed class EdgeMapping
     public string? DeletablePath { get; set; }
     public string? SelectedPath { get; set; }
 
+    /// <summary>
+    ///     Propriété fournie à <c>Edge.Data</c> (lue par les fournisseurs de tracé et les modèles d'edge). Contrairement à
+    ///     <see cref="NodeMapping.DataPath" />, <c>null</c> ne met <b>pas</b> le ViewModel dans <c>Data</c> : il n'est pas mappé.
+    /// </summary>
+    public string? DataPath { get; set; }
+
+    /// <summary>Propriété de type <see cref="Core.EdgeMarker" /> pour le marqueur de départ.</summary>
+    public string? MarkerStartPath { get; set; }
+
+    /// <summary>Propriété de type <see cref="Core.EdgeMarker" /> pour le marqueur d'arrivée.</summary>
+    public string? MarkerEndPath { get; set; }
+
     internal HashSet<string> Paths() => NodeMapping.Collect(IdPath, SourcePath, TargetPath, SourceHandlePath,
-        TargetHandlePath, TypePath, LabelPath, AnimatedPath, SelectedPath, HiddenPath, SelectablePath, DeletablePath);
+        TargetHandlePath, TypePath, LabelPath, AnimatedPath, SelectedPath, HiddenPath, SelectablePath, DeletablePath,
+        DataPath, MarkerStartPath, MarkerEndPath);
 }

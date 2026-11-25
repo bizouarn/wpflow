@@ -26,6 +26,16 @@ public static class Schemas
             MarkerEnd: cardinality == "1-n" ? EdgeMarker.ArrowClosed : EdgeMarker.None,
             MarkerStart: cardinality == "n-n" ? EdgeMarker.Arrow : EdgeMarker.None);
 
+    public static Column? ColumnOf(IReadOnlyList<Node> nodes, string table, string? column) =>
+        nodes.FirstOrDefault(n => n.Id == table)?.Data is Table t ? t.Columns.FirstOrDefault(c => c.Name == column) : null;
+
+    /// <summary>Deux tables différentes, deux colonnes de même type, pas de doublon.</summary>
+    public static bool CanConnect(IReadOnlyList<Node> nodes, IReadOnlyList<Edge> edges, Connection c) =>
+        c.Source != c.Target
+        && ColumnOf(nodes, c.Source, c.SourceHandle) is { } from && ColumnOf(nodes, c.Target, c.TargetHandle) is { } to
+        && from.Type == to.Type
+        && !edges.Any(e => e.Source == c.Source && e.Target == c.Target && e.SourceHandle == c.SourceHandle && e.TargetHandle == c.TargetHandle);
+
     /// <summary>Boutique : trois tables et deux relations ; <c>audit</c> est verrouillée (le service refuse de la déplacer ou la supprimer).</summary>
     public static Schema Shop() => new(
     [

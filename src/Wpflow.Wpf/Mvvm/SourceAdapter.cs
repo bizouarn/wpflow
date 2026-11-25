@@ -20,6 +20,7 @@ internal abstract class SourceAdapter<T> : IDisposable where T : class
     private readonly Dictionary<string, object> _modelById = new();
     private readonly Dictionary<string, object> _removed = new(); // ViewModels retirés par la vue : un Undo les remet tels quels
     private int _writing; // > 0 pendant l'écriture vers le ViewModel : ses PropertyChanged ne sont pas des changements à relire
+    private HashSet<object>? _notified; // ViewModels qui ont notifié pendant la réécriture d'un change : à relire ensuite
 
     protected SourceAdapter(IEnumerable source, HashSet<string> paths)
     {
@@ -64,8 +65,14 @@ internal abstract class SourceAdapter<T> : IDisposable where T : class
 
     private void OnItemChanged(object? sender, PropertyChangedEventArgs e)
     {
-        if (IsWriting || sender == null) return;
+        if (sender == null) return;
         if (!string.IsNullOrEmpty(e.PropertyName) && !_paths.Contains(e.PropertyName)) return;
+        if (IsWriting)
+        {
+            _notified?.Add(sender);
+            return;
+        }
+
         if (!_idByModel.TryGetValue(sender, out var oldId) || IdOf(sender) != oldId)
         {
             Rebuild(); // l'identité a changé : tout est à recalculer
@@ -141,6 +148,41 @@ internal abstract class SourceAdapter<T> : IDisposable where T : class
         {
             _writing--;
         }
+    }
+
+    /// <summary>
+    ///     Comme <see cref="Write" />, pour la réécriture des changes appliqués par la vue : un ViewModel qui notifie pendant
+    ///     ce temps est relu ensuite, car il a pu ajuster ou refuser la valeur (setter qui borne, node verrouillé…). La vue
+    ///     suit alors le ViewModel. Un ViewModel qui accepte donne le même record : rien n'est renvoyé à la vue.
+    /// </summary>
+    protected void WriteBackAndRead(Action write)
+    {
+        var outer = _notified;
+        var notified = _notified = new HashSet<object>(ReferenceEqualityComparer.Instance);
+        try
+        {
+            Write(write);
+        }
+        finally
+        {
+            _notified = outer;
+        }
+
+        if (notified.Count == 0) return;
+        var current = Current;
+        var index = new Dictionary<string, int>(current.Count);
+        for (var i = 0; i < current.Count; i++) index.TryAdd(IdOfModel(current[i]), i);
+        List<T>? list = null;
+        foreach (var model in notified)
+        {
+            if (!_idByModel.TryGetValue(model, out var id) || !index.TryGetValue(id, out var at)) continue;
+            var read = Project(model, current[at]);
+            if (read.Equals(current[at])) continue;
+            list ??= current.ToList();
+            list[at] = read;
+        }
+
+        if (list != null) Push(list);
     }
 
     /// <summary>Retire ces ViewModels de la collection source (si elle est modifiable), puis resynchronise une seule fois.</summary>
@@ -245,7 +287,7 @@ internal sealed class NodeSourceAdapter : SourceAdapter<Node>
     {
         List<string>? removed = null;
         List<Node>? added = null;
-        Write(() =>
+        WriteBackAndRead(() =>
         {
             foreach (var change in changes)
                 switch (change)
@@ -373,7 +415,10 @@ internal sealed class EdgeSourceAdapter : SourceAdapter<Edge>
             Hidden = Reflect.Bool(model, _map.HiddenPath) ?? edge.Hidden,
             Selectable = Reflect.Bool(model, _map.SelectablePath) ?? edge.Selectable,
             Deletable = Reflect.Bool(model, _map.DeletablePath) ?? edge.Deletable,
-            Selected = Reflect.Bool(model, _map.SelectedPath) ?? edge.Selected
+            Selected = Reflect.Bool(model, _map.SelectedPath) ?? edge.Selected,
+            Data = _map.DataPath == null ? edge.Data : Reflect.Get(model, _map.DataPath),
+            MarkerStart = Reflect.Get(model, _map.MarkerStartPath) as EdgeMarker? ?? edge.MarkerStart,
+            MarkerEnd = Reflect.Get(model, _map.MarkerEndPath) as EdgeMarker? ?? edge.MarkerEnd
         };
     }
 
@@ -381,7 +426,7 @@ internal sealed class EdgeSourceAdapter : SourceAdapter<Edge>
     {
         List<string>? removed = null;
         List<Edge>? added = null;
-        Write(() =>
+        WriteBackAndRead(() =>
         {
             foreach (var change in changes)
                 switch (change)
@@ -394,6 +439,7 @@ internal sealed class EdgeSourceAdapter : SourceAdapter<Edge>
                         Reflect.Set(m, _map.HiddenPath, r.Item.Hidden);
                         Reflect.Set(m, _map.SelectablePath, r.Item.Selectable);
                         Reflect.Set(m, _map.DeletablePath, r.Item.Deletable);
+                        if (_map.DataPath != null) Reflect.Set(m, _map.DataPath, r.Item.Data);
                         break;
                     case EdgeRemoveChange r:
                         (removed ??= []).Add(r.Id);
@@ -421,6 +467,8 @@ internal sealed class EdgeSourceAdapter : SourceAdapter<Edge>
         Reflect.Set(model, _map.LabelPath, edge.Label);
         Reflect.Set(model, _map.AnimatedPath, edge.Animated);
         Reflect.Set(model, _map.SelectedPath, edge.Selected);
+        Reflect.Set(model, _map.MarkerStartPath, edge.MarkerStart);
+        Reflect.Set(model, _map.MarkerEndPath, edge.MarkerEnd);
     }
 
     /// <summary>Remplace tous les ViewModels par ceux que <see cref="FlowView.EdgeFactory" /> crée pour ces edges.</summary>

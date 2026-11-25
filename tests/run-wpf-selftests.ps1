@@ -27,7 +27,7 @@ $runs = @(
     @{ Name = 'demo';     Log = 'demo.log';        TimeoutSeconds = 180; Env = @{ WPFLOW_SELFTEST = '1' } }
     @{ Name = 'examples'; Log = 'examples.log';    TimeoutSeconds = 300; Env = @{ WPFLOW_EXAMPLES = 'selftest' } }
     @{ Name = 'perf';     Log = 'perf.perf.log';   TimeoutSeconds = 240; Env = @{ WPFLOW_PERF = "$PerfNodes" } }
-    @{ Name = 'scenarios'; Log = 'scenarios.log';  TimeoutSeconds = 360; Env = @{ WPFLOW_SCENARIOS = (Join-Path $Output 'scenarios.log') }
+    @{ Name = 'scenarios'; Log = 'scenarios.log';  TimeoutSeconds = 600; Env = @{ WPFLOW_SCENARIOS = (Join-Path $Output 'scenarios.log') }
        Exe = (Join-Path $root "tests\Scenarios.Wpf\bin\$Configuration\net10.0-windows\Scenarios.Wpf.exe") }
 )
 

@@ -606,6 +606,10 @@ public partial class FlowView
     private bool IsSelectionMenu(string nodeId) => Nodes.Count(n => n.Selected) > 1 && Nodes.Any(n => n.Id == nodeId && n.Selected);
 
     // Appelé par OnMouseRightButtonUp.
-    private void RaiseSelectionContextMenu(XYPosition position, DependencyObject? source) =>
-        SelectionContextMenuRequested?.Invoke(this, PressArgs(FlowElementKind.Node, null, position, source));
+    private void RaiseSelectionContextMenu(XYPosition position, DependencyObject? source)
+    {
+        var args = PressArgs(FlowElementKind.Node, null, position, source);
+        SelectionContextMenuRequested?.Invoke(this, args);
+        RunElementCommand(SelectionContextMenuCommand, args, ElementsOfNodes(SelectedNodeIds()));
+    }
 }

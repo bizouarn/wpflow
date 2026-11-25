@@ -22,25 +22,52 @@ internal static class Runner
     private static Action<string> _log = _ => { };
 
     private static FlowView F => _window.View;
-    private static SchemaStore Store => _window.Store;
+    private static ISchemaModel Store => _window.Store;
 
-    private static void Check(string name, bool ok, string detail = "") => _log(SelfTestReport.Line(name, ok, detail));
+    private static string _prefix = "";
 
+    private static void Check(string name, bool ok, string detail = "") => _log(SelfTestReport.Line(_prefix + name, ok, detail));
+
+    /// <summary>Tous les scénarios en mode contrôlé, puis les mêmes en MVVM dans une seconde fenêtre.</summary>
     public static async Task Run(MainWindow window, Action<string> log)
     {
-        (_window, _log) = (window, log);
+        _log = log;
+        await RunAll(window, mvvm: false);
+
+        var other = new MainWindow(mvvm: true) { Topmost = true };
+        window.Hide();
+        other.Show();
+        other.Activate();
+        try
+        {
+            await Task.Delay(1000);
+            await RunAll(other, mvvm: true);
+        }
+        finally
+        {
+            window.Show();
+            other.Close();
+            _window = window;
+        }
+    }
+
+    private static async Task RunAll(MainWindow window, bool mvvm)
+    {
+        _window = window;
+        _prefix = mvvm ? "MVVM · " : "";
         var scenarios = new (string Name, Func<Task> Body)[]
         {
             ("chargement", Loading), ("élément visé", Targets), ("colonnes", Columns), ("renommage", Renaming),
             ("menus", Menus), ("relations", Relations), ("connexions", Connections), ("contrôlé", Controlled),
             ("rechargement", Reload), ("json", Json), ("mises à jour de fond", Background), ("contrôles WPF", Widgets),
             ("palette", DragFromPalette), ("200 tables", () => Large(false)), ("200 tables virtualisées", () => Large(true)),
-            ("mvvm", Mvvm)
+            ("autre thread", OtherThread)
         };
         var only = Environment.GetEnvironmentVariable("WPFLOW_SCENARIO");
-        foreach (var (name, body) in scenarios.Where(s => string.IsNullOrEmpty(only) || s.Name == only))
+        // « autre thread » ouvre sa propre vue liée à des ViewModels : une seule fois suffit.
+        foreach (var (name, body) in scenarios.Where(s => (string.IsNullOrEmpty(only) || s.Name == only) && !(mvvm && s.Name == "autre thread")))
         {
-            log("INFO  == " + name);
+            _log("INFO  == " + _prefix + name);
             try
             {
                 await Fresh();
@@ -51,6 +78,7 @@ internal static class Runner
                 Check(name + " : le scénario va au bout", false, ex.Message);
             }
 
+            if (mvvm) CheckViewMatchesViewModels(name);
             Check(name + " : aucune exception non gérée", _window.Errors.Count == 0, _window.Errors.FirstOrDefault() ?? "");
             _window.Errors.Clear();
         }
@@ -264,17 +292,113 @@ internal static class Runner
             PresentationSource.CurrentSources.OfType<PresentationSource>().Any(s => s.RootVisual is FrameworkElement root && Find<ToolTip>(root).Any(t => t.IsVisible)));
     }
 
-    private static Task Relations()
+    private static EdgeVisual Drawn(string relation) => Find<EdgeVisual>(F).First(v => v.EdgeId == relation);
+
+    private static string ShapeOf(string path) => path.Contains('C') ? "bézier" : path.Contains('Q') ? "angles droits" : "droite";
+
+    /// <summary>Un point du tracé réellement dessiné, en coordonnées flow.</summary>
+    private static XYPosition PointOn(string path, double fraction)
     {
-        var visuals = Find<FrameworkElement>(F).Where(e => e.GetType().Name == "EdgeVisual").ToList();
-        Check("relations : un visuel par edge", visuals.Count == Store.Edges.Count, $"{visuals.Count}");
-        var provider = new RelationPath();
-        string Path(string cardinality) => provider.GetPath(new EdgeGeometry(new XYPosition(0, 0), Wpflow.Core.Position.Right,
-            new XYPosition(200, 100), Wpflow.Core.Position.Left) { Edge = Schemas.RelationEdge("e", "a", "x", "b", "y", cardinality) }).Path;
-        Check("relations : le tracé dépend de la cardinalité", Path("1-n") != Path("1-1") && Path("1-1") != Path("n-n"));
-        Check("relations : le fournisseur de l'application est celui de la ressource", F.TryFindResource("wpflow-edge-relation") is RelationPath
-            || _window.TryFindResource("wpflow-edge-relation") is RelationPath);
-        return Task.CompletedTask;
+        Geometry.Parse(path).GetFlattenedPathGeometry().GetPointAtFractionLength(fraction, out var p, out _);
+        return new XYPosition(p.X, p.Y);
+    }
+
+    private static Point ToScreen(XYPosition flow) => Screen(F, F.FlowToScreen(flow));
+
+    /// <summary>Quelque chose est dessiné (autre que le fond blanc) à ce point flow, à un pixel près.</summary>
+    private static bool Painted(byte[] pixels, FrameworkElement root, XYPosition flow)
+    {
+        var at = F.TranslatePoint(F.FlowToScreen(flow), root);
+        var width = (int)root.ActualWidth;
+        for (var dy = -1; dy <= 1; dy++)
+        for (var dx = -1; dx <= 1; dx++)
+        {
+            var i = (((int)at.Y + dy) * width + (int)at.X + dx) * 4;
+            if (i < 0 || i + 3 >= pixels.Length || pixels[i + 3] == 0) continue;
+            if (Math.Min(pixels[i], Math.Min(pixels[i + 1], pixels[i + 2])) < pixels[i + 3] * 0.9) return true;
+        }
+
+        return false;
+    }
+
+    private static async Task ClickAway()
+    {
+        await Task.Delay(600); // pas de double-clic avec le clic précédent
+        await Click(Empty());
+        await Task.Delay(600);
+    }
+
+    /// <summary>Un seul type d'edge : le tracé et les marqueurs dessinés suivent <c>Edge.Data</c>, y compris quand il change.</summary>
+    private static async Task Relations()
+    {
+        Check("relations : un visuel par edge", Find<EdgeVisual>(F).Count() == Store.Edges.Count, $"{Find<EdgeVisual>(F).Count()}");
+        Check("relations : au chargement, chaque cardinalité a son tracé",
+            ShapeOf(Drawn("r-orders").PathData!) == "bézier" && ShapeOf(Drawn("r-lines").PathData!) == "angles droits",
+            $"{Drawn("r-orders").PathData} | {Drawn("r-lines").PathData}");
+
+        // « lines » plus bas : les trois tracés possibles de r-lines s'écartent nettement les uns des autres.
+        Store.Apply([new NodePositionChange("lines", new XYPosition(760, 260))]);
+        await Task.Delay(500);
+        F.Viewport = new Viewport(200 - 600 * 2, 100, 2);
+        await Task.Delay(600);
+        string? previous = null;
+        foreach (var (cardinality, shape, endMarker, startMarker) in new[]
+                 {
+                     ("1-1", "angles droits", false, false), ("1-n", "bézier", true, false), ("n-n", "droite", false, true),
+                     ("1-1", "angles droits", false, false)
+                 })
+        {
+            Store.SetCardinality("r-lines", cardinality);
+            await Task.Delay(500);
+            var path = Drawn("r-lines").PathData!;
+            var label = Find<Button>(F).First(b => b.Tag as string == "r-lines").Content as string;
+            Check($"relations {cardinality} : tracé {shape} et label", ShapeOf(path) == shape && label == cardinality, $"{path} ; label {label}");
+
+            var root = (FrameworkElement)_window.Content;
+            var pixels = Snapshot(root);
+            var (start, end) = (PointOn(path, 0), PointOn(path, 1));
+            // Les flèches pointent vers leur node : leur base est à 6 unités, à 4 de part et d'autre du trait.
+            var atEnd = Painted(pixels, root, new XYPosition(end.X - 6, end.Y - 3.8));
+            var atStart = Painted(pixels, root, new XYPosition(start.X + 6, start.Y - 4.2));
+            Check($"relations {cardinality} : marqueurs dessinés", atEnd == endMarker && atStart == startMarker,
+                $"arrivée {atEnd} (attendu {endMarker}), départ {atStart} (attendu {startMarker})");
+
+            var on = PointOn(path, 0.2);
+            await ClickAway();
+            await Click(ToScreen(on));
+            Check($"relations {cardinality} : un clic sur le tracé dessiné atteint la relation", _window.LogText == "clic relation r-lines", _window.LogText);
+
+            if (previous != null)
+            {
+                var old = PointOn(previous, 0.2);
+                var apart = Math.Sqrt(Math.Pow(old.X - on.X, 2) + Math.Pow(old.Y - on.Y, 2));
+                await ClickAway();
+                await Click(ToScreen(old));
+                Check($"relations {cardinality} : plus rien à l'ancien emplacement", apart > 10 && _window.LogText == "clic sur le fond",
+                    $"écart {apart:0}, {_window.LogText}");
+            }
+
+            previous = path;
+        }
+    }
+
+    /// <summary>MVVM : la vue n'a rien gardé que les ViewModels n'ont pas (position, sélection, extrémités, données).</summary>
+    private static void CheckViewMatchesViewModels(string name)
+    {
+        var nodes = F.Nodes.ToDictionary(n => n.Id);
+        var edges = F.Edges.ToDictionary(e => e.Id);
+        var wrong = new List<string>();
+        foreach (var n in Store.Nodes)
+            if (!nodes.TryGetValue(n.Id, out var v) || v.Position != n.Position || v.Selected != n.Selected)
+                wrong.Add($"node {n.Id} : ViewModel {n.Position} {n.Selected}, vue {v?.Position} {v?.Selected}");
+        foreach (var e in Store.Edges)
+            if (!edges.TryGetValue(e.Id, out var v) || v.Source != e.Source || v.SourceHandle != e.SourceHandle ||
+                v.Target != e.Target || v.TargetHandle != e.TargetHandle || v.Selected != e.Selected ||
+                !Equals(v.Data, e.Data) || v.MarkerEnd != e.MarkerEnd)
+                wrong.Add("edge " + e.Id);
+        Check(name + " : la vue et les ViewModels disent la même chose",
+            wrong.Count == 0 && nodes.Count == Store.Nodes.Count && edges.Count == Store.Edges.Count,
+            wrong.Count > 0 ? string.Join(" ; ", wrong) : $"{nodes.Count}/{Store.Nodes.Count} nodes, {edges.Count}/{Store.Edges.Count} edges");
     }
 
     private static async Task Connections()
@@ -330,10 +454,10 @@ internal static class Runner
 
     private static async Task Json()
     {
-        var json = Schemas.ToJson(Store.Nodes, Store.Edges, F.Viewport);
+        var json = _window.SaveDocument();
         _window.Open(Schemas.Library());
         await Task.Delay(600);
-        _window.Open(Schemas.FromJson(json));
+        _window.RestoreDocument(json);
         await Task.Delay(900);
         Check("JSON : le schéma revient avec des données typées", Store.Nodes.Count == 4 && Store.Nodes.All(n => n.Data is Table)
             && Store.Edges.All(e => e.Data is Relation));
@@ -476,7 +600,7 @@ internal static class Runner
             Math.Abs(after.X - before.X - 100 / scale) < 4 && Math.Abs(after.Y - before.Y - 60 / scale) < 4, $"{before} -> {after}");
     }
 
-    private static async Task Mvvm()
+    private static async Task OtherThread()
     {
         var tables = new ObservableCollection<TableViewModel>
         {

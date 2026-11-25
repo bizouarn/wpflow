@@ -278,6 +278,15 @@ public partial class FlowView
     /// <summary>Clic droit sur le fond. Paramètre : la position en coordonnées flow (<see cref="XYPosition" />).</summary>
     public static readonly DependencyProperty PaneContextMenuCommandProperty = CommandProperty(nameof(PaneContextMenuCommand));
 
+    /// <summary>Clic droit sur une sélection de plusieurs nodes. Paramètre : la liste des éléments sélectionnés (ViewModels ou <see cref="Node" />).</summary>
+    public static readonly DependencyProperty SelectionContextMenuCommandProperty = CommandProperty(nameof(SelectionContextMenuCommand));
+
+    public ICommand? SelectionContextMenuCommand
+    {
+        get => (ICommand?)GetValue(SelectionContextMenuCommandProperty);
+        set => SetValue(SelectionContextMenuCommandProperty, value);
+    }
+
     public ICommand? NodeDoubleClickCommand
     {
         get => (ICommand?)GetValue(NodeDoubleClickCommandProperty);

@@ -44,7 +44,7 @@ Ordre conseillé : 0, 1, 2, puis le reste. Les tailles sont relatives (S, M, L).
 ### Lot 0 — Barrière avant publication (M)
 
 - [x] Blazor : `release.yml` lance les tests de bout en bout avant `Pack`. *(workflow écrit, pas encore exécuté sur GitHub)*
-- [x] WPF : les auto-tests à la vraie souris rendent un **code de sortie** en échec sur toute ligne `ECHEC`, une exception ou un délai dépassé, et un script unique les enchaîne. *(`tests/run-wpf-selftests.ps1`, quatre runs ; 2026-11-25 en local : démo 24/24, exemples 86/86, performances, éditeur de schéma 78/78)*
+- [x] WPF : les auto-tests à la vraie souris rendent un **code de sortie** en échec sur toute ligne `ECHEC`, une exception ou un délai dépassé, et un script unique les enchaîne. *(`tests/run-wpf-selftests.ps1`, quatre runs ; 2026-11-25 en local : démo 24/24, exemples 86/86, performances, éditeur de schéma 195/195)*
 - [ ] WPF : les exécuter automatiquement demande un bureau interactif. Essayer le runner `windows-latest`, sinon une machine auto-hébergée avec session ouverte, sinon une exécution locale obligatoire avant le tag. *(jobs écrits dans `ci.yml` et `release.yml`, à valider au premier push)*
 - [x] WPF : donner l'équivalent de `TargetData` (élément d'origine du clic, du double-clic et du menu contextuel, dans les évènements et les commandes), avec un test à la vraie souris qui échoue d'abord. *(`FlowView.TargetData`, `ElementEventArgs.TargetData`/`OriginalSource`, `CommandsReceiveEventArgs`, vérifiés à la vraie souris le 2026-11-25. L'API n'existant pas, le test ne pouvait pas d'abord échouer à l'exécution)*
 - [x] Activer la validation de paquet (`EnablePackageValidation` et `PackageValidationBaselineVersion`) pour les trois paquets : une rupture d'API fait échouer le pack. *(vérifié : le pack du noyau échouait sur les quatre membres retirés avant leur déclaration)*
@@ -103,7 +103,7 @@ Commun :
 - [x] Colonnes ajoutées, retirées, réordonnées, node replié : les handles sont remesurés et les edges suivent.
 - [x] Double-clic sur une colonne pour renommer dans un champ : saisie, Suppr, flèches, Ctrl+A, Ctrl+Z et Espace restent dans le champ.
 - [x] Menu contextuel par table, par colonne, par relation, sur le fond et sur une sélection.
-- [ ] Types d'edges qui varient selon `Edge.Data` (cardinalités, marqueurs, labels cliquables).
+- [x] Types d'edges qui varient selon `Edge.Data` (cardinalités, marqueurs, labels cliquables).
 - [x] `IsValidConnection` selon le type des colonnes.
 - [x] Mode contrôlé : l'état vit dans un service, avec refus de certains changes.
 - [x] Chargement asynchrone après le premier affichage, puis rechargement d'un autre schéma (cadrage, historique, sélection).
@@ -114,7 +114,7 @@ Commun :
 Propre à WPF :
 
 - [x] `ListBox`, `DataGrid`, `ComboBox`, `TextBox`, `ScrollViewer` et boutons dans un node : molette, menu déroulant, saisie et focus restent au contrôle.
-- [ ] Le même scénario en MVVM (`NodesSource`, commandes) : colonnes en `ObservableCollection`, modifications venant d'un autre thread renvoyées sur le thread d'interface.
+- [x] Le même scénario en MVVM (`NodesSource`, commandes) : colonnes en `ObservableCollection`, modifications venant d'un autre thread renvoyées sur le thread d'interface.
 - [x] `ContextMenu` et `ToolTip` WPF posés dans les templates ; glisser-déposer depuis une liste de tables.
 
 Propre à Blazor :
@@ -123,12 +123,17 @@ Propre à Blazor :
 
 **Fini quand** : chaque ligne a un scénario sur WPF, Blazor Server et Blazor WebAssembly. Tout besoin impossible sans contourner la bibliothèque devient un ticket d'API.
 
-**État (2026-11-25).** Modèles et règles : `tests/Scenarios.Shared`. Blazor : `tests/Scenarios.Blazor` (hôtes `.Server` et `.Wasm`), scénarios dans `tests/Wpflow.Blazor.E2E/ScenarioTests.cs` sur Server et WebAssembly (Edge) ; les classes de bout en bout passent une à une : à quatre en parallèle, la machine de 8 Go saturait et les circuits tombaient. WPF : `tests/Scenarios.Wpf` (scénarios dans `Runner.cs`, 78 vérifications à la vraie souris, lancés par `tests/run-wpf-selftests.ps1` ; `WPFLOW_SCENARIO=<nom>` n'en lance qu'un).
+**État (2026-11-25).** Modèles et règles : `tests/Scenarios.Shared`. Blazor : `tests/Scenarios.Blazor` (hôtes `.Server` et `.Wasm`), scénarios dans `tests/Wpflow.Blazor.E2E/ScenarioTests.cs` sur Server et WebAssembly (Edge) ; les classes de bout en bout passent une à une : à quatre en parallèle, la machine de 8 Go saturait et les circuits tombaient. WPF : `tests/Scenarios.Wpf` (scénarios dans `Runner.cs`, 195 vérifications à la vraie souris, en mode contrôlé puis en MVVM, lancés par `tests/run-wpf-selftests.ps1` ; `WPFLOW_SCENARIO=<nom>` n'en lance qu'un).
 
-Deux lignes restent ouvertes :
+**Toutes les lignes ont leur scénario** (2026-11-25).
 
-- **Types d'edges** : complet en Blazor. En WPF, le label cliquable est essayé à la souris et le fournisseur est vérifié hors de la vue, mais ni le tracé dessiné ni les marqueurs.
-- **MVVM** : le scénario WPF couvre le réordonnancement (`ObservableCollection.Move`), la modification venue d'un autre thread et le glisser, pas tout le scénario ni les commandes.
+- **Types d'edges, WPF** : sur la vue réelle, forme du tracé dessiné, clic réel sur ce tracé (et plus rien à l'ancien emplacement), pixels des marqueurs, et cardinalité changée en cours de route. Côté Blazor, le scénario contrôle le tracé et le marqueur au chargement, pas leur changement en cours de route.
+- **MVVM** : les mêmes scénarios rejoués avec `NodesSource`, des commandes et des ViewModels (sauf « autre thread », qui a sa propre vue). Après chacun, la vue et les ViewModels doivent dire la même chose. `WPFLOW_MVVM=1` ouvre l'application dans ce mode.
+
+Trouvés en écrivant le scénario MVVM :
+
+1. **Défaut** : un ViewModel qui ajuste ou refuse une valeur écrite par la vue (setter qui borne, élément verrouillé) n'était pas relu ; la vue divergeait. Corrigé, avec un test xUnit d'abord en échec (`MvvmRefusalTests`, sans souris : le défaut est entre la vue et le ViewModel) ; le scénario à la souris n'a pas été rejoué sur l'ancien code. *Blazor : sans objet (pas d'adaptateur MVVM).*
+2. **Manques d'API**, comblés : `EdgeMapping.DataPath`, `MarkerStartPath`, `MarkerEndPath` (sans eux, un edge ne pouvait pas varier selon ses données) et `SelectionContextMenuCommand`.
 
 Limites des scénarios WPF : en mode contrôlé, `Undo()` ne fait rien en WPF, donc « Ctrl+Z reste dans le champ » n'y prouve que le comportement du champ ; la `ListBox`, le `ScrollViewer` et le `DataGrid` portent `FlowView.NoWheel` (équivalent de `nowheel`), la molette sans cette marque n'est pas essayée ; la modification en mode contrôlé est appliquée de façon synchrone (le cas différé du défaut 4 n'est couvert que par le test du noyau) ; un seul DPI (100 %).
 

@@ -10,12 +10,18 @@ using Wpflow.Wpf;
 namespace Scenarios.Wpf;
 
 /// <summary>
-///     L'éditeur de schéma témoin : mode contrôlé (l'état vit dans <see cref="SchemaStore" />). Avec WPFLOW_SCENARIOS=chemin.log,
-///     il exécute les scénarios à la vraie souris puis quitte avec un code de sortie.
+///     L'éditeur de schéma témoin, en mode contrôlé (l'état vit dans <see cref="SchemaStore" />) ou en MVVM (WPFLOW_MVVM=1,
+///     voir <see cref="MvvmSchema" />). Avec WPFLOW_SCENARIOS=chemin.log, il exécute les scénarios à la vraie souris, dans les
+///     deux modes, puis quitte avec un code de sortie.
 /// </summary>
 public partial class MainWindow : Window
 {
-    internal SchemaStore Store { get; } = new();
+    private SchemaStore? _store;
+    private MvvmSchema? _mvvm;
+
+    /// <summary>Le détenteur du schéma : le service (mode contrôlé) ou les ViewModels.</summary>
+    internal ISchemaModel Store => (ISchemaModel?)_mvvm ?? _store!;
+
     internal FlowView View => Flow;
     internal ListBox Tables => Palette;
     internal string LogText => Log.Text;
@@ -27,64 +33,139 @@ public partial class MainWindow : Window
     /// <summary>Exceptions non gérées levées pendant les scénarios.</summary>
     internal List<string> Errors { get; } = [];
 
-    public MainWindow()
+    public MainWindow() : this(mvvm: Environment.GetEnvironmentVariable("WPFLOW_MVVM") == "1")
     {
-        InitializeComponent();
-        Dispatcher.UnhandledException += (_, e) =>
-        {
-            Errors.Add(e.Exception.ToString());
-            e.Handled = true;
-        };
-        Wire();
-
         if (Environment.GetEnvironmentVariable("WPFLOW_SCENARIOS") is { Length: > 0 } path)
             ContentRendered += async (_, _) =>
-                await SelfTestReport.Run(this, path, TimeSpan.FromSeconds(300), log => Runner.Run(this, log));
+                await SelfTestReport.Run(this, path, TimeSpan.FromSeconds(540), log => Runner.Run(this, log));
         else
             ContentRendered += (_, _) => Open(Schemas.Shop());
     }
 
-    private void Wire()
+    internal MainWindow(bool mvvm)
     {
+        InitializeComponent();
+        Dispatcher.UnhandledException += OnUnhandled;
+        Closed += (_, _) => Dispatcher.UnhandledException -= OnUnhandled;
+        if (mvvm) WireMvvm();
+        else WireControlled();
+    }
+
+    private void OnUnhandled(object sender, DispatcherUnhandledExceptionEventArgs e)
+    {
+        Errors.Add(e.Exception.ToString());
+        e.Handled = true;
+    }
+
+    private void WireControlled()
+    {
+        var store = _store = new SchemaStore();
         Flow.AutoApplyChanges = false;
-        Flow.NodeChangesRequested += (_, e) => Store.Apply(e.Changes);
-        Flow.EdgeChangesRequested += (_, e) => Store.Apply(e.Changes);
-        Flow.ConnectRequested += (_, e) => Store.Connect(e.Connection);
-        Flow.IsValidConnection = Store.CanConnect;
-        Store.Changed += () =>
+        Flow.NodeChangesRequested += (_, e) => store.Apply(e.Changes);
+        Flow.EdgeChangesRequested += (_, e) => store.Apply(e.Changes);
+        Flow.ConnectRequested += (_, e) => store.Connect(e.Connection);
+        Flow.IsValidConnection = store.CanConnect;
+        store.Changed += () =>
         {
-            Flow.Nodes = Store.Nodes;
-            Flow.Edges = Store.Edges;
+            Flow.Nodes = store.Nodes;
+            Flow.Edges = store.Edges;
         };
 
-        Flow.NodeClick += (_, e) => Log.Text = "clic " + Describe(e);
-        Flow.NodeDoubleClick += (_, e) =>
-        {
-            DoubleClicks.Add(Describe(e));
-            if (e.TargetData is string && e.OriginalSource != null) StartRename(e.OriginalSource);
-        };
-        Flow.EdgeClick += (_, e) => Log.Text = "clic relation " + e.Id;
-        Flow.PaneClick += (_, _) => Log.Text = "clic sur le fond";
-        Flow.NodeContextMenuRequested += (_, e) => Menu.Text = (e.TargetData is string ? "colonne " : "table ") + Describe(e);
-        Flow.EdgeContextMenuRequested += (_, e) => Menu.Text = "relation " + e.Id;
-        Flow.PaneContextMenuRequested += (_, _) => Menu.Text = "fond";
-        Flow.SelectionContextMenuRequested += (_, _) => SelectionMenus.Add("sélection de " + Store.Nodes.Count(n => n.Selected));
+        Flow.NodeClick += (_, e) => OnNodeClicked(e);
+        Flow.NodeDoubleClick += (_, e) => OnNodeDoubleClicked(e);
+        Flow.EdgeClick += (_, e) => OnEdgeClicked(e);
+        Flow.PaneClick += (_, _) => OnPaneClicked();
+        Flow.NodeContextMenuRequested += (_, e) => OnNodeMenu(e);
+        Flow.EdgeContextMenuRequested += (_, e) => OnEdgeMenu(e);
+        Flow.PaneContextMenuRequested += (_, _) => OnPaneMenu();
+        Flow.SelectionContextMenuRequested += (_, _) => OnSelectionMenu();
         Flow.DropRequested += (_, e) =>
         {
-            if (e.Data.GetData(DataFormats.StringFormat) is not string name || Store.Nodes.Any(n => n.Id == name)) return;
-            Store.Apply([new NodeAddChange(Schemas.TableNode(name, e.Position.X, e.Position.Y,
+            if (e.Data.GetData(DataFormats.StringFormat) is not string name || store.Nodes.Any(n => n.Id == name)) return;
+            store.Apply([new NodeAddChange(Schemas.TableNode(name, e.Position.X, e.Position.Y,
                 new Table(name, [new Column("id", "int", true)])))]);
         };
     }
 
+    // Tout passe par les sources, des commandes et les ViewModels : aucun évènement, aucune écriture des records.
+    private void WireMvvm()
+    {
+        var schema = _mvvm = new MvvmSchema(Flow);
+        Flow.NodeMapping = new NodeMapping { SelectedPath = "IsSelected", TypePath = "Type", WidthPath = "Width", HeightPath = "Height" };
+        Flow.EdgeMapping = new EdgeMapping
+        {
+            SourceHandlePath = "SourceColumn", TargetHandlePath = "TargetColumn", TypePath = "Type", SelectedPath = "IsSelected",
+            LabelPath = "Label", DataPath = "Data", MarkerStartPath = "MarkerStart", MarkerEndPath = "MarkerEnd"
+        };
+        Flow.NodesSource = schema.Tables;
+        Flow.EdgesSource = schema.Relations;
+        Flow.NodeFactory = schema.NodeFactory;
+        Flow.EdgeFactory = schema.EdgeFactory;
+
+        Flow.CommandsReceiveEventArgs = true; // pour savoir quelle colonne est visée
+        Flow.NodeClickCommand = new Command<ElementEventArgs>(OnNodeClicked);
+        Flow.NodeDoubleClickCommand = new Command<ElementEventArgs>(OnNodeDoubleClicked);
+        Flow.EdgeClickCommand = new Command<ElementEventArgs>(OnEdgeClicked);
+        Flow.PaneClickCommand = new Command<ElementEventArgs>(_ => OnPaneClicked());
+        Flow.NodeContextMenuCommand = new Command<ElementEventArgs>(OnNodeMenu);
+        Flow.EdgeContextMenuCommand = new Command<ElementEventArgs>(OnEdgeMenu);
+        Flow.PaneContextMenuCommand = new Command<ElementEventArgs>(_ => OnPaneMenu());
+        Flow.SelectionContextMenuCommand = new Command<ElementEventArgs>(_ => OnSelectionMenu());
+
+        Flow.ConnectCommand = new Command<Connection>(schema.Connect, schema.CanConnect);
+        Flow.NodesDeleteCommand = new Command<IReadOnlyList<object>>(items => schema.DeleteTables(items.OfType<TableViewModel>().ToList()));
+        Flow.EdgesDeleteCommand = new Command<IReadOnlyList<object>>(items => schema.DeleteRelations(items.OfType<RelationViewModel>().ToList()));
+        Flow.DropCommand = new Command<FlowDropEventArgs>(e =>
+        {
+            if (e.Data.GetData(DataFormats.StringFormat) is string name) schema.Add(name, e.Position);
+        });
+    }
+
+    private void OnNodeClicked(ElementEventArgs e) => Log.Text = "clic " + Describe(e);
+
+    private void OnNodeDoubleClicked(ElementEventArgs e)
+    {
+        DoubleClicks.Add(Describe(e));
+        if (e.TargetData is string && e.OriginalSource != null) StartRename(e.OriginalSource);
+    }
+
+    private void OnEdgeClicked(ElementEventArgs e) => Log.Text = "clic relation " + e.Id;
+    private void OnPaneClicked() => Log.Text = "clic sur le fond";
+    private void OnNodeMenu(ElementEventArgs e) => Menu.Text = (e.TargetData is string ? "colonne " : "table ") + Describe(e);
+    private void OnEdgeMenu(ElementEventArgs e) => Menu.Text = "relation " + e.Id;
+    private void OnPaneMenu() => Menu.Text = "fond";
+    private void OnSelectionMenu() => SelectionMenus.Add("sélection de " + Store.Nodes.Count(n => n.Selected));
+
     private static string Describe(ElementEventArgs e) => e.TargetData is string column ? $"{e.Id}.{column}" : e.Id ?? "";
 
-    /// <summary>Un autre document : en mode contrôlé, la vue ne tient pas d'historique ; la sélection vit dans les nodes.</summary>
+    /// <summary>
+    ///     Un autre document. En mode contrôlé, la vue ne tient pas d'historique ; en MVVM si, et il ne doit pas ramener le
+    ///     document précédent. La sélection vit dans le schéma.
+    /// </summary>
     internal void Open(Schema schema)
     {
         Store.Load(schema);
-        Dispatcher.BeginInvoke(DispatcherPriority.Background, () => Flow.FitView());
+        Flow.ClearHistory();
+        FitLater();
     }
+
+    internal string SaveDocument() => _mvvm == null
+        ? Schemas.ToJson(Store.Nodes, Store.Edges, Flow.Viewport)
+        : Flow.ToJson(n => ((TableViewModel)n.Data!).ToTable());
+
+    internal void RestoreDocument(string json)
+    {
+        if (_mvvm == null)
+        {
+            Open(Schemas.FromJson(json));
+            return;
+        }
+
+        Flow.LoadJson(json); // les fabriques recréent les ViewModels
+        FitLater();
+    }
+
+    private void FitLater() => Dispatcher.BeginInvoke(DispatcherPriority.Background, () => Flow.FitView());
 
     private void StartRename(DependencyObject source)
     {
