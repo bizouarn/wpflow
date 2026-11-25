@@ -13,6 +13,9 @@
     --wf-connect: #ff0072;
     --wf-panel-bg: #fefefe;
     --wf-panel-border: #eee;
+    --wf-minimap-bg: #fff;
+    --wf-minimap-node: #e2e2e2;
+    --wf-minimap-node-selected: #b1b1b7;
     --wf-minimap-mask: rgba(240, 240, 240, .6);
     position: relative;
     overflow: hidden;
@@ -38,6 +41,9 @@
     --wf-handle-bg: #1e1e1e;
     --wf-panel-bg: #2b2b2b;
     --wf-panel-border: #444;
+    --wf-minimap-bg: #1e1e22;
+    --wf-minimap-node: #3a3a42;
+    --wf-minimap-node-selected: #7a7a85;
     --wf-minimap-mask: rgba(20, 20, 20, .6);
 }
 .wf-flow.wf-panning { cursor: grabbing; }
@@ -105,7 +111,7 @@
 }
 .wf-controls button:last-child { border-bottom: 0; }
 .wf-controls button:hover { filter: brightness(.94); }
-.wf-minimap { right: 0; bottom: 0; background: var(--wf-panel-bg); box-shadow: 0 0 2px 1px rgba(0, 0, 0, .08); }
+.wf-minimap { right: 0; bottom: 0; background: var(--wf-minimap-bg); border: 1px solid rgba(0, 0, 0, .19); border-radius: 4px; box-sizing: content-box; box-shadow: 0 0 6px rgba(0, 0, 0, .15); overflow: hidden; }
 .wf-minimap svg { display: block; cursor: pointer; }
 
 /* ---- Accessibilité ---- */
@@ -116,7 +122,7 @@
 
 /* ---- Verrou, état des nodes et des edges ---- */
 .wf-locked .wf-node { cursor: default; }
-.wf-flow { --wf-minimap-node: var(--wf-node-bg); --wf-resize-accent: #3367d9; }
+.wf-flow { --wf-resize-accent: #3367d9; }
 .wf-node.wf-dragging { cursor: grabbing; }
 .wf-edge-anchor { fill: var(--wf-handle-bg); stroke: var(--wf-edge-selected); stroke-width: 1; pointer-events: none; }
 .wf-connection-line.wf-valid-line { stroke: #55dd99; }

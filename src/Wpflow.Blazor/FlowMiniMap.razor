@@ -14,10 +14,10 @@
             @foreach (var (node, r) in m.Nodes)
             {
                 var n = node;
-                var fill = NodeColor?.Invoke(n) ?? (n.Selected ? "var(--wf-node-selected)" : "var(--wf-minimap-node)");
-                var stroke = NodeStrokeColor?.Invoke(n) ?? "var(--wf-node-border)";
+                var fill = NodeColor?.Invoke(n) ?? (n.Selected ? "var(--wf-minimap-node-selected)" : "var(--wf-minimap-node)");
+                var stroke = NodeStrokeColor?.Invoke(n);
                 <rect class="wf-minimap-node" x="@FlowView.F(r.X)" y="@FlowView.F(r.Y)" width="@FlowView.F(r.Width)" height="@FlowView.F(r.Height)"
-                      rx="@FlowView.F(NodeBorderRadius * scale)" fill="@fill" stroke="@stroke" stroke-width="@FlowView.F(NodeStrokeWidth * scale)"
+                      rx="@FlowView.F(NodeBorderRadius * scale)" fill="@fill" stroke="@stroke" stroke-width="@(stroke == null ? null : FlowView.F(NodeStrokeWidth * scale))"
                       @onpointerdown="e => NodeDown(n, e)" @onpointerdown:stopPropagation="@OnNodeClick.HasDelegate" />
             }
             <path fill-rule="evenodd" fill="@(MaskColor ?? "var(--wf-minimap-mask)")" pointer-events="none"
