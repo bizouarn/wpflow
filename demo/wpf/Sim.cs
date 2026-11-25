@@ -19,7 +19,8 @@ internal static class Sim
     private const uint KeyUp = 2;
 
     public const byte VkTab = 0x09, VkControl = 0x11, VkEscape = 0x1B, VkSpace = 0x20, VkLeft = 0x25, VkRight = 0x27,
-        VkDelete = 0x2E, VkZ = 0x5A, VkShift = 0x10, VkC = 0x43, VkV = 0x56;
+        VkDelete = 0x2E, VkZ = 0x5A, VkShift = 0x10, VkC = 0x43, VkV = 0x56, VkA = 0x41, VkReturn = 0x0D, VkBack = 0x08,
+        VkUp = 0x26, VkDown = 0x28;
 
     public static Point Screen(UIElement e, Point local) => e.PointToScreen(local);
 

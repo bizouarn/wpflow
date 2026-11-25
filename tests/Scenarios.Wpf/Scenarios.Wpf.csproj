@@ -1,0 +1,24 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- L'éditeur de schéma témoin WPF (ROADMAP-TESTS, lot 2), piloté à la vraie souris et au clavier. -->
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <UseWPF>true</UseWPF>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Wpflow.Wpf\Wpflow.Wpf.csproj" />
+    <ProjectReference Include="..\Scenarios.Shared\Scenarios.Shared.csproj" />
+  </ItemGroup>
+
+  <!-- Saisie Win32 et rapport d'auto-test : les mêmes que ceux de la démo. -->
+  <ItemGroup>
+    <Compile Include="..\..\demo\wpf\Sim.cs" Link="Sim.cs" />
+    <Compile Include="..\..\demo\wpf\SelfTestReport.cs" Link="SelfTestReport.cs" />
+  </ItemGroup>
+
+</Project>

@@ -17,6 +17,7 @@
   <ItemGroup>
     <InternalsVisibleTo Include="Wpflow.Wpf.Tests" />
     <InternalsVisibleTo Include="demo" />
+    <InternalsVisibleTo Include="Scenarios.Wpf" />
   </ItemGroup>
 
   <ItemGroup>

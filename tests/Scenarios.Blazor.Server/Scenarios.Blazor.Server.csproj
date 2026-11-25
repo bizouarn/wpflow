@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <!-- Voir demo-blazor.csproj : WPFLOW_SERVER_DEMO_TFM=net10.0 sur un poste sans runtime .NET 8. -->
+    <TargetFramework>net8.0</TargetFramework>
+    <TargetFramework Condition="'$(WPFLOW_SERVER_DEMO_TFM)' != ''">$(WPFLOW_SERVER_DEMO_TFM)</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Scenarios.Blazor\Scenarios.Blazor.csproj" />
+  </ItemGroup>
+
+</Project>

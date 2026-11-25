@@ -186,6 +186,7 @@ Attachées, à poser sur un élément d'un template de node : `flow:FlowView.NoD
 | `Node? GetNode(id)` / `Edge? GetEdge(id)` / `Node? GetInternalNode(id)` | Recherche par identifiant (le dernier en coordonnées absolues). |
 | `void AddNodes(...)` / `AddEdges(...)` | Ajout (`AddEdges` évite les doublons). |
 | `void UpdateNode(id, Func<Node,Node>)` / `UpdateNodeData(id, data)` / `UpdateEdge(...)` / `UpdateEdgeData(...)` | Mise à jour par identifiant. |
+| `void UpdateNodeInternals(id)` | Remesure un node et ses handles (`useUpdateNodeInternals`). Inutile quand le node change de taille ou qu'un handle apparaît, disparaît ou change de propriété ; nécessaire après avoir seulement **déplacé** des handles (marge changée par un déclencheur de style, animation). |
 | `bool DeleteElements(nodeIds, edgeIds)` / `Task<bool> DeleteElementsAsync(...)` | Suppression par identifiants (descendants et edges reliés compris, `Deletable`, `BeforeDelete` et, pour la version asynchrone, `BeforeDeleteAsync` respectés). |
 | `GetIntersectingNodes(Node` ou `Rect, bool partially = true)` / `IsNodeIntersecting(...)` | Intersections, en coordonnées absolues. |
 | `GetNodeConnections(nodeId, HandleType? type, handleId)` | Edges d'un node. |

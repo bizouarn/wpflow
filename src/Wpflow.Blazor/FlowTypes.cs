@@ -89,6 +89,9 @@ public sealed class MeasuredNode
     public double Width { get; set; }
     public double Height { get; set; }
     public List<MeasuredHandle> Handles { get; set; } = [];
+
+    /// <summary>Les handles ne sont qu'une partie : la suite arrive dans les messages suivants.</summary>
+    public bool Partial { get; set; }
 }
 
 /// <summary>Réglages propres à un <c>FlowHandle</c> (validateur et évènement), enregistrés auprès de la vue.</summary>

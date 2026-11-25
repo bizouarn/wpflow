@@ -1,18 +1,21 @@
-# Auto-tests WPF a la vraie souris : demo principale, fenetre d'exemples, spike de performance.
+# Auto-tests WPF a la vraie souris : demo principale, fenetre d'exemples, spike de performance, editeur de schema temoin.
 # Demande un bureau interactif et deverrouille ; ne pas toucher la souris ni le clavier pendant l'execution.
 # Code de sortie : 0 si tout passe ; 1 si un run echoue (ligne ECHEC, exception, delai, code de sortie non nul, journal vide).
 param(
     [string]$Configuration = 'Release',
     [string]$Output = (Join-Path $PSScriptRoot '..\artifacts\selftest'),
     [int]$PerfNodes = 500,
-    [switch]$NoBuild
+    [switch]$NoBuild,
+    [string[]]$Only    # noms des runs a executer (demo, examples, perf, scenarios) ; tous par defaut
 )
 
 $ErrorActionPreference = 'Stop'
 $root = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
 if (-not $NoBuild) {
-    dotnet build (Join-Path $root 'demo\wpf\demo.csproj') -c $Configuration -v q --nologo
-    if ($LASTEXITCODE -ne 0) { Write-Host 'Build en echec.'; exit 1 }
+    foreach ($project in 'demo\wpf\demo.csproj', 'tests\Scenarios.Wpf\Scenarios.Wpf.csproj') {
+        dotnet build (Join-Path $root $project) -c $Configuration -v q --nologo
+        if ($LASTEXITCODE -ne 0) { Write-Host 'Build en echec.'; exit 1 }
+    }
 }
 
 $exe = Join-Path $root "demo\wpf\bin\$Configuration\net10.0-windows\demo.exe"
@@ -24,18 +27,23 @@ $runs = @(
     @{ Name = 'demo';     Log = 'demo.log';        TimeoutSeconds = 180; Env = @{ WPFLOW_SELFTEST = '1' } }
     @{ Name = 'examples'; Log = 'examples.log';    TimeoutSeconds = 300; Env = @{ WPFLOW_EXAMPLES = 'selftest' } }
     @{ Name = 'perf';     Log = 'perf.perf.log';   TimeoutSeconds = 240; Env = @{ WPFLOW_PERF = "$PerfNodes" } }
+    @{ Name = 'scenarios'; Log = 'scenarios.log';  TimeoutSeconds = 360; Env = @{ WPFLOW_SCENARIOS = (Join-Path $Output 'scenarios.log') }
+       Exe = (Join-Path $root "tests\Scenarios.Wpf\bin\$Configuration\net10.0-windows\Scenarios.Wpf.exe") }
 )
 
 $failed = @()
+if ($Only) { $runs = @($runs | Where-Object { $Only -contains $_.Name }) }
+if ($runs.Count -eq 0) { Write-Host "Aucun run ne correspond a : $Only"; exit 1 }
 foreach ($run in $runs) {
     Write-Host "== $($run.Name)"
     $log = Join-Path $Output $run.Log
     Remove-Item $log -ErrorAction SilentlyContinue
-    foreach ($v in 'WPFLOW_SELFTEST', 'WPFLOW_EXAMPLES', 'WPFLOW_PERF') { Remove-Item "Env:$v" -ErrorAction SilentlyContinue }
+    foreach ($v in 'WPFLOW_SELFTEST', 'WPFLOW_EXAMPLES', 'WPFLOW_PERF', 'WPFLOW_SCENARIOS') { Remove-Item "Env:$v" -ErrorAction SilentlyContinue }
     $env:WPFLOW_SCREENSHOT = Join-Path $Output "$($run.Name).png"
     foreach ($key in $run.Env.Keys) { Set-Item "Env:$key" $run.Env[$key] }
 
-    $process = Start-Process $exe -PassThru
+    $program = if ($run.Exe) { $run.Exe } else { $exe }
+    $process = Start-Process $program -PassThru
     $null = $process.Handle # sans cela, ExitCode reste vide apres WaitForExit
     $reason = $null
     if (-not $process.WaitForExit($run.TimeoutSeconds * 1000)) {
@@ -61,7 +69,7 @@ foreach ($run in $runs) {
     }
 }
 
-foreach ($v in 'WPFLOW_SCREENSHOT', 'WPFLOW_SELFTEST', 'WPFLOW_EXAMPLES', 'WPFLOW_PERF') { Remove-Item "Env:$v" -ErrorAction SilentlyContinue }
+foreach ($v in 'WPFLOW_SCREENSHOT', 'WPFLOW_SELFTEST', 'WPFLOW_EXAMPLES', 'WPFLOW_PERF', 'WPFLOW_SCENARIOS') { Remove-Item "Env:$v" -ErrorAction SilentlyContinue }
 if ($failed.Count -gt 0) { Write-Host "Auto-tests en echec : $($failed -join ', ')"; exit 1 }
 Write-Host 'Tous les auto-tests WPF passent.'
 exit 0

@@ -121,7 +121,7 @@ public partial class FlowView
                     else _pendingSelect = node.Id;
                 }
 
-                _dragStart = CollectDragStart(node.Id);
+                _dragStart = CollectDragStart(node.Id, additive);
                 if (_dragStart.Count > 0) _mode = Mode.DragNodes;
             }
         }

@@ -19,6 +19,9 @@ public abstract class DemoFixture : IAsyncLifetime
     /// <summary>La commande qui lance la démo sur <paramref name="url" />.</summary>
     protected abstract ProcessStartInfo CreateStartInfo(string root, string config, string url);
 
+    /// <summary>Nombre d'edges tracés qui dit que l'application est prête.</summary>
+    protected virtual int ReadyEdges => 5;
+
     public string Url { get; private set; } = "";
 
     public IBrowser Browser { get; private set; } = default!;
@@ -35,8 +38,8 @@ public abstract class DemoFixture : IAsyncLifetime
         start.UseShellExecute = false;
         start.Environment["ASPNETCORE_ENVIRONMENT"] = "Development"; // sert les ressources statiques des bibliothèques
         _server = Process.Start(start)!;
-        _server.OutputDataReceived += (_, e) => { if (e.Data != null) _log.Add(e.Data); };
-        _server.ErrorDataReceived += (_, e) => { if (e.Data != null) _log.Add(e.Data); };
+        _server.OutputDataReceived += (_, e) => { if (e.Data != null) lock (_log) _log.Add(e.Data); };
+        _server.ErrorDataReceived += (_, e) => { if (e.Data != null) lock (_log) _log.Add(e.Data); };
         _server.BeginOutputReadLine();
         _server.BeginErrorReadLine();
         await WaitForServer();
@@ -56,6 +59,9 @@ public abstract class DemoFixture : IAsyncLifetime
             _server.Kill(true);
             await _server.WaitForExitAsync();
         }
+
+        // La sortie du serveur : une exception de circuit Blazor Server n'apparaît que là.
+        lock (_log) File.WriteAllLines(Path.Combine(AppContext.BaseDirectory, GetType().Name + ".server.log"), _log);
     }
 
     private async Task WaitForServer()
@@ -106,31 +112,36 @@ public abstract class DemoFixture : IAsyncLifetime
         var page = await context.NewPageAsync();
         await page.GotoAsync(Url);
         // WebAssembly télécharge d'abord le runtime : délai large.
-        await page.WaitForFunctionAsync("document.querySelectorAll('.wf-edge-path').length >= 5", null, new PageWaitForFunctionOptions { Timeout = 60000 });
+        await page.WaitForFunctionAsync("document.querySelectorAll('.wf-edge-path').length >= " + ReadyEdges, null, new PageWaitForFunctionOptions { Timeout = 60000 });
         await page.WaitForTimeoutAsync(300); // cadrage initial
         return page;
     }
 }
 
 /// <summary>La démo hébergée par Blazor Server : les évènements du navigateur passent par le circuit SignalR.</summary>
-public sealed class ServerFixture : DemoFixture
+public class ServerFixture : DemoFixture
 {
+    protected virtual string Project => Path.Combine("demo", "blazor");
+    protected virtual string Assembly => "demo-blazor.dll";
+
     protected override ProcessStartInfo CreateStartInfo(string root, string config, string url)
     {
-        var dir = Path.Combine(root, "demo", "blazor");
-        // La même variable que dans demo-blazor.csproj : elle doit être définie à la construction et au test.
+        var dir = Path.Combine(root, Project);
+        // La même variable que dans les csproj des hôtes Server : elle doit être définie à la construction et au test.
         var tfm = Environment.GetEnvironmentVariable("WPFLOW_SERVER_DEMO_TFM") is { Length: > 0 } t ? t : "net8.0";
-        var dll = Path.Combine(dir, "bin", config, tfm, "demo-blazor.dll");
-        if (!File.Exists(dll)) throw new FileNotFoundException("La démo n'est pas construite : " + dll);
+        var dll = Path.Combine(dir, "bin", config, tfm, Assembly);
+        if (!File.Exists(dll)) throw new FileNotFoundException("L'application n'est pas construite : " + dll);
         return new ProcessStartInfo("dotnet", $"\"{dll}\" --urls {url}") { WorkingDirectory = dir };
     }
 }
 
 /// <summary>La démo hébergée par Blazor WebAssembly : tout s'exécute dans le navigateur.</summary>
-public sealed class WasmFixture : DemoFixture
+public class WasmFixture : DemoFixture
 {
+    protected virtual string Project => Path.Combine("demo", "blazor-wasm");
+
     protected override ProcessStartInfo CreateStartInfo(string root, string config, string url) =>
-        new("dotnet", $"run --no-build -c {config} --project \"{Path.Combine(root, "demo", "blazor-wasm")}\" --urls {url}") { WorkingDirectory = root };
+        new("dotnet", $"run --no-build -c {config} --project \"{Path.Combine(root, Project)}\" --urls {url}") { WorkingDirectory = root };
 }
 
 public static class PageExtensions

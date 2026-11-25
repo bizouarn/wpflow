@@ -159,6 +159,19 @@ public partial class FlowView
         if (RawNode(id) is { } node) ApplyNodeChanges([new NodeReplaceChange(id, update(node))]);
     }
 
+    /// <summary>
+    ///     Remesure un node et ses handles (<c>useUpdateNodeInternals</c>). La vue le fait seule quand le node change de
+    ///     taille ou qu'un handle apparaît, disparaît ou change de propriété. Appelez-la après avoir <b>déplacé</b> des handles
+    ///     sans rien de cela (marge ou ordre changé par un déclencheur de style, animation…), sinon les edges restent à
+    ///     l'ancienne place. Sans effet sur un node inconnu ou non affiché.
+    /// </summary>
+    public void UpdateNodeInternals(string id)
+    {
+        if (!_hosts.TryGetValue(id, out var host)) return;
+        host.UpdateLayout();
+        host.RequestMeasure();
+    }
+
     /// <summary>Remplace <see cref="Node.Data" /> (<c>updateNodeData</c>).</summary>
     public void UpdateNodeData(string id, object? data) => UpdateNode(id, n => n with { Data = data });
 

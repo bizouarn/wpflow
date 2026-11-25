@@ -1,0 +1,107 @@
+@implements IDisposable
+
+<div class="bar">
+    <button id="load-library" @onclick="() => Open(Schemas.Library())">autre schéma</button>
+    <button id="load-large" @onclick="() => Open(Schemas.Large())">200 tables</button>
+    <button id="load-wide" @onclick="() => Open(Schemas.Wide())">table large</button>
+    <label><input id="virtualize" type="checkbox" @bind="_virtualize" /> virtualisation</label>
+    <button id="add-column" @onclick='() => Store.AddColumn("customers", new Column("added", "int"), 1)'>ajouter une colonne</button>
+    <button id="remove-column" @onclick='() => Store.RemoveColumn("customers", "name")'>retirer « name »</button>
+    <button id="move-column" @onclick='() => Store.MoveColumn("customers", "id", 2)'>descendre « id »</button>
+    <button id="collapse" @onclick='() => Store.ToggleCollapsed("customers")'>replier « customers »</button>
+    <button id="fit" @onclick="async () => await _flow!.FitView()">cadrer</button>
+    <button id="undo" @onclick="async () => await _flow!.Undo()">annuler</button>
+    <button id="save" @onclick="Save">enregistrer</button>
+    <button id="restore" @onclick="() => Open(Schemas.FromJson(_json))">relire</button>
+    <button id="ticks" @onclick="ToggleTicks">@(_timer == null ? "mises à jour de fond" : "arrêter les mises à jour")</button>
+</div>
+<div class="status">
+    <span id="log">@_log</span> |
+    <span id="menu">@_menu</span> |
+    <span id="selection-menu">@_selectionMenu</span> |
+    <span id="refused">@string.Join(", ", Store.Refused)</span> |
+    <span id="count">@Store.Nodes.Count tables, @Store.Edges.Count relations</span>
+</div>
+
+<div class="graph">
+    <FlowView @ref="_flow" Nodes="Store.Nodes" Edges="Store.Edges" AutoApplyChanges="false" AutoConnect="false"
+              OnNodesChange="c => Store.Apply(c)" OnEdgesChange="c => Store.Apply(c)" OnConnect="c => Store.Connect(c)"
+              IsValidConnection="Store.CanConnect" EdgeTypes="_edgeTypes" NodeTemplates="_nodeTemplates"
+              EdgeLabelTemplate="Label" OnlyRenderVisibleElements="_virtualize" FitViewOnInit="true" MinZoom="0.05"
+              OnNodeClick='a => _log = "clic " + Describe(a)' OnNodeDoubleClick='a => _log = "double-clic " + Describe(a)'
+              OnNodeContextMenu='a => _menu = (a.TargetData.ContainsKey("column") ? "colonne " : "table ") + Describe(a)'
+              OnEdgeContextMenu='a => _menu = "relation " + a.Edge.Id'
+              OnPaneContextMenu='_ => _menu = "fond"'
+              OnSelectionContextMenu='_ => _selectionMenu = "sélection de " + Store.Nodes.Count(n => n.Selected)'
+              OnPaneClick='_ => _log = "clic sur le fond"'
+              OnEdgeClick='a => _log = "clic relation " + a.Edge.Id'>
+        <FlowControls />
+    </FlowView>
+</div>
+
+@code {
+    private readonly SchemaStore Store = new();
+    private readonly IReadOnlyDictionary<string, IEdgePathProvider> _edgeTypes =
+        new Dictionary<string, IEdgePathProvider> { [Schemas.RelationType] = new RelationPath() };
+    private Dictionary<string, RenderFragment<Node>>? _nodeTemplates;
+    private FlowView? _flow;
+    private bool _virtualize;
+    private string _log = "", _menu = "", _selectionMenu = "", _json = "";
+    private Timer? _timer;
+    private int _tick;
+
+    protected override void OnInitialized()
+    {
+        _nodeTemplates = new Dictionary<string, RenderFragment<Node>> { [Schemas.TableType] = TableTemplate };
+        Store.Changed += Refresh;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        // Chargement asynchrone : le graphe s'affiche vide, les données arrivent ensuite.
+        if (!firstRender) return;
+        await Task.Delay(700);
+        Store.Load(Schemas.Shop());
+        await Task.Delay(500);
+        if (_flow != null) await _flow.FitView();
+    }
+
+    private void Refresh() => _ = InvokeAsync(StateHasChanged);
+
+    private static string Describe(NodeEventArgs a) =>
+        a.TargetData.TryGetValue("column", out var column) ? $"{a.Node.Id}.{column}" : a.Node.Id;
+
+    // Un autre document : l'historique de la vue ne doit pas ramener le précédent.
+    private void Open(Schema schema)
+    {
+        Store.Load(schema);
+        _flow!.ClearHistory();
+    }
+
+    private void Save() => _json = Schemas.ToJson(Store.Nodes, Store.Edges, _flow!.Viewport);
+
+    private void ToggleTicks()
+    {
+        if (_timer != null)
+        {
+            _timer.Dispose();
+            _timer = null;
+            return;
+        }
+
+        // La minuterie vit hors du contexte de rendu : le service est modifié sur celui du composant.
+        _timer = new Timer(_ => _ = InvokeAsync(() => Store.Tick(++_tick % 2 == 0 ? "customers" : "orders")), null, 30, 30);
+    }
+
+    public void Dispose()
+    {
+        _timer?.Dispose();
+        Store.Changed -= Refresh;
+    }
+
+    private RenderFragment<EdgeRenderContext> Label => context =>
+        @<button class="relation-label nodrag nopan" data-relation="@context.Edge.Id"
+                 @onclick='() => _log = "label " + context.Edge.Id' @onclick:stopPropagation @onpointerdown:stopPropagation>@context.Edge.Label</button>;
+
+    private RenderFragment<Node> TableTemplate => node => @<TableNode Node="node" Store="Store" />;
+}

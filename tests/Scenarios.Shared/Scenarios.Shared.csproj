@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- Modèles et règles métier de l'éditeur de schéma témoin, communs aux scénarios WPF et Blazor (ROADMAP-TESTS, lot 2). -->
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Wpflow.Core\Wpflow.Core.csproj" />
+  </ItemGroup>
+
+</Project>

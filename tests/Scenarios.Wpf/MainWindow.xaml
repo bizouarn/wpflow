@@ -1,0 +1,100 @@
+<Window x:Class="Scenarios.Wpf.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:flow="clr-namespace:Wpflow.Wpf;assembly=Wpflow.Wpf"
+        xmlns:s="clr-namespace:Scenarios;assembly=Scenarios.Shared"
+        Title="Éditeur de schéma témoin" Width="1360" Height="820" WindowStartupLocation="CenterScreen">
+    <Window.Resources>
+        <s:RelationPath x:Key="wpflow-edge-relation" />
+
+        <DataTemplate x:Key="wpflow-node-table">
+            <Border Width="220" Background="White" BorderBrush="#999999" BorderThickness="1">
+                <StackPanel>
+                    <Border Tag="title" Height="24" Background="#e8eef7">
+                        <Border.ContextMenu>
+                            <ContextMenu>
+                                <MenuItem Header="Entrée de menu WPF" Click="OnTemplateMenu" />
+                            </ContextMenu>
+                        </Border.ContextMenu>
+                        <StackPanel Orientation="Horizontal" Margin="8,0" VerticalAlignment="Center">
+                            <TextBlock Text="{Binding Data.Name}" FontWeight="SemiBold" />
+                            <TextBlock Tag="rows" Margin="8,0,0,0" Text="{Binding Data.Rows}" Foreground="#666666" />
+                        </StackPanel>
+                    </Border>
+                    <ItemsControl Tag="columns" ItemsSource="{Binding Data.Columns}" Focusable="False">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Grid x:Name="Row" Height="24" Background="White" Tag="{Binding Name}"
+                                      ToolTip="{Binding Type}" flow:FlowView.TargetData="{Binding Name}">
+                                    <flow:Handle Type="Target" Position="Left" HandleId="{Binding Name}" />
+                                    <TextBlock x:Name="Label" Text="{Binding Name}" Margin="10,0" VerticalAlignment="Center" HorizontalAlignment="Left" />
+                                    <TextBlock x:Name="Kind" Text="{Binding Type}" Margin="10,0" VerticalAlignment="Center" HorizontalAlignment="Right" Foreground="#888888" />
+                                    <TextBox Visibility="Collapsed" Width="150" Height="20" HorizontalAlignment="Left" Margin="10,0"
+                                             KeyDown="OnRenameKey" />
+                                    <flow:Handle Type="Source" Position="Right" HandleId="{Binding Name}" />
+                                </Grid>
+                                <DataTemplate.Triggers>
+                                    <!-- Table repliée : les lignes ne prennent plus de place, leurs handles se superposent sous le titre. -->
+                                    <DataTrigger Binding="{Binding DataContext.Data.Collapsed, RelativeSource={RelativeSource AncestorType=flow:NodeHost}}" Value="True">
+                                        <Setter TargetName="Row" Property="Height" Value="0" />
+                                        <Setter TargetName="Label" Property="Visibility" Value="Collapsed" />
+                                        <Setter TargetName="Kind" Property="Visibility" Value="Collapsed" />
+                                    </DataTrigger>
+                                </DataTemplate.Triggers>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                    <StackPanel Tag="widgets" Margin="8,4" flow:FlowView.NoDrag="True">
+                        <StackPanel.Style>
+                            <Style TargetType="StackPanel">
+                                <Setter Property="Visibility" Value="Collapsed" />
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding Data.Locked}" Value="True">
+                                        <Setter Property="Visibility" Value="Visible" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </StackPanel.Style>
+                        <Button Tag="w-button" Content="clics 0" Click="OnWidgetButton" />
+                        <CheckBox Tag="w-check" Content="case" Margin="0,3" />
+                        <ComboBox Tag="w-combo" SelectedIndex="0">
+                            <ComboBoxItem Content="a" />
+                            <ComboBoxItem Content="b" />
+                            <ComboBoxItem Content="c" />
+                        </ComboBox>
+                        <TextBox Tag="w-text" Margin="0,3" Text="champ" />
+                        <ListBox Tag="w-list" Height="54" flow:FlowView.NoWheel="True">
+                            <ListBoxItem Content="élément 1" /><ListBoxItem Content="élément 2" /><ListBoxItem Content="élément 3" />
+                            <ListBoxItem Content="élément 4" /><ListBoxItem Content="élément 5" /><ListBoxItem Content="élément 6" />
+                        </ListBox>
+                        <ScrollViewer Tag="w-scroll" Height="40" Margin="0,3" flow:FlowView.NoWheel="True">
+                            <TextBlock Text="ligne 1&#10;ligne 2&#10;ligne 3&#10;ligne 4&#10;ligne 5&#10;ligne 6&#10;ligne 7&#10;ligne 8" />
+                        </ScrollViewer>
+                        <DataGrid Tag="w-grid" Height="60" AutoGenerateColumns="False" HeadersVisibility="Column" CanUserAddRows="False"
+                                  flow:FlowView.NoWheel="True">
+                            <DataGrid.Columns>
+                                <DataGridTextColumn Header="nom" Binding="{Binding Name}" Width="*" />
+                            </DataGrid.Columns>
+                        </DataGrid>
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+        </DataTemplate>
+
+        <DataTemplate x:Key="RelationLabel">
+            <Button Content="{Binding Label}" Tag="{Binding Id}" FontSize="11" Padding="4,0" Click="OnLabelClick" />
+        </DataTemplate>
+    </Window.Resources>
+
+    <DockPanel>
+        <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Height="28">
+            <TextBlock x:Name="Log" Margin="8,0" VerticalAlignment="Center" />
+            <TextBlock x:Name="Menu" Margin="8,0" VerticalAlignment="Center" />
+        </StackPanel>
+        <ListBox x:Name="Palette" DockPanel.Dock="Left" Width="110" PreviewMouseLeftButtonDown="OnPaletteDown" PreviewMouseMove="OnPaletteMove">
+            <ListBoxItem Content="invoices" />
+            <ListBoxItem Content="products" />
+        </ListBox>
+        <flow:FlowView x:Name="Flow" MinZoom="0.05" EdgeLabelTemplate="{StaticResource RelationLabel}" />
+    </DockPanel>
+</Window>

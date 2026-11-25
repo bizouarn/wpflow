@@ -30,6 +30,7 @@ public partial class FlowView
     private string? _pressedEdge;
     private bool _pressedMulti;
     private bool _pressedWasSelected;
+    private long _pressedButton;
     private Dictionary<string, XYPosition> _dragStart = new();
     private (string NodeId, HandleInfo Handle)? _from;
     private (string NodeId, HandleInfo Handle)? _candidate;
@@ -96,6 +97,7 @@ public partial class FlowView
         _pressedNode = _pressedEdge = null;
         _pressedMulti = e.ShiftKey || Held(MultiSelectionKey, e.ShiftKey, e.CtrlKey, e.AltKey, e.MetaKey);
         _pressedWasSelected = false;
+        _pressedButton = e.Button;
         _dragStart = new();
         _resize = null;
         _rotate = null;
@@ -165,7 +167,7 @@ public partial class FlowView
         }
 
         if (flags.Untracked || flags.NoDrag || !CanDrag || !n.Draggable) return;
-        _dragStart = DragSelection.CollectStart(Nodes, CanDrag, CanSelect, SelectNodesOnDrag, n.Id);
+        _dragStart = DragSelection.CollectStart(Nodes, CanDrag, CanSelect, SelectNodesOnDrag, n.Id, _pressedMulti);
         // Mode contrôlé : la sélection demandée n'est pas encore appliquée, seul le node saisi suit le pointeur.
         if (_dragStart.Count == 0) _dragStart[n.Id] = n.Position;
         _mode = Mode.DragNodes;
@@ -354,7 +356,8 @@ public partial class FlowView
                 break;
         }
 
-        if (!_moved && !cancelled && mode != Mode.Resize && mode != Mode.Rotate) await HandleClick(mode, pointer, shift);
+        // Seul le bouton gauche clique : un clic droit ou milieu ne désélectionne pas et ne lève pas OnPaneClick.
+        if (!_moved && !cancelled && _pressedButton == 0 && mode != Mode.Resize && mode != Mode.Rotate) await HandleClick(mode, pointer, shift);
 
         if (!_clickMode)
         {

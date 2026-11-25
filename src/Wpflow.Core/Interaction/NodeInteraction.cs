@@ -73,21 +73,34 @@ public static class DragSelection
     /// <summary>
     ///     Nodes déplaçables sélectionnés (position de départ) ; un enfant dont un ancêtre est aussi sélectionné suit déjà son
     ///     parent. Sans sélection possible (ou sans sélection au glisser sur un node non sélectionné), seul le node saisi bouge.
+    ///     Un node saisi qui n'apparaît pas sélectionné dans <paramref name="nodes" /> (mode contrôlé : la sélection demandée
+    ///     n'est pas encore appliquée) est déplacé seul.
     /// </summary>
     public static Dictionary<string, XYPosition> CollectStart(IReadOnlyList<Node> nodes, bool nodesDraggable, bool elementsSelectable,
-        bool selectNodesOnDrag, string? pressedId = null)
+        bool selectNodesOnDrag, string? pressedId = null) =>
+        CollectStart(nodes, nodesDraggable, elementsSelectable, selectNodesOnDrag, pressedId, false);
+
+    /// <summary>
+    ///     Comme l'autre surcharge ; avec <paramref name="additive" /> (Ctrl/Maj enfoncé), un node saisi dont la sélection n'est
+    ///     pas encore appliquée est déplacé avec la sélection actuelle.
+    /// </summary>
+    // Surcharge et non paramètre facultatif : la signature publiée en 1.0 doit rester (compatibilité binaire).
+    public static Dictionary<string, XYPosition> CollectStart(IReadOnlyList<Node> nodes, bool nodesDraggable, bool elementsSelectable,
+        bool selectNodesOnDrag, string? pressedId, bool additive)
     {
         if (!nodesDraggable) return new Dictionary<string, XYPosition>();
         var byId = nodes.ToDictionary(n => n.Id);
-        if (pressedId != null && (!elementsSelectable || (!selectNodesOnDrag && byId.GetValueOrDefault(pressedId) is { Selected: false })))
+        var pending = pressedId != null && byId.GetValueOrDefault(pressedId) is { Selected: false };
+        if (pressedId != null && (!elementsSelectable || (pending && (!selectNodesOnDrag || !additive))))
             return byId.GetValueOrDefault(pressedId) is { Draggable: true } one
                 ? new Dictionary<string, XYPosition> { [one.Id] = one.Position }
                 : new Dictionary<string, XYPosition>();
         var selected = nodes.Where(n => n.Selected).Select(n => n.Id).ToHashSet();
+        if (pending) selected.Add(pressedId!);
         var result = new Dictionary<string, XYPosition>();
         foreach (var n in nodes)
         {
-            if (!n.Selected || !n.Draggable) continue;
+            if (!selected.Contains(n.Id) || !n.Draggable) continue;
             var covered = false;
             for (var p = n.ParentId; p != null && byId.TryGetValue(p, out var parent); p = parent.ParentId)
                 if (selected.Contains(p)) { covered = true; break; }

@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Web;
+using Microsoft.JSInterop;
 
 namespace Wpflow.Blazor;
 
@@ -206,8 +207,19 @@ public partial class FlowView
 
     // ---------- Clavier ----------
 
+    private bool _keyFromField;
+
+    /// <summary>Le pont JS dit, juste avant chaque touche, si elle vient d'un champ de saisie du graphe.</summary>
+    [JSInvokable]
+    public Task OnKeyOrigin(bool inField)
+    {
+        _keyFromField = inField;
+        return Task.CompletedTask;
+    }
+
     private async Task OnKeyDown(KeyboardEventArgs e)
     {
+        if (_keyFromField) return; // la touche appartient au champ : ni suppression, ni annulation, ni déplacement
         if (e.Key == " " && PanActivationKey == "Space") _space = true;
         var ctrl = e.CtrlKey || e.MetaKey;
         var key = e.Key;

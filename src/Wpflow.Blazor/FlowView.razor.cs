@@ -177,12 +177,23 @@ public partial class FlowView : ComponentBase, IAsyncDisposable
         await TryFitOnInit();
     });
 
+    private readonly Dictionary<string, List<MeasuredHandle>> _partialHandles = new();
+
     [JSInvokable]
     public Task OnMeasured(List<MeasuredNode> measured) => InvokeAsync(async () =>
     {
         var changes = new List<NodeChange>();
         foreach (var m in measured)
         {
+            // Un node à très nombreux handles arrive en plusieurs messages : on les réunit avant de les appliquer.
+            if (m.Partial)
+            {
+                if (!_partialHandles.TryGetValue(m.Id, out var pending)) _partialHandles[m.Id] = pending = [];
+                pending.AddRange(m.Handles);
+                continue;
+            }
+
+            if (_partialHandles.Remove(m.Id, out var first)) m.Handles.InsertRange(0, first);
             _handles[m.Id] = m.Handles.Select(h =>
             {
                 var type = h.Type == "target" ? HandleType.Target : HandleType.Source;

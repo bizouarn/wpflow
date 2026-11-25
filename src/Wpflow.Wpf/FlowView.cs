@@ -901,8 +901,8 @@ public partial class FlowView : ContentControl
     private Dictionary<string, XYPosition> AbsoluteWithOrigin(IReadOnlyList<Node> nodes) => NodeConstraints.AbsoluteWithOrigin(nodes, NodeOrigin);
 
     /// <summary>Nodes déplaçables sélectionnés ; un enfant dont un ancêtre est aussi sélectionné suit déjà son parent.</summary>
-    private Dictionary<string, XYPosition> CollectDragStart(string? pressedId = null) =>
-        DragSelection.CollectStart(Nodes, NodesDraggable, ElementsSelectable, SelectNodesOnDrag, pressedId);
+    private Dictionary<string, XYPosition> CollectDragStart(string? pressedId = null, bool additive = false) =>
+        DragSelection.CollectStart(Nodes, NodesDraggable, ElementsSelectable, SelectNodesOnDrag, pressedId, additive);
 
     internal void DeleteSelection()
     {

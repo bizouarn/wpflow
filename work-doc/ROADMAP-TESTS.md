@@ -44,9 +44,9 @@ Ordre conseillé : 0, 1, 2, puis le reste. Les tailles sont relatives (S, M, L).
 ### Lot 0 — Barrière avant publication (M)
 
 - [x] Blazor : `release.yml` lance les tests de bout en bout avant `Pack`. *(workflow écrit, pas encore exécuté sur GitHub)*
-- [ ] WPF : les auto-tests à la vraie souris rendent un **code de sortie** en échec sur toute ligne `ECHEC`, une exception ou un délai dépassé, et un script unique les enchaîne. *(écrit : `tests/run-wpf-selftests.ps1` ; compile, **jamais exécuté** depuis la conversion de `SelfTest` en vérifications)*
+- [x] WPF : les auto-tests à la vraie souris rendent un **code de sortie** en échec sur toute ligne `ECHEC`, une exception ou un délai dépassé, et un script unique les enchaîne. *(`tests/run-wpf-selftests.ps1`, quatre runs ; 2026-11-25 en local : démo 24/24, exemples 86/86, performances, éditeur de schéma 78/78)*
 - [ ] WPF : les exécuter automatiquement demande un bureau interactif. Essayer le runner `windows-latest`, sinon une machine auto-hébergée avec session ouverte, sinon une exécution locale obligatoire avant le tag. *(jobs écrits dans `ci.yml` et `release.yml`, à valider au premier push)*
-- [ ] WPF : donner l'équivalent de `TargetData` (élément d'origine du clic, du double-clic et du menu contextuel, dans les évènements et les commandes), avec un test à la vraie souris qui échoue d'abord. *(API faite : `FlowView.TargetData`, `ElementEventArgs.TargetData`/`OriginalSource`, `CommandsReceiveEventArgs` ; test à la vraie souris écrit, **jamais exécuté**)*
+- [x] WPF : donner l'équivalent de `TargetData` (élément d'origine du clic, du double-clic et du menu contextuel, dans les évènements et les commandes), avec un test à la vraie souris qui échoue d'abord. *(`FlowView.TargetData`, `ElementEventArgs.TargetData`/`OriginalSource`, `CommandsReceiveEventArgs`, vérifiés à la vraie souris le 2026-11-25. L'API n'existant pas, le test ne pouvait pas d'abord échouer à l'exécution)*
 - [x] Activer la validation de paquet (`EnablePackageValidation` et `PackageValidationBaselineVersion`) pour les trois paquets : une rupture d'API fait échouer le pack. *(vérifié : le pack du noyau échouait sur les quatre membres retirés avant leur déclaration)*
 - [x] Décider du numéro de la version qui contient `26b32b3` : **1.1.0**, avec la rupture assumée (`EdgeGeometry.Options` retiré, sans `[Obsolete]`), déclarée dans `CompatibilitySuppressions.xml` et le `CHANGELOG.md`.
 - [x] Tenir un `CHANGELOG.md` avec les ruptures.
@@ -98,30 +98,58 @@ Le même scénario dans deux applications de test, plus exigeantes que les démo
 
 Commun :
 
-- [ ] Tables : nodes à lignes, un handle source et un handle cible **par colonne**.
-- [ ] Savoir quelle colonne est cliquée, double-cliquée ou visée par le menu contextuel.
-- [ ] Colonnes ajoutées, retirées, réordonnées, node replié : les handles sont remesurés et les edges suivent.
-- [ ] Double-clic sur une colonne pour renommer dans un champ : saisie, Suppr, flèches, Ctrl+A, Ctrl+Z et Espace restent dans le champ.
-- [ ] Menu contextuel par table, par colonne, par relation, sur le fond et sur une sélection.
+- [x] Tables : nodes à lignes, un handle source et un handle cible **par colonne**.
+- [x] Savoir quelle colonne est cliquée, double-cliquée ou visée par le menu contextuel.
+- [x] Colonnes ajoutées, retirées, réordonnées, node replié : les handles sont remesurés et les edges suivent.
+- [x] Double-clic sur une colonne pour renommer dans un champ : saisie, Suppr, flèches, Ctrl+A, Ctrl+Z et Espace restent dans le champ.
+- [x] Menu contextuel par table, par colonne, par relation, sur le fond et sur une sélection.
 - [ ] Types d'edges qui varient selon `Edge.Data` (cardinalités, marqueurs, labels cliquables).
-- [ ] `IsValidConnection` selon le type des colonnes.
-- [ ] Mode contrôlé : l'état vit dans un service, avec refus de certains changes.
-- [ ] Chargement asynchrone après le premier affichage, puis rechargement d'un autre schéma (cadrage, historique, sélection).
-- [ ] Enregistrement et relecture JSON avec un `Data` typé (il revient en `JsonElement`).
-- [ ] Mise à jour par minuterie ou tâche de fond **pendant** un glisser ou une connexion.
-- [ ] 200 tables et 400 relations, avec et sans virtualisation.
+- [x] `IsValidConnection` selon le type des colonnes.
+- [x] Mode contrôlé : l'état vit dans un service, avec refus de certains changes.
+- [x] Chargement asynchrone après le premier affichage, puis rechargement d'un autre schéma (cadrage, historique, sélection).
+- [x] Enregistrement et relecture JSON avec un `Data` typé (il revient en `JsonElement`).
+- [x] Mise à jour par minuterie ou tâche de fond **pendant** un glisser ou une connexion.
+- [x] 200 tables et 400 relations, avec et sans virtualisation.
 
 Propre à WPF :
 
-- [ ] `ListBox`, `DataGrid`, `ComboBox`, `TextBox`, `ScrollViewer` et boutons dans un node : molette, menu déroulant, saisie et focus restent au contrôle.
+- [x] `ListBox`, `DataGrid`, `ComboBox`, `TextBox`, `ScrollViewer` et boutons dans un node : molette, menu déroulant, saisie et focus restent au contrôle.
 - [ ] Le même scénario en MVVM (`NodesSource`, commandes) : colonnes en `ObservableCollection`, modifications venant d'un autre thread renvoyées sur le thread d'interface.
-- [ ] `ContextMenu` et `ToolTip` WPF posés dans les templates ; glisser-déposer depuis une liste de tables.
+- [x] `ContextMenu` et `ToolTip` WPF posés dans les templates ; glisser-déposer depuis une liste de tables.
 
 Propre à Blazor :
 
-- [ ] Boutons, listes, cases à cocher, zone défilante (`nowheel`), lien et texte sélectionnable dans un node.
+- [x] Boutons, listes, cases à cocher, zone défilante (`nowheel`), lien et texte sélectionnable dans un node.
 
 **Fini quand** : chaque ligne a un scénario sur WPF, Blazor Server et Blazor WebAssembly. Tout besoin impossible sans contourner la bibliothèque devient un ticket d'API.
+
+**État (2026-11-25).** Modèles et règles : `tests/Scenarios.Shared`. Blazor : `tests/Scenarios.Blazor` (hôtes `.Server` et `.Wasm`), scénarios dans `tests/Wpflow.Blazor.E2E/ScenarioTests.cs` sur Server et WebAssembly (Edge) ; les classes de bout en bout passent une à une : à quatre en parallèle, la machine de 8 Go saturait et les circuits tombaient. WPF : `tests/Scenarios.Wpf` (scénarios dans `Runner.cs`, 78 vérifications à la vraie souris, lancés par `tests/run-wpf-selftests.ps1` ; `WPFLOW_SCENARIO=<nom>` n'en lance qu'un).
+
+Deux lignes restent ouvertes :
+
+- **Types d'edges** : complet en Blazor. En WPF, le label cliquable est essayé à la souris et le fournisseur est vérifié hors de la vue, mais ni le tracé dessiné ni les marqueurs.
+- **MVVM** : le scénario WPF couvre le réordonnancement (`ObservableCollection.Move`), la modification venue d'un autre thread et le glisser, pas tout le scénario ni les commandes.
+
+Limites des scénarios WPF : en mode contrôlé, `Undo()` ne fait rien en WPF, donc « Ctrl+Z reste dans le champ » n'y prouve que le comportement du champ ; la `ListBox`, le `ScrollViewer` et le `DataGrid` portent `FlowView.NoWheel` (équivalent de `nowheel`), la molette sans cette marque n'est pas essayée ; la modification en mode contrôlé est appliquée de façon synchrone (le cas différé du défaut 4 n'est couvert que par le test du noyau) ; un seul DPI (100 %).
+
+Écarts de parité à traiter au lot 3 :
+
+- Au clic droit sur une sélection, WPF lève le menu de sélection **et** celui du node, Blazor seulement celui de la sélection.
+- Au double-clic, WPF lève `NodeClick` **après** `NodeDoubleClick` (au second relâchement) ; Blazor lève les clics avant.
+- En mode contrôlé, l'historique de la vue Blazor reste actif, celui de WPF non.
+- `ClearHistory()` est public en Blazor, privé en WPF (ticket d'API).
+
+Défauts trouvés côté Blazor, corrigés, chacun avec un scénario d'abord en échec :
+
+1. **Server** : circuit coupé quand les mesures dépassent 32 Ko en un message. *WPF : sans objet.*
+2. Handles déplacés sans changement de taille du node : edges laissés à l'ancienne place. *WPF : **confirmé** à la vraie souris. Les colonnes ajoutées, retirées, réordonnées ou repliées sont suivies, mais pas un déplacement seul (marge changée) : `FlowView.UpdateNodeInternals(id)` ajouté, comme `useUpdateNodeInternals`.*
+3. `@onkeydown` sur un champ dans un node jamais reçu. *WPF : non concerné (renommage au clavier réussi).*
+4. Mode contrôlé : l'ancienne sélection déplacée à la place du node saisi. *Noyau commun, corrigé aussi en WPF.*
+5. Clic droit ou milieu : sélection vidée et `OnPaneClick` levé ; menu de sélection inaccessible. *WPF : non concerné pour le clic droit (sélection gardée, menu de sélection reçu) ; clic milieu non essayé.*
+
+Comportements voulus, ajoutés à `doc/blazor.md` : modèles de nodes mémorisés (l'état d'affichage va dans un composant enfant) ; `ClearHistory()` après le chargement d'un autre document.
+
+Écart de parité à traiter au lot 3 : au clic droit sur une sélection, WPF lève le menu de sélection **et** celui du node, Blazor seulement celui de la sélection.
 
 ### Lot 3 — Matrice des évènements et des gestes (L)
 

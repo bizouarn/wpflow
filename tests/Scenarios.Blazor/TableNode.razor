@@ -1,0 +1,72 @@
+@* Le contenu d'une table. L'état propre à l'affichage (renommage en cours, contrôles) vit ICI : un modèle de node est
+   mémorisé et ne se redessine pas quand seul l'état du composant parent change (doc/blazor.md). *@
+@{
+    var table = (Table)Node.Data!;
+}
+<div class="table @(Node.Selected ? "selected" : "") @(table.Collapsed ? "collapsed" : "")">
+    <div class="title">@table.Name <small class="rows">@table.Rows</small></div>
+    @foreach (var column in table.Columns)
+    {
+        @* Repliée : les lignes sont masquées et leurs handles ramenés sur le titre, pour garder les relations. *@
+        <div class="column" data-column="@column.Name" @key="column.Name" @ondblclick="() => StartRename(column.Name)">
+            <FlowHandle Type="HandleType.Target" Position="Position.Left" HandleId="@column.Name" />
+            @if (_editing == column.Name)
+            {
+                <input class="rename nodrag" @ref="_input" @bind="_name" @bind:event="oninput" @onkeydown="OnKey" />
+            }
+            else
+            {
+                <span>@column.Name</span>
+                <em>@column.Type</em>
+            }
+            <FlowHandle Type="HandleType.Source" Position="Position.Right" HandleId="@column.Name" />
+        </div>
+    }
+    @if (Node.Id == "audit")
+    {
+        <div class="widgets nodrag">
+            <button class="w-button" @onclick="() => _clicks++">clics @_clicks</button>
+            <select class="w-select" @bind="_choice"><option value="a">a</option><option value="b">b</option></select>
+            <input class="w-check" type="checkbox" @bind="_checked" />
+            <a class="w-link" href="#ancre">lien</a>
+            <p class="w-text">texte à sélectionner dans un node</p>
+            <div class="w-scroll nowheel">@for (var i = 0; i < 20; i++) { <div>ligne @i</div> }</div>
+            <span class="w-state">@_choice @_checked</span>
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter, EditorRequired] public Node Node { get; set; } = default!;
+    [Parameter, EditorRequired] public SchemaStore Store { get; set; } = default!;
+
+    private string? _editing;
+    private string _name = "";
+    private ElementReference _input;
+    private bool _focus;
+    private int _clicks;
+    private bool _checked;
+    private string _choice = "a";
+
+    private void StartRename(string column)
+    {
+        _editing = column;
+        _name = column;
+        _focus = true;
+    }
+
+    private void OnKey(KeyboardEventArgs e)
+    {
+        if (e.Key == "Escape") _editing = null;
+        if (e.Key != "Enter" || _editing is not { } old) return;
+        _editing = null;
+        Store.RenameColumn(Node.Id, old, _name);
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!_focus) return;
+        _focus = false;
+        await _input.FocusAsync();
+    }
+}

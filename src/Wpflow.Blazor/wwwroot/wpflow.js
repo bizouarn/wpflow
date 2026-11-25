@@ -14,6 +14,9 @@ export function attach(root, dotnet) {
         root, dotnet,
         nodes: new Map(),      // id -> élément
         pending: new Set(),    // ids à remesurer
+        soft: new Set(),       // parmi eux, ceux dont seul le contenu a changé : envoyés si la mesure diffère
+        sent: new Map(),       // id -> dernière mesure envoyée (texte)
+        mutations: new Map(),  // id -> observateur du contenu du node
         raf: 0,
         rect: null,
         pointerId: null,
@@ -139,9 +142,13 @@ export function attach(root, dotnet) {
     window.addEventListener('pointerup', s.onUp, true);
     window.addEventListener('pointercancel', s.onUp, true);
 
-    // Clavier : les saisies dans un champ ne sont pas vues par le graphe ; les touches du graphe n'agissent pas sur la page.
+    // Clavier : les saisies dans un champ ne sont pas traitées par le graphe ; les touches du graphe n'agissent pas sur la page.
+    // La propagation n'est pas arrêtée : Blazor délègue les évènements plus haut dans l'arbre, et les @onkeydown de
+    // l'application sur ses propres champs ne se déclencheraient jamais. La vue est prévenue avant son propre @onkeydown.
     s.onKey = (e) => {
-        if (e.target.closest && e.target.closest(TEXT_INPUT)) { e.stopPropagation(); return; }
+        const inField = !!(e.target.closest && e.target.closest(TEXT_INPUT));
+        dotnet.invokeMethodAsync('OnKeyOrigin', inField);
+        if (inField) return;
         const k = e.key;
         const ctrl = e.ctrlKey || e.metaKey;
         if (k === ' ' || k.startsWith('Arrow') || (ctrl && ['a', 'z', 'y'].includes(k.toLowerCase()))) e.preventDefault();
@@ -160,6 +167,7 @@ export function detach(root) {
     const s = roots.get(root);
     if (!s) return;
     s.ro.disconnect();
+    for (const m of s.mutations.values()) m.disconnect();
     window.removeEventListener('scroll', s.onScroll, true);
     window.removeEventListener('resize', s.onScroll);
     root.removeEventListener('wheel', s.onWheel);
@@ -212,7 +220,23 @@ export function observeNode(root, id) {
     if (old) s.ro.unobserve(old);
     s.nodes.set(id, el);
     s.ro.observe(el);
+    watchContent(s, id, el);
     queue(s, id);
+}
+
+// Des handles peuvent être ajoutés, retirés ou déplacés sans que la taille du node change (colonnes réordonnées) :
+// le ResizeObserver ne le voit pas. Le style et les classes du node lui-même (déplacement, sélection) sont ignorés.
+function watchContent(s, id, el) {
+    s.mutations.get(id)?.disconnect();
+    const observer = new MutationObserver(records => {
+        if (records.some(r => r.target !== el || r.type === 'childList')) queue(s, id, true);
+    });
+    observer.observe(el, {
+        childList: true, subtree: true, characterData: true, attributes: true,
+        attributeFilter: ['class', 'style', 'hidden', 'data-handleid', 'data-type', 'data-position',
+            'data-connectable', 'data-connectable-start', 'data-connectable-end']
+    });
+    s.mutations.set(id, observer);
 }
 
 export function unobserveNode(root, id) {
@@ -221,6 +245,9 @@ export function unobserveNode(root, id) {
     const el = s.nodes.get(id);
     if (el) s.ro.unobserve(el);
     s.nodes.delete(id);
+    s.mutations.get(id)?.disconnect();
+    s.mutations.delete(id);
+    s.sent.delete(id);
 }
 
 /** Force une nouvelle mesure (handles ajoutés ou déplacés sans changement de taille du node). */
@@ -229,7 +256,9 @@ export function remeasure(root, id) {
     if (s) queue(s, id);
 }
 
-function queue(s, id) {
+function queue(s, id, contentOnly = false) {
+    if (!contentOnly) s.soft.delete(id);
+    else if (!s.pending.has(id)) s.soft.add(id);
     s.pending.add(id);
     if (s.raf) return;
     s.raf = requestAnimationFrame(() => {
@@ -239,12 +268,60 @@ function queue(s, id) {
             const el = s.nodes.get(nid);
             if (el && el.isConnected) {
                 const m = measure(el, nid);
-                if (m) batch.push(m);
+                if (!m) continue;
+                const text = JSON.stringify(m, (key, v) => typeof v === 'number' ? Math.round(v * 10) / 10 : v);
+                if (s.soft.has(nid) && s.sent.get(nid) === text) continue;
+                s.sent.set(nid, text);
+                batch.push(m);
             }
         }
         s.pending.clear();
-        if (batch.length) s.dotnet.invokeMethodAsync('OnMeasured', batch);
+        s.soft.clear();
+        for (const message of messages(batch)) s.dotnet.invokeMethodAsync('OnMeasured', message);
     });
+}
+
+// Blazor Server refuse un message de plus de 32 Ko (réglage par défaut de SignalR) et coupe alors le circuit : quelques
+// dizaines de nodes à plusieurs handles suffisent. La marge couvre l'enveloppe et les identifiants non ASCII.
+const MESSAGE_LIMIT = 12000;
+
+/** Découpe les mesures en messages ; un node trop gros à lui seul est coupé par handles (`partial` : la suite arrive). */
+function messages(batch) {
+    const result = [];
+    let current = [], size = 0;
+    const add = (part) => {
+        const length = JSON.stringify(part).length;
+        if (current.length && size + length > MESSAGE_LIMIT) {
+            result.push(current);
+            current = [];
+            size = 0;
+        }
+        current.push(part);
+        size += length;
+    };
+
+    for (const node of batch) {
+        if (JSON.stringify(node).length <= MESSAGE_LIMIT) {
+            add(node);
+            continue;
+        }
+
+        let handles = [], length = 0;
+        for (const handle of node.handles) {
+            const l = JSON.stringify(handle).length;
+            if (handles.length && length + l > MESSAGE_LIMIT / 2) {
+                add({ ...node, handles, partial: true });
+                handles = [];
+                length = 0;
+            }
+            handles.push(handle);
+            length += l;
+        }
+        add({ ...node, handles });
+    }
+
+    if (current.length) result.push(current);
+    return result;
 }
 
 function measure(el, id) {
