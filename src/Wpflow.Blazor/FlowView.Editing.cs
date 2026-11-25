@@ -296,7 +296,7 @@ public partial class FlowView
     // ---------- Double-clic, menu contextuel, survol, dépôt ----------
 
     internal async Task NodeDoubleClick(Node n, MouseEventArgs e) =>
-        await OnNodeDoubleClick.InvokeAsync(new NodeEventArgs(n, MakePointer(Rel(e.ClientX, e.ClientY), e.ShiftKey, e.CtrlKey, e.AltKey, e.MetaKey)));
+        await OnNodeDoubleClick.InvokeAsync(NodeArgs(n, MakePointer(Rel(e.ClientX, e.ClientY), e.ShiftKey, e.CtrlKey, e.AltKey, e.MetaKey)));
 
     private async Task EdgeDoubleClick(Edge edge, MouseEventArgs e) =>
         await OnEdgeDoubleClick.InvokeAsync(new EdgeEventArgs(edge, MakePointer(Rel(e.ClientX, e.ClientY), e.ShiftKey, e.CtrlKey, e.AltKey, e.MetaKey)));
@@ -313,7 +313,7 @@ public partial class FlowView
         var pointer = MakePointer(Rel(e.ClientX, e.ClientY), e.ShiftKey, e.CtrlKey, e.AltKey, e.MetaKey);
         if (n.Selected && Nodes.Count(x => x.Selected) > 1 && OnSelectionContextMenu.HasDelegate)
             await OnSelectionContextMenu.InvokeAsync(new PaneEventArgs(pointer));
-        else await OnNodeContextMenu.InvokeAsync(new NodeEventArgs(n, pointer));
+        else await OnNodeContextMenu.InvokeAsync(NodeArgs(n, pointer));
     }
 
     private async Task EdgeContextMenu(Edge edge, MouseEventArgs e) =>

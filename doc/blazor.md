@@ -92,7 +92,7 @@ Clavier : Suppr / Retour arrière supprime, Ctrl+A tout sélectionner, Ctrl+C / 
 
 ### Rendu
 
-`ShowBackground`, `BackgroundVariant` (`Dots`, `Lines`, `Cross`), `BackgroundGap`, `BackgroundSize`, `BackgroundLineWidth`, `BackgroundColor`, `BackgroundOffset`, `AdditionalBackgrounds` (liste de `BackgroundLayer`), `Dark` (ou les variables CSS `--wf-*`), `DefaultMarkerColor`, `NodeTemplate(s)`, `EdgeTypes` (un `IEdgePathProvider` par type), `EdgeTemplates` (dessin complet d'un type d'edge), `EdgeLabelTemplate`, `MarkerTemplates` (marqueur SVG personnalisé, `Edge.MarkerEndKey`).
+`ShowBackground`, `BackgroundVariant` (`Dots`, `Lines`, `Cross`), `BackgroundGap`, `BackgroundSize`, `BackgroundLineWidth`, `BackgroundColor`, `BackgroundOffset`, `AdditionalBackgrounds` (liste de `BackgroundLayer`), `Dark` (ou les variables CSS `--wf-*`), `DefaultMarkerColor`, `NodeTemplate(s)`, `EdgeTypes` (un `IEdgePathProvider` par type ; il reçoit l'edge tracé dans `EdgeGeometry.Edge`, par exemple pour qu'un seul type de lien ERD varie selon `Edge.Data`), `EdgeTemplates` (dessin complet d'un type d'edge), `EdgeLabelTemplate`, `MarkerTemplates` (marqueur SVG personnalisé, `Edge.MarkerEndKey`).
 
 ### Accessibilité
 
@@ -101,6 +101,26 @@ Clavier : Suppr / Retour arrière supprime, Ctrl+A tout sélectionner, Ctrl+C / 
 ### Évènements
 
 `OnNodesChange`, `OnEdgesChange`, `OnConnect`, `OnConnectStart`, `OnConnectEnd`, `OnClickConnectStart`, `OnClickConnectEnd`, `OnReconnectStart`, `OnReconnect`, `OnReconnectEnd`, `OnNodeClick`, `OnNodeDoubleClick`, `OnNodeContextMenu`, `OnNodeMouseEnter`, `OnNodeMouseLeave`, `OnEdgeClick`, `OnEdgeDoubleClick`, `OnEdgeContextMenu`, `OnEdgeMouseEnter`, `OnEdgeMouseLeave`, `OnPaneClick`, `OnPaneContextMenu`, `OnPaneMouseEnter`, `OnPaneMouseLeave`, `OnPaneMouseMove`, `OnSelectionContextMenu`, `OnNodeDragStart`, `OnNodeDrag`, `OnNodeDragStop`, `OnSelectionDragStart`, `OnSelectionDrag`, `OnSelectionDragStop`, `OnSelectionStart`, `OnSelectionEnd`, `OnSelectionChange`, `OnMoveStart`, `OnMove`, `OnMoveEnd`, `OnInit`, `OnNodesInitialized`, `OnError`, `OnDrop` (glisser-déposer depuis une palette, position en coordonnées flow), `OnBeforeDelete` (renvoyer faux annule), `OnDelete`. Les écouteurs de survol et de menu contextuel ne sont attachés que si un gestionnaire est fourni.
+
+#### Savoir quel élément du node a été cliqué
+
+Pour `OnNodeClick`, `OnNodeDoubleClick` et `OnNodeContextMenu`, `NodeEventArgs.TargetData` contient les attributs `data-*` de l'élément pressé et de ses parents à l'intérieur du node (le plus proche l'emporte), sans le préfixe `data-` :
+
+```razor
+@foreach (var column in table.Columns)
+{
+    <div data-column="@column.Name">@column.Name <small>@column.Type</small></div>
+}
+```
+
+```csharp
+void OnDoubleClick(NodeEventArgs e)
+{
+    if (e.TargetData.TryGetValue("column", out var column)) EditColumn(e.Node.Id, column);
+}
+```
+
+L'élément retenu est celui sous le pointeur à l'appui. Le dictionnaire est vide au survol et si aucun élément ne porte d'attribut. Le node lui-même est exclu. Un clic sur un contrôle HTML (`button`, `input`, `select`, `textarea`, `a`) ne lève pas `OnNodeClick` : utilisez son propre `@onclick`.
 
 ### Méthodes (`@ref`)
 

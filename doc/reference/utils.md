@@ -155,7 +155,7 @@ ClipboardData Paste(ClipboardData data, IEnumerable<Node> existingNodes, IEnumer
 | Élément | Description |
 |---|---|
 | `EdgePaths.SimpleBezier(...)` | Chemin `simplebezier` (`getSimpleBezierPath`). |
-| `EdgeGeometry.Options` (`EdgePathOptions`) | Options par edge (`Curvature`, `BorderRadius`, `Offset`, `StepPosition`) transmises aux fournisseurs de chemin ; les types `default`, `step`, `smoothstep` les respectent. |
+| `EdgeGeometry.Edge` (`Edge?`) | L'edge tracé, transmis aux fournisseurs de chemin (`null` sans edge). Les types `default`, `step`, `smoothstep` respectent ses `PathOptions` (`Curvature`, `BorderRadius`, `Offset`, `StepPosition`). |
 | `GraphLayout.Layered(nodes, edges, LayoutDirection, rankGap, nodeGap, …)` | Disposition en couches dans les quatre directions (`LeftToRight`, `RightToLeft`, `TopToBottom`, `BottomToTop`). |
 | `ViewportMath.GetViewportForCenter(x, y, zoom, w, h)` | Viewport centré sur un point (`setCenter`). |
 | `ViewportMath.Interpolate(from, to, t)` / `EaseInOut(t)` | Transition de viewport (zoom géométrique, translation linéaire). |

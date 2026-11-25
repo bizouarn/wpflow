@@ -372,7 +372,7 @@ public sealed class EdgeLayer : Canvas
             }
 
             var info = resolver.Type(edge.Type);
-            var path = info.Provider.GetPath(new EdgeGeometry(s, sp, t, tp, edge.PathOptions));
+            var path = info.Provider.GetPath(new EdgeGeometry(s, sp, t, tp, edge));
 
             // Le type a changé de mode de rendu (tracé direct <-> template) : on repart d'un nouvel élément.
             if (exists && (visual is EdgeTemplateVisual) != (info.Template != null))

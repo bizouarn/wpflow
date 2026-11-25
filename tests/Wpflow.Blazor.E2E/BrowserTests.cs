@@ -22,6 +22,80 @@ public abstract class BrowserTests(DemoFixture demo)
     }
 
     [Fact]
+    public async Task Double_clicking_a_node_reaches_the_node_and_does_not_zoom()
+    {
+        var page = await demo.OpenAsync();
+        var zoom = (await page.ViewportAsync()).Zoom;
+        var centre = await page.CenterAsync("[data-node-id='2']");
+
+        await page.Mouse.DblClickAsync((float)centre.X, (float)centre.Y);
+
+        await page.UntilAsync(async () => await page.Locator(".demo-toolbar span").InnerTextAsync() == "double-clic sur 2", "le node a reçu le double-clic");
+        await page.WaitForTimeoutAsync(400); // le zoom du fond serait animé sur 200 ms
+        Assert.Equal(zoom, (await page.ViewportAsync()).Zoom);
+    }
+
+    [Fact]
+    public async Task The_data_attributes_of_the_clicked_element_reach_the_node_event()
+    {
+        var page = await demo.OpenAsync();
+        // une « colonne » avec un enfant : l'attribut est lu sur un parent de l'élément réellement cliqué
+        await page.EvaluateAsync("""
+            () => {
+                const row = document.createElement('div');
+                row.dataset.column = 'client_id';
+                row.innerHTML = '<span id="cell">cellule</span>';
+                document.querySelector("[data-node-id='2']").appendChild(row);
+            }
+            """);
+        var cell = await page.CenterAsync("#cell");
+
+        await page.Mouse.DblClickAsync((float)cell.X, (float)cell.Y);
+
+        await page.UntilAsync(async () => await page.Locator(".demo-toolbar span").InnerTextAsync() == "double-clic sur 2 (client_id)", "la colonne est identifiée");
+    }
+
+    [Fact]
+    public async Task Double_clicking_an_edge_does_not_zoom()
+    {
+        var page = await demo.OpenAsync();
+        var zoom = (await page.ViewportAsync()).Zoom;
+        // un point du tracé lui-même (le centre du rectangle d'une courbe peut être à côté)
+        var point = await page.EvaluateAsync<double[]>("""
+            () => {
+                const path = document.querySelector('.wf-edge-hit');
+                const p = path.getPointAtLength(path.getTotalLength() / 2).matrixTransform(path.getScreenCTM());
+                return [p.x, p.y];
+            }
+            """);
+
+        await page.Mouse.DblClickAsync((float)point[0], (float)point[1]);
+
+        await page.WaitForTimeoutAsync(500);
+        Assert.Equal(zoom, (await page.ViewportAsync()).Zoom);
+    }
+
+    [Fact]
+    public async Task A_drag_released_outside_the_view_still_ends_the_gesture()
+    {
+        var page = await demo.OpenAsync();
+        var before = await page.NodePosAsync("2");
+        var from = await page.CenterAsync("[data-node-id='2']");
+
+        await page.Mouse.MoveAsync((float)from.X, (float)from.Y);
+        await page.Mouse.DownAsync();
+        await page.Mouse.MoveAsync(-50, -50); // sort d'un seul bond
+        await page.UntilAsync(async () => (await page.NodePosAsync("2")) != before, "le node a suivi");
+        await page.Mouse.UpAsync();
+        await page.WaitForTimeoutAsync(300);
+        var after = await page.NodePosAsync("2");
+
+        await page.Mouse.MoveAsync(640, 400);
+        await page.WaitForTimeoutAsync(300);
+        Assert.Equal(after, await page.NodePosAsync("2")); // le geste est bien terminé
+    }
+
+    [Fact]
     public async Task Dragging_a_node_moves_it_and_undo_brings_it_back()
     {
         var page = await demo.OpenAsync();

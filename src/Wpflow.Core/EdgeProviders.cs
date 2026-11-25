@@ -1,8 +1,12 @@
 namespace Wpflow.Core;
 
-/// <summary>Extrémités d'un edge : points d'attache et côtés des handles (en coordonnées flow).</summary>
+/// <summary>
+///     Extrémités d'un edge : points d'attache et côtés des handles (en coordonnées flow). <paramref name="Edge" /> est
+///     l'edge tracé (son <c>Data</c> permet à un seul type de produire des tracés différents, et les fournisseurs intégrés
+///     y lisent <c>PathOptions</c>) ; <c>null</c> sans edge, comme pour le fil d'une connexion en cours.
+/// </summary>
 public readonly record struct EdgeGeometry(XYPosition Source, Position SourcePosition, XYPosition Target,
-    Position TargetPosition, EdgePathOptions? Options = null);
+    Position TargetPosition, Edge? Edge = null);
 
 /// <summary>
 ///     Calcule le tracé d'un type d'edge (équivalent d'une fonction <c>getXxxPath</c> de xyflow).
@@ -26,15 +30,15 @@ public static class EdgePathProviders
 
     private static readonly IEdgePathProvider StepProvider =
         new DelegateEdgePathProvider(g => EdgePaths.Step(g.Source, g.SourcePosition, g.Target, g.TargetPosition,
-            g.Options?.Offset ?? 20, g.Options?.StepPosition ?? 0.5));
+            g.Edge?.PathOptions?.Offset ?? 20, g.Edge?.PathOptions?.StepPosition ?? 0.5));
 
     private static readonly IEdgePathProvider SmoothStepProvider =
         new DelegateEdgePathProvider(g => EdgePaths.SmoothStep(g.Source, g.SourcePosition, g.Target, g.TargetPosition,
-            g.Options?.BorderRadius ?? 5, g.Options?.Offset ?? 20, g.Options?.StepPosition ?? 0.5));
+            g.Edge?.PathOptions?.BorderRadius ?? 5, g.Edge?.PathOptions?.Offset ?? 20, g.Edge?.PathOptions?.StepPosition ?? 0.5));
 
     private static readonly IEdgePathProvider BezierProvider =
         new DelegateEdgePathProvider(g => EdgePaths.Bezier(g.Source, g.SourcePosition, g.Target, g.TargetPosition,
-            g.Options?.Curvature ?? 0.25));
+            g.Edge?.PathOptions?.Curvature ?? 0.25));
 
     private static readonly IEdgePathProvider SimpleBezierProvider =
         new DelegateEdgePathProvider(g => EdgePaths.SimpleBezier(g.Source, g.SourcePosition, g.Target, g.TargetPosition));

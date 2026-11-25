@@ -6,6 +6,8 @@ const roots = new WeakMap();
 // Contrôles HTML d'un node : un appui dessus ne démarre pas de geste (le node est seulement sélectionné).
 const INTERACTIVE = 'input,textarea,select,button,a,[contenteditable="true"]';
 const TEXT_INPUT = 'input,textarea,select,[contenteditable="true"]';
+// Déplacement (px) au-delà duquel le pointeur est capturé ; en deçà, c'est un clic ou un double-clic.
+const CAPTURE_DISTANCE = 4;
 
 export function attach(root, dotnet) {
     const s = {
@@ -91,12 +93,16 @@ export function attach(root, dotnet) {
         if (closest('.nopan')) flags |= 2;
         if (closest(INTERACTIVE)) flags |= 4;
         if (flags) dotnet.invokeMethodAsync('OnPressInfo', flags);
-        if (flags & 4) return; // contrôle HTML : pas de capture, il garde son comportement
+        // Toujours envoyé pour un node (même vide) : l'appui précédent ne doit pas rester en mémoire.
+        if (nodeEl) dotnet.invokeMethodAsync('OnPressData', nodeEl.dataset.nodeId, targetData(t, nodeEl));
+        if (flags & 4) return; // contrôle HTML : le geste n'est pas suivi, il garde son comportement
 
         if (s.pointerId !== null) return;
         sendRect(false);
         s.pointerId = e.pointerId;
-        try { root.setPointerCapture(e.pointerId); } catch { /* pointeur déjà relâché */ }
+        s.downX = e.clientX;
+        s.downY = e.clientY;
+        s.captured = false;
         if (e.button === 1) e.preventDefault();
     };
     s.onMove = (e) => {
@@ -104,6 +110,12 @@ export function attach(root, dotnet) {
         if (p) { p.x = e.clientX; p.y = e.clientY; }
         if (s.pinch) { movePinch(s); return; }
         if (e.pointerId !== s.pointerId) return;
+        // La capture redirige click et dblclick vers la racine : on ne la prend qu'une fois le pointeur réellement
+        // déplacé, pour qu'un clic ou un double-clic atteigne le node ou l'edge visé.
+        if (!s.captured && Math.hypot(e.clientX - s.downX, e.clientY - s.downY) > CAPTURE_DISTANCE) {
+            s.captured = true;
+            try { root.setPointerCapture(e.pointerId); } catch { /* pointeur déjà relâché */ }
+        }
         s.lastMove = e;
         if (s.moveRaf) return;
         s.moveRaf = requestAnimationFrame(() => {
@@ -122,9 +134,10 @@ export function attach(root, dotnet) {
         dotnet.invokeMethodAsync('OnPointerUp', e.clientX, e.clientY, e.shiftKey, e.type === 'pointercancel');
     };
     root.addEventListener('pointerdown', s.onDown);
-    root.addEventListener('pointermove', s.onMove);
-    root.addEventListener('pointerup', s.onUp);
-    root.addEventListener('pointercancel', s.onUp);
+    // Suite du geste suivie sur la fenêtre : sans capture, le pointeur peut quitter la vue avant le premier mouvement.
+    window.addEventListener('pointermove', s.onMove, true);
+    window.addEventListener('pointerup', s.onUp, true);
+    window.addEventListener('pointercancel', s.onUp, true);
 
     // Clavier : les saisies dans un champ ne sont pas vues par le graphe ; les touches du graphe n'agissent pas sur la page.
     s.onKey = (e) => {
@@ -151,12 +164,25 @@ export function detach(root) {
     window.removeEventListener('resize', s.onScroll);
     root.removeEventListener('wheel', s.onWheel);
     root.removeEventListener('pointerdown', s.onDown);
-    root.removeEventListener('pointermove', s.onMove);
-    root.removeEventListener('pointerup', s.onUp);
-    root.removeEventListener('pointercancel', s.onUp);
+    window.removeEventListener('pointermove', s.onMove, true);
+    window.removeEventListener('pointerup', s.onUp, true);
+    window.removeEventListener('pointercancel', s.onUp, true);
     root.removeEventListener('keydown', s.onKey);
     if (s.raf) cancelAnimationFrame(s.raf);
     roots.delete(root);
+}
+
+/** Les attributs data-* de l'élément pressé et de ses parents dans le node (node exclu) ; le plus proche l'emporte. */
+function targetData(target, nodeEl) {
+    const data = {};
+    for (let el = target; el && el !== nodeEl; el = el.parentElement) {
+        for (const a of el.attributes || []) {
+            if (!a.name.startsWith('data-')) continue;
+            const key = a.name.slice(5);
+            if (!Object.hasOwn(data, key)) data[key] = a.value;
+        }
+    }
+    return data;
 }
 
 function pinchState(s) {

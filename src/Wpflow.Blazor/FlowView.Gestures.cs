@@ -69,10 +69,25 @@ public partial class FlowView
         return Task.CompletedTask;
     }
 
+    // Attributs data-* de l'élément pressé : « pending » vient du pont JS, juste avant l'évènement Blazor de l'appui.
+    private (string NodeId, Dictionary<string, string> Data)? _pendingData, _pressData;
+
+    [JSInvokable]
+    public Task OnPressData(string nodeId, Dictionary<string, string> data)
+    {
+        _pendingData = (nodeId, data);
+        return Task.CompletedTask;
+    }
+
+    private NodeEventArgs NodeArgs(Node n, FlowPointer pointer) =>
+        _pressData is { } p && p.NodeId == n.Id ? new NodeEventArgs(n, pointer) { TargetData = p.Data } : new NodeEventArgs(n, pointer);
+
     private (bool NoDrag, bool NoPan, bool Untracked) BeginGesture(PointerEventArgs e)
     {
         var flags = (_pressNoDrag, _pressNoPan, _pressUntracked);
         _pressNoDrag = _pressNoPan = _pressUntracked = false;
+        _pressData = _pendingData;
+        _pendingData = null;
         _startPointer = _pointer = Rel(e.ClientX, e.ClientY);
         _startFlow = ScreenToFlow(_startPointer);
         _startViewport = Viewport;
@@ -366,7 +381,7 @@ public partial class FlowView
                 if (!n.Selected || Nodes.Count(x => x.Selected) > 1 || Edges.Any(x => x.Selected)) await SelectOnly(n.Id, null);
             }
 
-            await OnNodeClick.InvokeAsync(new NodeEventArgs(_nodeIndex[n.Id], pointer));
+            await OnNodeClick.InvokeAsync(NodeArgs(_nodeIndex[n.Id], pointer));
         }
         else if (_pressedEdge != null)
         {

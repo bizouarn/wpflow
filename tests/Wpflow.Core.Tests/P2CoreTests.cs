@@ -102,11 +102,12 @@ public class P2CoreTests
     public void Path_options_reach_the_providers()
     {
         var g = new EdgeGeometry(new XYPosition(100, 0), Position.Right, new XYPosition(0, 100), Position.Left);
-        var flat = EdgePathProviders.ForType("default").GetPath(g with { Options = new EdgePathOptions(Curvature: 0) });
-        var curved = EdgePathProviders.ForType("default").GetPath(g with { Options = new EdgePathOptions(Curvature: 1) });
+        EdgeGeometry With(EdgePathOptions options) => g with { Edge = new Edge("e", "a", "b", PathOptions: options) };
+        var flat = EdgePathProviders.ForType("default").GetPath(With(new EdgePathOptions(Curvature: 0)));
+        var curved = EdgePathProviders.ForType("default").GetPath(With(new EdgePathOptions(Curvature: 1)));
         Assert.NotEqual(flat.Path, curved.Path);
 
-        var sharp = EdgePathProviders.ForType("smoothstep").GetPath(g with { Options = new EdgePathOptions(BorderRadius: 0) });
+        var sharp = EdgePathProviders.ForType("smoothstep").GetPath(With(new EdgePathOptions(BorderRadius: 0)));
         var round = EdgePathProviders.ForType("smoothstep").GetPath(g);
         Assert.NotEqual(round.Path, sharp.Path);
     }

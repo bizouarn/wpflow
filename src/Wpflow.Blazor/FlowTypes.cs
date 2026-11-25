@@ -10,7 +10,18 @@ public sealed record BackgroundLayer(BackgroundVariant Variant = BackgroundVaria
 /// <summary>Position du pointeur au moment d'un évènement : écran (relatif au conteneur), flow et modificateurs.</summary>
 public sealed record FlowPointer(XYPosition Screen, XYPosition Flow, bool Shift, bool Ctrl, bool Alt, bool Meta);
 
-public sealed record NodeEventArgs(Node Node, FlowPointer Pointer);
+public sealed record NodeEventArgs(Node Node, FlowPointer Pointer)
+{
+    /// <summary>
+    ///     Les attributs <c>data-*</c> de l'élément pressé dans le node et de ses parents (le plus proche l'emporte), sans le
+    ///     préfixe : <c>data-column="id"</c> donne <c>TargetData["column"]</c>. Renseigné pour le clic, le double-clic et le
+    ///     menu contextuel ; vide au survol.
+    /// </summary>
+    public IReadOnlyDictionary<string, string> TargetData { get; init; } = NoData;
+
+    private static readonly IReadOnlyDictionary<string, string> NoData =
+        System.Collections.ObjectModel.ReadOnlyDictionary<string, string>.Empty;
+}
 
 public sealed record EdgeEventArgs(Edge Edge, FlowPointer Pointer);
 

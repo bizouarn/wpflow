@@ -919,6 +919,46 @@ public sealed class FlowViewFeatureTests : TestContext
     }
 
     [Fact]
+    public async Task The_data_attributes_of_the_pressed_element_come_with_the_node_events()
+    {
+        var events = new List<NodeEventArgs>();
+        var h = Render(configure: p =>
+        {
+            p.Add(f => f.OnNodeClick, EventCallback.Factory.Create<NodeEventArgs>(this, events.Add));
+            p.Add(f => f.OnNodeDoubleClick, EventCallback.Factory.Create<NodeEventArgs>(this, events.Add));
+        });
+        await Measure(h);
+        var data = new Dictionary<string, string> { ["column"] = "id" };
+
+        await h.Cut.InvokeAsync(() => h.Flow.OnPressData("a", data));
+        await Down(h.Cut.Find("[data-node-id='a']"), 50, 20);
+        await Up(h, 50, 20);
+        await h.Cut.Find("[data-node-id='a']").TriggerEventAsync("ondblclick", new MouseEventArgs { ClientX = 50, ClientY = 20 });
+        // un double-clic sur un autre node ne reprend pas les données de cet appui
+        await h.Cut.Find("[data-node-id='b']").TriggerEventAsync("ondblclick", new MouseEventArgs { ClientX = 350, ClientY = 120 });
+        // un appui sans données efface les précédentes
+        await Down(h.Cut.Find("[data-node-id='a']"), 50, 20);
+        await Up(h, 50, 20);
+
+        Assert.Equal(["a", "a", "b", "a"], events.Select(e => e.Node.Id));
+        Assert.Equal("id", events[0].TargetData["column"]);
+        Assert.Equal("id", events[1].TargetData["column"]);
+        Assert.Empty(events[2].TargetData);
+        Assert.Empty(events[3].TargetData);
+    }
+
+    [Fact]
+    public async Task An_edge_provider_receives_the_edge_it_draws()
+    {
+        var provider = new DelegateEdgePathProvider(g => new EdgePath($"M0,0 L{g.Edge?.Data},0", 0, 0, 0, 0));
+        var h = Render(edges: [AB with { Type = "erd", Data = 7 }], configure: p =>
+            p.Add(f => f.EdgeTypes, new Dictionary<string, IEdgePathProvider> { ["erd"] = provider }));
+        await Measure(h);
+
+        Assert.Equal("M0,0 L7,0", h.Cut.Find(".wf-edge-path").GetAttribute("d"));
+    }
+
+    [Fact]
     public async Task Pane_and_edge_clicks_are_reported()
     {
         PaneEventArgs? pane = null;

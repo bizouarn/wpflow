@@ -402,7 +402,7 @@ public partial class FlowView : ComponentBase, IAsyncDisposable
                 continue;
             }
 
-            var geometry = new EdgeGeometry(ends.Source, ends.SourcePosition, ends.Target, ends.TargetPosition, e.PathOptions);
+            var geometry = new EdgeGeometry(ends.Source, ends.SourcePosition, ends.Target, ends.TargetPosition, e);
             var provider = EdgeTypes != null && EdgeTypes.TryGetValue(e.Type, out var custom) ? custom : EdgePathProviders.ForType(e.Type);
             var ctx = new EdgeRenderContext(e, provider.GetPath(geometry), geometry, e.Selected);
             _edgeContexts[e.Id] = ctx;

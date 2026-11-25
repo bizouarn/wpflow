@@ -86,6 +86,14 @@ public sealed class WaveEdge : IEdgePathProvider
 new Edge("e1", "a", "b", Type: "wave")
 ```
 
+`g.Edge` donne l'edge tracé : le tracé peut dépendre de ses données (`Data`, handles, sélection), et un seul type suffit alors là où il en faudrait un par variante. Il vaut `null` quand il n'y a pas d'edge, par exemple si vous appelez le fournisseur vous-même sans le préciser.
+
+```csharp
+new DelegateEdgePathProvider(g => g.Edge?.Data is Relation { IsSelfReference: true }
+    ? LoopPath(g)                                  // votre tracé en boucle
+    : EdgePathProviders.ForType("smoothstep").GetPath(g));
+```
+
 `DelegateEdgePathProvider(g => …)` évite de créer une classe. `EdgePaths.Bezier`, `Step`, `SmoothStep`, `Straight` sont des briques utilisables dans votre fournisseur, et `EdgePathProviders.ForType("step")` donne les fournisseurs intégrés (on peut aussi **surcharger** un type intégré : `wpflow-edge-straight`).
 
 ### Un autre rendu : `wpflow-edge-template-{type}`

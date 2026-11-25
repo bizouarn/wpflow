@@ -80,7 +80,8 @@
         };
     }
 
-    private void OnDbl(NodeEventArgs e) => _last = $"double-clic sur {e.Node.Id}";
+    private void OnDbl(NodeEventArgs e) =>
+        _last = $"double-clic sur {e.Node.Id}" + (e.TargetData.TryGetValue("column", out var column) ? $" ({column})" : "");
 
     private Task Png() => _flow!.SaveImage("graphe.png");
 
