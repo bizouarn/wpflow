@@ -19,11 +19,13 @@ public static class NodeResize
     /// <summary>
     ///     Nouveau rectangle après déplacement de la poignée de <paramref name="dx" />, <paramref name="dy" />
     ///     (coordonnées flow, relatives au rectangle de départ). Le bord opposé reste fixe, y compris quand une taille
-    ///     minimale/maximale est atteinte.
+    ///     minimale/maximale est atteinte. Avec <paramref name="keepAspectRatio" />, le rapport largeur/hauteur de départ
+    ///     est conservé (le facteur d'échelle suit la dimension qui a le plus changé, puis est borné par les min/max).
     /// </summary>
     public static Rect Resize(ResizeDirection direction, Rect start, double dx, double dy,
         double minWidth = 10, double minHeight = 10,
-        double maxWidth = double.PositiveInfinity, double maxHeight = double.PositiveInfinity)
+        double maxWidth = double.PositiveInfinity, double maxHeight = double.PositiveInfinity,
+        bool keepAspectRatio = false)
     {
         var left = direction is ResizeDirection.Left or ResizeDirection.TopLeft or ResizeDirection.BottomLeft;
         var right = direction is ResizeDirection.Right or ResizeDirection.TopRight or ResizeDirection.BottomRight;
@@ -46,6 +48,20 @@ public static class NodeResize
             y = start.Bottom - h;
         }
 
+        if (!keepAspectRatio || start.Width <= 0 || start.Height <= 0) return new Rect(x, y, w, h);
+
+        // Une seule échelle pour les deux dimensions.
+        var scaleX = (right || left) ? (start.Width + (right ? dx : -dx)) / start.Width : 1;
+        var scaleY = (bottom || top) ? (start.Height + (bottom ? dy : -dy)) / start.Height : 1;
+        var scale = Math.Abs(scaleX - 1) >= Math.Abs(scaleY - 1) ? scaleX : scaleY;
+        var lower = Math.Max(minWidth / start.Width, minHeight / start.Height);
+        var upper = Math.Min(maxWidth / start.Width, maxHeight / start.Height);
+        scale = ViewportMath.Clamp(scale, lower, Math.Max(lower, upper));
+
+        w = start.Width * scale;
+        h = start.Height * scale;
+        x = left ? start.Right - w : start.X;
+        y = top ? start.Bottom - h : start.Y;
         return new Rect(x, y, w, h);
     }
 }

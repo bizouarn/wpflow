@@ -21,6 +21,9 @@ public static class FlowCommands
     public static RoutedUICommand SelectAll { get; } = Create("Tout sélectionner", nameof(SelectAll));
     public static RoutedUICommand ClearSelection { get; } = Create("Désélectionner", nameof(ClearSelection));
     public static RoutedUICommand DeleteSelection { get; } = Create("Supprimer la sélection", nameof(DeleteSelection));
+    public static RoutedUICommand Copy { get; } = Create("Copier", nameof(Copy));
+    public static RoutedUICommand Cut { get; } = Create("Couper", nameof(Cut));
+    public static RoutedUICommand Paste { get; } = Create("Coller", nameof(Paste));
 
     /// <summary>Bascule <see cref="FlowView.IsLocked" />.</summary>
     public static RoutedUICommand ToggleLock { get; } = Create("Verrouiller", nameof(ToggleLock));
@@ -45,6 +48,15 @@ public interface IFlowController
     void SelectAll();
     void ClearSelection();
     void DeleteSelection();
+    bool Copy();
+    bool Cut();
+    bool Paste();
+
+    /// <summary>Cadre les nodes avec options (marge, bornes de zoom, sous-ensemble, durée de transition).</summary>
+    bool FitView(FitViewOptions? options);
+
+    /// <summary>Centre la vue sur un point flow (<c>setCenter</c>).</summary>
+    void SetCenter(double x, double y, double? zoom = null, System.TimeSpan duration = default);
     void Undo();
     void Redo();
 
@@ -83,6 +95,11 @@ internal sealed class FlowController(FlowView flow) : IFlowController
     public void SelectAll() => flow.SelectAllElements();
     public void ClearSelection() => flow.ClearSelection();
     public void DeleteSelection() => flow.DeleteSelection();
+    public bool Copy() => flow.Copy();
+    public bool Cut() => flow.Cut();
+    public bool Paste() => flow.Paste();
+    public bool FitView(FitViewOptions? options) => flow.FitView(options);
+    public void SetCenter(double x, double y, double? zoom = null, System.TimeSpan duration = default) => flow.SetCenter(x, y, zoom, duration);
     public void Undo() => flow.Undo();
     public void Redo() => flow.Redo();
     public Wpflow.Core.XYPosition ScreenToFlow(System.Windows.Point point) => flow.ScreenToFlow(point);

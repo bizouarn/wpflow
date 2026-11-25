@@ -12,6 +12,9 @@ public sealed record NodeResizeChange(string Id, double Width, double Height, XY
 
 public sealed record NodeSelectChange(string Id, bool Selected) : NodeChange;
 
+/// <summary>Un déplacement ou un redimensionnement commence ou se termine (<c>node.dragging</c>, <c>node.resizing</c>) ; <c>null</c> laisse la valeur.</summary>
+public sealed record NodeInteractionChange(string Id, bool? Dragging = null, bool? Resizing = null) : NodeChange;
+
 public sealed record NodeRemoveChange(string Id) : NodeChange;
 
 public sealed record NodeAddChange(Node Item) : NodeChange;
@@ -68,6 +71,9 @@ public static class Changes
                         Width = resize.Width, Height = resize.Height,
                         Position = resize.Position ?? n.Position
                     });
+                    break;
+                case NodeInteractionChange act:
+                    items.Update(act.Id, n => n with { Dragging = act.Dragging ?? n.Dragging, Resizing = act.Resizing ?? n.Resizing });
                     break;
                 case NodeSelectChange sel:
                     items.Update(sel.Id, n => n with { Selected = sel.Selected });

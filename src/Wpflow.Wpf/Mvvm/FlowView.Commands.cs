@@ -265,6 +265,9 @@ public partial class FlowView
         Bind(FlowCommands.ClearSelection, ClearSelection, () => Nodes.Any(n => n.Selected) || Edges.Any(e => e.Selected));
         Bind(FlowCommands.DeleteSelection, DeleteSelection, () => !IsLocked && (Nodes.Any(n => n.Selected) || Edges.Any(e => e.Selected)));
         Bind(FlowCommands.ToggleLock, () => IsLocked = !IsLocked);
+        Bind(FlowCommands.Copy, () => Copy(), () => Nodes.Any(n => n.Selected));
+        Bind(FlowCommands.Cut, () => Cut(), () => !IsLocked && Nodes.Any(n => n.Selected));
+        Bind(FlowCommands.Paste, () => Paste(), () => CanPaste);
     }
 
     internal void SelectAllElements() => Select(Nodes.Select(n => n.Id), Edges.Select(x => x.Id), false);

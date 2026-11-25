@@ -72,6 +72,22 @@ public static class ViewportMath
         return new Viewport(v.X + k * Shift(dx0, dx1), v.Y + k * Shift(dy0, dy1), k);
     }
 
+    /// <summary>Viewport qui place le point flow (<paramref name="x" />, <paramref name="y" />) au centre d'une zone (<c>setCenter</c>).</summary>
+    public static Viewport GetViewportForCenter(double x, double y, double zoom, double width, double height) =>
+        new(width / 2 - x * zoom, height / 2 - y * zoom, zoom);
+
+    /// <summary>Interpolation entre deux viewports (<paramref name="t" /> de 0 à 1) : zoom géométrique, translation linéaire.</summary>
+    public static Viewport Interpolate(Viewport from, Viewport to, double t)
+    {
+        t = Clamp(t, 0, 1);
+        var zoom = from.Zoom * Math.Pow(to.Zoom / from.Zoom, t);
+        return new Viewport(from.X + (to.X - from.X) * t, from.Y + (to.Y - from.Y) * t, zoom);
+    }
+
+    /// <summary>Courbe d'accélération puis décélération (ease-in-out cubique) d'une transition de viewport.</summary>
+    public static double EaseInOut(double t) =>
+        t < 0.5 ? 4 * t * t * t : 1 - Math.Pow(-2 * t + 2, 3) / 2;
+
     /// <summary>Rectangle visible (en coordonnées flow) pour un viewport et une taille de contrôle donnés.</summary>
     public static Rect GetVisibleRect(Viewport v, double width, double height) =>
         new(-v.X / v.Zoom, -v.Y / v.Zoom, width / v.Zoom, height / v.Zoom);

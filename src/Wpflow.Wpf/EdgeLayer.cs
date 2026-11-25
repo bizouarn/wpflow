@@ -34,14 +34,14 @@ internal sealed class EdgeVisual : FrameworkElement, IEdgePart
     private static readonly Geometry OpenArrow = Frozen(Geometry.Parse("M-7,-5 L0,0 L-7,5"));
     private static readonly Geometry ClosedArrow = Frozen(Geometry.Parse("M-7,-5 L0,0 L-7,5 Z"));
 
-    private readonly record struct Marker(EdgeMarker Kind, MarkerShape? Custom, Matrix Transform);
+    private readonly record struct Marker(EdgeMarker Kind, MarkerShape? Custom, Matrix Transform, Brush? Fill, Pen? Pen);
 
     private readonly record struct UpdateKey(Edge Edge, string Path, XYPosition Start, Position StartSide, XYPosition End,
         Position EndSide, EdgeStyle Style, MarkerShape? StartShape, MarkerShape? EndShape);
 
     private UpdateKey? _lastUpdate;
     private Geometry? _geometry;
-    private Pen? _linePen, _markerPen, _hitPen = DefaultHitPen;
+    private Pen? _linePen, _hitPen = DefaultHitPen;
     private Brush _stroke = Brushes.Gray;
     private Marker _markerStart, _markerEnd;
     private DashStyle? _dash;
@@ -59,6 +59,11 @@ internal sealed class EdgeVisual : FrameworkElement, IEdgePart
     /// <summary>Vrai si une forme personnalisée remplace la flèche de fin.</summary>
     internal bool HasCustomEndMarker => _markerEnd.Custom != null;
 
+    /// <summary>Trait effectivement utilisé (utilisé par les tests).</summary>
+    internal Pen? LinePen => _linePen;
+
+    internal double HitWidth => _hitPen?.Thickness ?? 0;
+
     private static T Frozen<T>(T f) where T : Freezable
     {
         f.Freeze();
@@ -72,7 +77,8 @@ internal sealed class EdgeVisual : FrameworkElement, IEdgePart
         var key = new UpdateKey(edge, path.Path, start, startSide, end, endSide, style, startShape, endShape);
         if (_lastUpdate == key) return;
         var geometryChanged = _lastUpdate?.Path != path.Path;
-        var hitChanged = _lastUpdate?.Style.HitWidth != style.HitWidth;
+        var hitWidth = edge.InteractionWidth ?? style.HitWidth;
+        var hitChanged = _lastUpdate?.Edge.InteractionWidth != edge.InteractionWidth || _lastUpdate?.Style.HitWidth != style.HitWidth;
         _lastUpdate = key;
 
         if (geometryChanged)
@@ -82,18 +88,45 @@ internal sealed class EdgeVisual : FrameworkElement, IEdgePart
         }
 
         if (hitChanged)
-            _hitPen = style.HitWidth == EdgeStyle.DefaultHitWidth
+            _hitPen = hitWidth == EdgeStyle.DefaultHitWidth
                 ? DefaultHitPen
-                : Frozen(new Pen(Brushes.Transparent, style.HitWidth));
+                : Frozen(new Pen(Brushes.Transparent, hitWidth));
 
-        _stroke = edge.Selected ? style.SelectedStroke : style.Stroke;
-        _linePen = new Pen(_stroke, style.Thickness) { LineJoin = PenLineJoin.Round };
-        var hasMarker = edge.MarkerEnd != EdgeMarker.None || edge.MarkerStart != EdgeMarker.None || startShape != null || endShape != null;
-        _markerPen = hasMarker ? new Pen(_stroke, style.Thickness) { LineJoin = PenLineJoin.Round } : null; // la plupart des edges n'en ont pas
+        // Trait propre à l'edge (edge.style) : couleur, épaisseur, pointillés ; un edge sélectionné garde la couleur de sélection.
+        var thickness = edge.Style?.StrokeWidth ?? style.Thickness;
+        var own = edge.Style?.Stroke is { } color ? EdgeColors.Parse(color) : null;
+        _stroke = edge.Selected ? style.SelectedStroke : own ?? style.Stroke;
+        _linePen = new Pen(_stroke, thickness) { LineJoin = PenLineJoin.Round };
+        if (edge.Style?.DashArray is { Count: > 0 } dashes && !edge.Animated)
+            _linePen.DashStyle = new DashStyle(dashes.Select(d => d / Math.Max(thickness, 0.1)).ToList(), 0);
+
         SetAnimated(edge.Animated);
-        _markerEnd = new Marker(edge.MarkerEnd, endShape, ArrowTransform(end, endSide));
-        _markerStart = new Marker(edge.MarkerStart, startShape, ArrowTransform(start, startSide));
+        _markerEnd = MakeMarker(edge.MarkerEnd, endShape, edge.MarkerEndOptions, style, thickness, end, endSide);
+        _markerStart = MakeMarker(edge.MarkerStart, startShape, edge.MarkerStartOptions, style, thickness, start, startSide);
         InvalidateVisual();
+    }
+
+    // Une flèche reprend la couleur de l'edge, sauf couleur propre (options du marqueur) ou couleur par défaut de la vue.
+    private Marker MakeMarker(EdgeMarker kind, MarkerShape? custom, EdgeMarkerOptions? options, EdgeStyle style,
+        double thickness, XYPosition at, Position side)
+    {
+        if (kind == EdgeMarker.None && custom == null) return default;
+        var fill = options?.Color is { } c && EdgeColors.Parse(c) is { } own ? own : style.MarkerColor ?? _stroke;
+        var pen = new Pen(fill, options?.StrokeWidth ?? thickness) { LineJoin = PenLineJoin.Round }; // la plupart des edges n'en ont pas
+        var transform = options?.Orient is { } angle ? FixedTransform(at, angle) : ArrowTransform(at, side);
+        // Taille : 12,5 (valeur par défaut de xyflow) correspond à la flèche telle que dessinée.
+        var sx = (options?.Width ?? 12.5) / 12.5;
+        var sy = (options?.Height ?? 12.5) / 12.5;
+        if (sx != 1 || sy != 1) transform = Matrix.Multiply(new Matrix(sx, 0, 0, sy, 0, 0), transform);
+        return new Marker(kind, custom, transform, fill, pen);
+    }
+
+    internal static Matrix FixedTransform(XYPosition at, double angle)
+    {
+        var m = Matrix.Identity;
+        m.Rotate(angle);
+        m.Translate(at.X, at.Y);
+        return m;
     }
 
     /// <summary>Une flèche pointe vers le node : sens opposé au côté où le handle est attaché.</summary>
@@ -150,7 +183,7 @@ internal sealed class EdgeVisual : FrameworkElement, IEdgePart
         }
 
         dc.PushTransform(new MatrixTransform(marker.Transform));
-        dc.DrawGeometry(filled ? _stroke : null, _markerPen, geometry);
+        dc.DrawGeometry(filled ? marker.Fill : null, marker.Pen, geometry);
         dc.Pop();
     }
 }
@@ -230,11 +263,14 @@ internal sealed class EdgeLabel : Border, IEdgePart
         }
         else
         {
+            var o = edge.LabelStyle;
             _text.Text = edge.Label;
-            _text.Foreground = style.LabelForeground;
+            _text.Foreground = EdgeColors.Parse(o?.Foreground) ?? style.LabelForeground;
+            _text.FontSize = o?.FontSize ?? 10;
             Child = _text;
-            Background = style.LabelBackground;
-            Padding = new Thickness(2);
+            Background = o is { ShowBackground: false } ? Brushes.Transparent : EdgeColors.Parse(o?.Background) ?? style.LabelBackground;
+            Padding = new Thickness(o?.Padding ?? 2);
+            CornerRadius = new CornerRadius(o?.CornerRadius ?? 2);
         }
 
         _position = new XYPosition(path.LabelX, path.LabelY);
@@ -293,7 +329,8 @@ public sealed class EdgeLayer : Canvas
         // Brosses lues une fois pour tous les edges : une recherche de ressource par edge coûterait trop cher.
         var style = new EdgeStyle(
             flow.EdgeStroke ?? flow.ThemeBrush("Flow.Edge"), flow.ThemeBrush("Flow.EdgeSelected"), flow.EdgeStrokeThickness,
-            flow.ThemeBrush("Flow.NodeBackground"), flow.ThemeBrush("Flow.NodeText"), flow.EdgeHitWidth);
+            flow.ThemeBrush("Flow.NodeBackground"), flow.ThemeBrush("Flow.NodeText"), flow.EdgeHitWidth,
+            flow.DefaultMarkerColor, flow.ElevateEdgesOnSelect);
         var resolver = new Resolver(flow);
         var seen = touchedNodes == null ? new HashSet<string>() : null;
 
@@ -336,7 +373,7 @@ public sealed class EdgeLayer : Canvas
             }
 
             var info = resolver.Type(edge.Type);
-            var path = info.Provider.GetPath(new EdgeGeometry(s, sp, t, tp));
+            var path = info.Provider.GetPath(new EdgeGeometry(s, sp, t, tp, edge.PathOptions));
 
             // Le type a changé de mode de rendu (tracé direct <-> template) : on repart d'un nouvel élément.
             if (exists && (visual is EdgeTemplateVisual) != (info.Template != null))
@@ -358,6 +395,12 @@ public sealed class EdgeLayer : Canvas
                 ((EdgeVisual)visual!).Update(edge, path, s, sp, t, tp, style, resolver.Marker(edge.MarkerStartKey),
                     resolver.Marker(edge.MarkerEndKey));
             UpdateLabel(edge, path, style, info.Label);
+            var z = edge.ZIndex ?? (edge.Selected && style.ElevateSelected ? 1000 : 0);
+            Panel.SetZIndex(visual!, z);
+            if (_labels.TryGetValue(edge.Id, out var labelVisual)) Panel.SetZIndex(labelVisual, z + 1);
+            var aria = edge.AriaLabel ?? flow.EdgeAriaLabelProvider?.Invoke(edge);
+            if (aria != null) System.Windows.Automation.AutomationProperties.SetName(visual!, aria);
+            else visual!.ClearValue(System.Windows.Automation.AutomationProperties.NameProperty);
             SetVisibility(edge.Id, visual!, visibility);
         }
 
@@ -404,7 +447,37 @@ public sealed class EdgeLayer : Canvas
 
 /// <summary>Brosses et réglages d'affichage des edges, résolus une seule fois par rafraîchissement (et non par edge).</summary>
 internal sealed record EdgeStyle(Brush Stroke, Brush SelectedStroke, double Thickness, Brush LabelBackground,
-    Brush LabelForeground, double HitWidth)
+    Brush LabelForeground, double HitWidth, Brush? MarkerColor = null, bool ElevateSelected = false)
 {
     public const double DefaultHitWidth = 10;
+}
+
+/// <summary>Conversion des couleurs textuelles d'un <see cref="Edge" /> (<c>#rrggbb</c>, noms) en brosses figées, mises en cache.</summary>
+internal static class EdgeColors
+{
+    private static readonly Dictionary<string, Brush?> Cache = new();
+
+    public static Brush? Parse(string? color)
+    {
+        if (string.IsNullOrWhiteSpace(color)) return null;
+        lock (Cache)
+        {
+            if (Cache.TryGetValue(color, out var known)) return known;
+            Brush? brush = null;
+            try
+            {
+                if (ColorConverter.ConvertFromString(color) is Color c)
+                {
+                    brush = new SolidColorBrush(c);
+                    brush.Freeze();
+                }
+            }
+            catch (FormatException)
+            {
+                // couleur inconnue : on retombe sur la couleur par défaut
+            }
+
+            return Cache[color] = brush;
+        }
+    }
 }

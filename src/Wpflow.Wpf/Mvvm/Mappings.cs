@@ -23,12 +23,15 @@ public sealed class NodeMapping
     public string? DraggablePath { get; set; }
     public string? SelectablePath { get; set; }
     public string? ParentIdPath { get; set; }
+    public string? HiddenPath { get; set; }
+    public string? ConnectablePath { get; set; }
+    public string? DeletablePath { get; set; }
 
     /// <summary>Propriété fournie à <c>Node.Data</c> (DataContext des templates) ; <c>null</c> = le ViewModel lui-même.</summary>
     public string? DataPath { get; set; }
 
     internal HashSet<string> Paths() => Collect(IdPath, XPath, YPath, TypePath, WidthPath, HeightPath, SelectedPath,
-        DraggablePath, SelectablePath, ParentIdPath, DataPath);
+        DraggablePath, SelectablePath, ParentIdPath, DataPath, HiddenPath, ConnectablePath, DeletablePath);
 
     internal static HashSet<string> Collect(params string?[] paths) => paths.OfType<string>().ToHashSet();
 }
@@ -46,8 +49,11 @@ public sealed class EdgeMapping
     public string? TypePath { get; set; }
     public string? LabelPath { get; set; }
     public string? AnimatedPath { get; set; }
+    public string? HiddenPath { get; set; }
+    public string? SelectablePath { get; set; }
+    public string? DeletablePath { get; set; }
     public string? SelectedPath { get; set; }
 
     internal HashSet<string> Paths() => NodeMapping.Collect(IdPath, SourcePath, TargetPath, SourceHandlePath,
-        TargetHandlePath, TypePath, LabelPath, AnimatedPath, SelectedPath);
+        TargetHandlePath, TypePath, LabelPath, AnimatedPath, SelectedPath, HiddenPath, SelectablePath, DeletablePath);
 }

@@ -94,7 +94,8 @@ bool IsValid(Connection connection, Func<Connection, bool>? isValidConnection);
 ```csharp
 Rect Resize(ResizeDirection direction, Rect start, double dx, double dy,
             double minWidth = 10, double minHeight = 10,
-            double maxWidth = double.PositiveInfinity, double maxHeight = double.PositiveInfinity);
+            double maxWidth = double.PositiveInfinity, double maxHeight = double.PositiveInfinity,
+            bool keepAspectRatio = false);
 ```
 
 `dx`/`dy` sont le déplacement de la poignée depuis `start`. Le bord opposé reste fixe, même quand un minimum ou un maximum est atteint.
@@ -120,3 +121,48 @@ Voir [Sauvegarde et JSON](../learn/12-serialization.md).
 ## Changes
 
 Voir [Changes](changes.md).
+
+## GraphQueries
+
+Requêtes sur le graphe, équivalents de `getIncomers`, `getOutgoers`, `getConnectedEdges` et `addEdge`.
+
+| Méthode | Description |
+|---|---|
+| `GetIncomers(node, nodes, edges)` | Nodes qui ont un edge vers `node`. |
+| `GetOutgoers(node, nodes, edges)` | Nodes vers lesquels `node` a un edge. |
+| `GetConnectedEdges(nodes, edges)` | Edges touchant l'un des `nodes`. |
+| `AddEdge(edge, edges)` | Ajoute l'edge sauf si une connexion identique existe déjà ; renvoie la liste (inchangée en cas de doublon). |
+| `ConnectionId(source, sourceHandle, target, targetHandle)` | Identifiant `xy-edge__…` fabriqué comme React Flow. |
+| `GetNode(id, nodes)` / `GetEdge(id, edges)` | Recherche par identifiant. |
+| `IsNodeIntersecting(node, area, partially = true)` | Le node (mesuré) touche la zone, ou y est entièrement avec `partially = false`. |
+| `GetIntersectingNodes(area or node, nodes, partially = true)` | Nodes qui touchent une zone ou un autre node ; les nodes cachés sont ignorés. |
+| `GetNodeConnections(nodeId, edges, type?, handleId?)` | Connexions d'un node (`NodeConnection` : `Connection` et `EdgeId`), filtrables par sens et par handle. |
+| `ReconnectEdge(oldEdge, connection, edges, shouldReplaceId = true)` | Change les extrémités d'un edge ; liste inchangée si la connexion existe déjà. |
+
+## GraphClipboard
+
+Copier / couper / coller de nodes et d'edges, sans interface.
+
+```csharp
+ClipboardData? Copy(IReadOnlyList<Node> nodes, IReadOnlyList<Edge> edges);   // sélection + descendants + edges internes ; null si rien
+ClipboardData Paste(ClipboardData data, IEnumerable<Node> existingNodes, IEnumerable<Edge> existingEdges, XYPosition offset);
+```
+
+`Paste` fabrique des ids neufs (`a-copy`, `a-copy2`…), décale les racines de `offset`, remappe parents et extrémités d'edges, sélectionne les nodes collés. Un node dont le parent n'est pas copié devient une racine à sa position absolue.
+
+## Autres ajouts du noyau
+
+| Élément | Description |
+|---|---|
+| `EdgePaths.SimpleBezier(...)` | Chemin `simplebezier` (`getSimpleBezierPath`). |
+| `EdgeGeometry.Options` (`EdgePathOptions`) | Options par edge (`Curvature`, `BorderRadius`, `Offset`, `StepPosition`) transmises aux fournisseurs de chemin ; les types `default`, `step`, `smoothstep` les respectent. |
+| `GraphLayout.Layered(nodes, edges, LayoutDirection, rankGap, nodeGap, …)` | Disposition en couches dans les quatre directions (`LeftToRight`, `RightToLeft`, `TopToBottom`, `BottomToTop`). |
+| `ViewportMath.GetViewportForCenter(x, y, zoom, w, h)` | Viewport centré sur un point (`setCenter`). |
+| `ViewportMath.Interpolate(from, to, t)` / `EaseInOut(t)` | Transition de viewport (zoom géométrique, translation linéaire). |
+| `Rect.Contains(Rect)` | Inclusion d'un rectangle. |
+
+## Changesets
+
+`Changesets.Diff(before, after)` (nodes ou edges) renvoie la liste de changes (`Add`, `Remove`, `Replace`) qui transforme `before` en `after` (`getNodesChangeset`, `getEdgesChangeset`) : `Changes.Apply(Changesets.Diff(a, b), a)` redonne `b`.
+
+`GraphLayout.LayeredLeftToRight` et `Layered` réduisent les croisements d'edges : dans chaque couche, les nodes sont triés par barycentre de leurs voisins (balayages avant et arrière, tri stable : sans voisin, l'ordre d'entrée est conservé).

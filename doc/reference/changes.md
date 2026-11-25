@@ -10,6 +10,7 @@ Une *change* est une modification atomique demandée par l'interface. Les change
 | `NodeDimensionsChange` | `Id`, `Width`, `Height` | Remplace la taille **mesurée**. |
 | `NodeResizeChange` | `Id`, `Width`, `Height`, `Position?` | Fixe `FixedWidth/Height` **et** `Width/Height` ; change la position si elle est fournie. |
 | `NodeSelectChange` | `Id`, `Selected` | Change la sélection. |
+| `NodeInteractionChange` | `Id`, `Dragging?`, `Resizing?` | Un déplacement ou redimensionnement commence ou finit ; `null` laisse la valeur. Émis par la vue. |
 | `NodeRemoveChange` | `Id` | Retire le node. |
 | `NodeAddChange` | `Item` | Ajoute le node en fin de liste. |
 | `NodeReplaceChange` | `Id`, `Item` | Remplace le node. |

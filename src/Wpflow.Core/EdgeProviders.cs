@@ -2,7 +2,7 @@ namespace Wpflow.Core;
 
 /// <summary>Extrémités d'un edge : points d'attache et côtés des handles (en coordonnées flow).</summary>
 public readonly record struct EdgeGeometry(XYPosition Source, Position SourcePosition, XYPosition Target,
-    Position TargetPosition);
+    Position TargetPosition, EdgePathOptions? Options = null);
 
 /// <summary>
 ///     Calcule le tracé d'un type d'edge (équivalent d'une fonction <c>getXxxPath</c> de xyflow).
@@ -25,13 +25,19 @@ public static class EdgePathProviders
         new DelegateEdgePathProvider(g => EdgePaths.Straight(g.Source, g.Target));
 
     private static readonly IEdgePathProvider StepProvider =
-        new DelegateEdgePathProvider(g => EdgePaths.Step(g.Source, g.SourcePosition, g.Target, g.TargetPosition));
+        new DelegateEdgePathProvider(g => EdgePaths.Step(g.Source, g.SourcePosition, g.Target, g.TargetPosition,
+            g.Options?.Offset ?? 20, g.Options?.StepPosition ?? 0.5));
 
     private static readonly IEdgePathProvider SmoothStepProvider =
-        new DelegateEdgePathProvider(g => EdgePaths.SmoothStep(g.Source, g.SourcePosition, g.Target, g.TargetPosition));
+        new DelegateEdgePathProvider(g => EdgePaths.SmoothStep(g.Source, g.SourcePosition, g.Target, g.TargetPosition,
+            g.Options?.BorderRadius ?? 5, g.Options?.Offset ?? 20, g.Options?.StepPosition ?? 0.5));
 
     private static readonly IEdgePathProvider BezierProvider =
-        new DelegateEdgePathProvider(g => EdgePaths.Bezier(g.Source, g.SourcePosition, g.Target, g.TargetPosition));
+        new DelegateEdgePathProvider(g => EdgePaths.Bezier(g.Source, g.SourcePosition, g.Target, g.TargetPosition,
+            g.Options?.Curvature ?? 0.25));
+
+    private static readonly IEdgePathProvider SimpleBezierProvider =
+        new DelegateEdgePathProvider(g => EdgePaths.SimpleBezier(g.Source, g.SourcePosition, g.Target, g.TargetPosition));
 
     /// <summary>Fournisseur d'un type intégré (<c>straight</c>, <c>step</c>, <c>smoothstep</c>) ; tout autre nom donne le bézier par défaut.</summary>
     public static IEdgePathProvider ForType(string type) => type switch
@@ -39,9 +45,10 @@ public static class EdgePathProviders
         "straight" => StraightProvider,
         "step" => StepProvider,
         "smoothstep" => SmoothStepProvider,
+        "simplebezier" => SimpleBezierProvider,
         _ => BezierProvider
     };
 
     /// <summary>Vrai pour les types dont le tracé est fourni par la bibliothèque.</summary>
-    public static bool IsBuiltIn(string type) => type is "default" or "straight" or "step" or "smoothstep";
+    public static bool IsBuiltIn(string type) => type is "default" or "straight" or "step" or "smoothstep" or "simplebezier";
 }

@@ -56,6 +56,20 @@ public static class EdgePaths
         return new EdgePath(path, cx, cy, Math.Abs(cx - source.X), Math.Abs(cy - source.Y));
     }
 
+    /// <summary>Bézier « simple » (<c>getSimpleBezierPath</c>) : points de contrôle à mi-distance sur l'axe du handle.</summary>
+    public static EdgePath SimpleBezier(XYPosition source, Position sourcePosition, XYPosition target, Position targetPosition)
+    {
+        static XYPosition Ctrl(Position pos, XYPosition a, XYPosition b) =>
+            pos is Position.Left or Position.Right ? new XYPosition(0.5 * (a.X + b.X), a.Y) : new XYPosition(a.X, 0.5 * (a.Y + b.Y));
+
+        var sc = Ctrl(sourcePosition, source, target);
+        var tc = Ctrl(targetPosition, target, source);
+        var cx = source.X * 0.125 + sc.X * 0.375 + tc.X * 0.375 + target.X * 0.125;
+        var cy = source.Y * 0.125 + sc.Y * 0.375 + tc.Y * 0.375 + target.Y * 0.125;
+        var path = $"M{F(source.X)},{F(source.Y)} C{F(sc.X)},{F(sc.Y)} {F(tc.X)},{F(tc.Y)} {F(target.X)},{F(target.Y)}";
+        return new EdgePath(path, cx, cy, Math.Abs(cx - source.X), Math.Abs(cy - source.Y));
+    }
+
     // ---------- Smooth step / step ----------
 
     private static XYPosition Dir(Position p) => p switch

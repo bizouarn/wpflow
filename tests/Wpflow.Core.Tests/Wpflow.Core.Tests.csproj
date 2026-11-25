@@ -21,4 +21,8 @@
     <ProjectReference Include="..\..\src\Wpflow.Core\Wpflow.Core.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <None Update="xyflow-reference.json" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
 </Project>

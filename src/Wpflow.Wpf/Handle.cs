@@ -25,9 +25,33 @@ public class Handle : Control
     public static readonly DependencyProperty OffsetProperty = DependencyProperty.Register(
         nameof(Offset), typeof(double), typeof(Handle), new PropertyMetadata(double.NaN, OnLayoutChanged));
 
+    /// <summary>Le handle accepte des connexions (début ou fin) ; en plus de <see cref="Node.Connectable" />.</summary>
+    public static readonly DependencyProperty IsConnectableProperty = DependencyProperty.Register(
+        nameof(IsConnectable), typeof(bool), typeof(Handle), new PropertyMetadata(true, OnLayoutChanged));
+
+    /// <summary>Une connexion peut partir de ce handle.</summary>
+    public static readonly DependencyProperty IsConnectableStartProperty = DependencyProperty.Register(
+        nameof(IsConnectableStart), typeof(bool), typeof(Handle), new PropertyMetadata(true, OnLayoutChanged));
+
+    /// <summary>Une connexion peut aboutir à ce handle.</summary>
+    public static readonly DependencyProperty IsConnectableEndProperty = DependencyProperty.Register(
+        nameof(IsConnectableEnd), typeof(bool), typeof(Handle), new PropertyMetadata(true, OnLayoutChanged));
+
+    /// <summary>Validateur propre à ce handle, appliqué quand il est l'une des extrémités (en plus de celui de la vue).</summary>
+    public static readonly DependencyProperty IsValidConnectionProperty = DependencyProperty.Register(
+        nameof(IsValidConnection), typeof(Func<Connection, bool>), typeof(Handle), new PropertyMetadata(null, OnLayoutChanged));
+
+    /// <summary>État pendant qu'un fil est tiré (origine, cible valide ou refusée) ; piloté par la vue, utilisable dans un Template.</summary>
+    public static readonly DependencyProperty ConnectionStatusProperty = DependencyProperty.Register(
+        nameof(ConnectionStatus), typeof(HandleConnectionStatus), typeof(Handle),
+        new FrameworkPropertyMetadata(HandleConnectionStatus.None, FrameworkPropertyMetadataOptions.AffectsRender));
+
     internal const double Size = 8;
 
     private static readonly Brush DefaultFill = Freeze(new SolidColorBrush(Color.FromRgb(0x9c, 0xa3, 0xaf)));
+    private static readonly Brush ValidFill = Freeze(new SolidColorBrush(Color.FromRgb(0x22, 0xc5, 0x5e)));
+    private static readonly Brush InvalidFill = Freeze(new SolidColorBrush(Color.FromRgb(0xef, 0x44, 0x44)));
+    private static readonly Brush OriginFill = Freeze(new SolidColorBrush(Color.FromRgb(0x33, 0x67, 0xd9)));
 
     static Handle()
     {
@@ -56,7 +80,14 @@ public class Handle : Control
         if (Template != null) return; // dessiné par le gabarit : seule la zone de clic ci-dessus reste
         var thickness = BorderThickness.Left;
         var pen = BorderBrush != null && thickness > 0 ? new Pen(BorderBrush, thickness) : null;
-        dc.DrawEllipse(Background, pen, new Point(ActualWidth / 2, ActualHeight / 2),
+        var fill = ConnectionStatus switch
+        {
+            HandleConnectionStatus.Valid => ValidFill,
+            HandleConnectionStatus.Invalid => InvalidFill,
+            HandleConnectionStatus.Origin => OriginFill,
+            _ => Background
+        };
+        dc.DrawEllipse(fill, pen, new Point(ActualWidth / 2, ActualHeight / 2),
             (ActualWidth - thickness) / 2, (ActualHeight - thickness) / 2);
     }
 
@@ -100,6 +131,41 @@ public class Handle : Control
         set => SetValue(OffsetProperty, value);
     }
 
+    public HandleConnectionStatus ConnectionStatus
+    {
+        get => (HandleConnectionStatus)GetValue(ConnectionStatusProperty);
+        set => SetValue(ConnectionStatusProperty, value);
+    }
+
+    /// <summary>Une connexion vient d aboutir à ce handle ou d'en partir (<c>onConnect</c> d'un handle).</summary>
+    public event EventHandler<Connection>? Connected;
+
+    internal void RaiseConnected(Connection connection) => Connected?.Invoke(this, connection);
+
+    public bool IsConnectable
+    {
+        get => (bool)GetValue(IsConnectableProperty);
+        set => SetValue(IsConnectableProperty, value);
+    }
+
+    public bool IsConnectableStart
+    {
+        get => (bool)GetValue(IsConnectableStartProperty);
+        set => SetValue(IsConnectableStartProperty, value);
+    }
+
+    public bool IsConnectableEnd
+    {
+        get => (bool)GetValue(IsConnectableEndProperty);
+        set => SetValue(IsConnectableEndProperty, value);
+    }
+
+    public Func<Connection, bool>? IsValidConnection
+    {
+        get => (Func<Connection, bool>?)GetValue(IsValidConnectionProperty);
+        set => SetValue(IsValidConnectionProperty, value);
+    }
+
     internal NodeHost? NodeHost => FlowView.FindAncestor<NodeHost>(this);
 
     private static void OnLayoutChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
@@ -139,7 +205,8 @@ public class Handle : Control
         try
         {
             var b = TransformToAncestor(host).TransformBounds(new Rect(0, 0, ActualWidth, ActualHeight));
-            return new HandleInfo(HandleId, Type, Position, b.X, b.Y, b.Width, b.Height);
+            return new HandleInfo(HandleId, Type, Position, b.X, b.Y, b.Width, b.Height, IsConnectable,
+                IsConnectableStart, IsConnectableEnd, IsValidConnection);
         }
         catch (InvalidOperationException)
         {

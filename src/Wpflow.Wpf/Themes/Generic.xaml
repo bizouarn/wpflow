@@ -17,6 +17,7 @@
                             <Grid x:Name="PART_Viewport">
                                 <local:EdgeLayer x:Name="PART_Edges" />
                                 <Canvas x:Name="PART_Nodes" />
+                                <Canvas x:Name="PART_Portal" />
                                 <Path x:Name="PART_Connection" Style="{Binding ConnectionLineStyle, RelativeSource={RelativeSource TemplatedParent}}"
                                       IsHitTestVisible="False" />
                             </Grid>
@@ -36,6 +37,36 @@
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="{x:Type local:NodeToolbar}">
+                    <Border Background="{DynamicResource Flow.ControlsBackground}" CornerRadius="6" Padding="4">
+                        <Border.Effect>
+                            <DropShadowEffect BlurRadius="6" ShadowDepth="1" Opacity="0.25" />
+                        </Border.Effect>
+                        <ContentPresenter />
+                    </Border>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <Style TargetType="{x:Type local:EdgeToolbar}">
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="{x:Type local:EdgeToolbar}">
+                    <Border Background="{DynamicResource Flow.ControlsBackground}" CornerRadius="6" Padding="4">
+                        <Border.Effect>
+                            <DropShadowEffect BlurRadius="6" ShadowDepth="1" Opacity="0.25" />
+                        </Border.Effect>
+                        <ContentPresenter />
+                    </Border>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <Style TargetType="{x:Type local:SelectionToolbar}">
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="{x:Type local:SelectionToolbar}">
                     <Border Background="{DynamicResource Flow.ControlsBackground}" CornerRadius="6" Padding="4">
                         <Border.Effect>
                             <DropShadowEffect BlurRadius="6" ShadowDepth="1" Opacity="0.25" />
@@ -79,7 +110,7 @@
                         <Border.Effect>
                             <DropShadowEffect BlurRadius="5" ShadowDepth="0" Opacity="0.2" />
                         </Border.Effect>
-                        <StackPanel>
+                        <StackPanel x:Name="PART_Panel">
                             <Button x:Name="PART_ZoomIn" Style="{StaticResource FlowControlButton}" ToolTip="Zoom in">
                                 <Path Fill="{DynamicResource Flow.ControlsForeground}" Stretch="Uniform" Width="10" Height="10"
                                       Data="M32 18.133H18.133V32h-4.266V18.133H0v-4.266h13.867V0h4.266v13.867H32z" />
@@ -91,6 +122,7 @@
                                 <Path Fill="{DynamicResource Flow.ControlsForeground}" Stretch="Uniform" Width="12" Height="12"
                                       Data="M3.692 4.63c0-.53.4-.938.939-.938h5.215V0H4.708C2.13 0 0 2.054 0 4.63v5.216h3.692V4.631zM27.354 0h-5.2v3.692h5.17c.53 0 .984.4.984.939v5.215H32V4.631A4.624 4.624 0 0027.354 0zm.954 24.83c0 .532-.4.94-.939.94h-5.215v3.768h5.215c2.577 0 4.631-2.13 4.631-4.707v-5.139h-3.692v5.139zm-23.677.94c-.531 0-.939-.4-.939-.94v-5.138H0v5.139c0 2.577 2.13 4.707 4.708 4.707h5.138V25.77H4.631z" />
                             </Button>
+                            <ContentPresenter x:Name="PART_Extra" Content="{TemplateBinding ExtraContent}" />
                             <ToggleButton x:Name="PART_Lock" Style="{StaticResource FlowControlButton}"
                                           ToolTip="Toggle interactivity">
                                 <Grid Width="12" Height="12">

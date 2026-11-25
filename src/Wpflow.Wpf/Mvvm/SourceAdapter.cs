@@ -233,7 +233,10 @@ internal sealed class NodeSourceAdapter : SourceAdapter<Node>
             Selected = Reflect.Bool(model, _map.SelectedPath) ?? node.Selected,
             Draggable = Reflect.Bool(model, _map.DraggablePath) ?? node.Draggable,
             Selectable = Reflect.Bool(model, _map.SelectablePath) ?? node.Selectable,
-            ParentId = _map.ParentIdPath == null ? node.ParentId : Reflect.Text(model, _map.ParentIdPath)
+            ParentId = _map.ParentIdPath == null ? node.ParentId : Reflect.Text(model, _map.ParentIdPath),
+            Hidden = Reflect.Bool(model, _map.HiddenPath) ?? node.Hidden,
+            Connectable = Reflect.Bool(model, _map.ConnectablePath) ?? node.Connectable,
+            Deletable = Reflect.Bool(model, _map.DeletablePath) ?? node.Deletable
         };
     }
 
@@ -358,6 +361,9 @@ internal sealed class EdgeSourceAdapter : SourceAdapter<Edge>
             Type = _map.TypePath == null ? edge.Type : Reflect.Text(model, _map.TypePath) ?? "default",
             Label = _map.LabelPath == null ? edge.Label : Reflect.Text(model, _map.LabelPath),
             Animated = Reflect.Bool(model, _map.AnimatedPath) ?? edge.Animated,
+            Hidden = Reflect.Bool(model, _map.HiddenPath) ?? edge.Hidden,
+            Selectable = Reflect.Bool(model, _map.SelectablePath) ?? edge.Selectable,
+            Deletable = Reflect.Bool(model, _map.DeletablePath) ?? edge.Deletable,
             Selected = Reflect.Bool(model, _map.SelectedPath) ?? edge.Selected
         };
     }

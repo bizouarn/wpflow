@@ -1,6 +1,6 @@
 # Décisions d'architecture et remise en cause du prototype
 
-Document de travail : chaque question ouverte doit être tranchée en Phase 0 de la [ROADMAP](ROADMAP.md), puis la réponse consignée ici.
+Document de travail : chaque question ouverte doit être tranchée en Phase 0 de la [ROADMAP](ROADMAP.md), puis la réponse consignée ici. (Les phases de la roadmap sont terminées ; voir [ROADMAP](ROADMAP.md) pour le reste.)
 
 ## 1. Bilan du prototype actuel
 

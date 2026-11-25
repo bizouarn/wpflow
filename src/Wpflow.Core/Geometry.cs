@@ -34,6 +34,9 @@ public readonly record struct Rect(double X, double Y, double Width, double Heig
 
     public bool Contains(XYPosition p) => p.X >= X && p.X <= Right && p.Y >= Y && p.Y <= Bottom;
 
+    /// <summary>Vrai si <paramref name="other" /> est entièrement dans ce rectangle.</summary>
+    public bool Contains(Rect other) => other.X >= X && other.Right <= Right && other.Y >= Y && other.Bottom <= Bottom;
+
     public bool Overlaps(Rect other) =>
         X < other.Right && Right > other.X && Y < other.Bottom && Bottom > other.Y;
 }

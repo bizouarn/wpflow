@@ -8,7 +8,11 @@ public sealed record HandleInfo(
     double X,
     double Y,
     double Width,
-    double Height);
+    double Height,
+    bool Connectable = true,
+    bool ConnectableStart = true,
+    bool ConnectableEnd = true,
+    Func<Connection, bool>? IsValidConnection = null);
 
 public enum HandleType
 {
@@ -30,7 +34,24 @@ public sealed record Node(
     double? FixedWidth = null,
     double? FixedHeight = null,
     string? ParentId = null,
-    bool ExtentParent = false)
+    bool ExtentParent = false,
+    Position? SourcePosition = null,
+    Position? TargetPosition = null,
+    bool Connectable = true,
+    bool Deletable = true,
+    bool Hidden = false,
+    string? DragHandle = null,
+    Rect? Extent = null,
+    bool ExpandParent = false,
+    int? ZIndex = null,
+    string? AriaLabel = null,
+    XYPosition? Origin = null,
+    double Rotation = 0,
+    double? InitialWidth = null,
+    double? InitialHeight = null,
+    IReadOnlyList<HandleInfo>? Handles = null,
+    bool Dragging = false,
+    bool Resizing = false)
 {
     /// <summary>Rectangle du node en coordonnées flow ; <c>null</c> tant que le node n'a pas été mesuré.</summary>
     public Rect? Rect => Width is { } w && Height is { } h ? new Rect(Position.X, Position.Y, w, h) : null;
@@ -53,7 +74,20 @@ public sealed record Edge(
     EdgeMarker MarkerEnd = EdgeMarker.None,
     EdgeMarker MarkerStart = EdgeMarker.None,
     string? MarkerEndKey = null,
-    string? MarkerStartKey = null);
+    string? MarkerStartKey = null,
+    object? Data = null,
+    bool Hidden = false,
+    bool Selectable = true,
+    bool Deletable = true,
+    bool Reconnectable = true,
+    double? InteractionWidth = null,
+    int? ZIndex = null,
+    string? AriaLabel = null,
+    EdgeStyleOptions? Style = null,
+    EdgeLabelOptions? LabelStyle = null,
+    EdgePathOptions? PathOptions = null,
+    EdgeMarkerOptions? MarkerEndOptions = null,
+    EdgeMarkerOptions? MarkerStartOptions = null);
 
 /// <summary>Marqueur de fin d'edge (équivalent de <c>MarkerType</c>).</summary>
 public enum EdgeMarker
@@ -65,3 +99,18 @@ public enum EdgeMarker
 
 /// <summary>Connexion en cours de création ou terminée.</summary>
 public sealed record Connection(string Source, string Target, string? SourceHandle, string? TargetHandle);
+
+/// <summary>Trait d'un edge (équivalent de <c>edge.style</c>) ; les couleurs sont des chaînes CSS/WPF (<c>#rrggbb</c>, nom de couleur).</summary>
+public sealed record EdgeStyleOptions(string? Stroke = null, double? StrokeWidth = null, IReadOnlyList<double>? DashArray = null);
+
+/// <summary>Apparence du label d'un edge (<c>labelStyle</c>, <c>labelShowBg</c>, <c>labelBgStyle</c>…).</summary>
+public sealed record EdgeLabelOptions(string? Foreground = null, string? Background = null, bool ShowBackground = true,
+    double? FontSize = null, double? Padding = null, double? CornerRadius = null);
+
+/// <summary>Options de tracé par edge (<c>pathOptions</c>) : <c>curvature</c> (bézier), <c>borderRadius</c>, <c>offset</c>, <c>stepPosition</c> (step / smoothstep).</summary>
+public sealed record EdgePathOptions(double? Curvature = null, double? BorderRadius = null, double? Offset = null,
+    double? StepPosition = null);
+
+/// <summary>Options d'un marqueur d'edge : couleur, taille (12,5 = flèche par défaut), épaisseur du trait et <c>Orient</c> (angle fixe en degrés ; <c>null</c> = orienté selon le côté du handle, comme <c>orient="auto"</c>).</summary>
+public sealed record EdgeMarkerOptions(string? Color = null, double? Width = null, double? Height = null,
+    double? StrokeWidth = null, double? Orient = null);

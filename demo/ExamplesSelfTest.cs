@@ -48,6 +48,8 @@ internal static class ExamplesSelfTest
         await Palette();
         await Layout();
         await Options();
+        await Gestures();
+        await Gestures2();
         await Customization();
         await Mvvm();
         await Perf();
@@ -257,6 +259,243 @@ internal static class ExamplesSelfTest
         await Shot("dark");
         _win.Dark.IsChecked = false;
         _win.OnOptionsChanged(null, null);
+    }
+
+    /// <summary>Gestes ajoutés par les lots P2/P3 : survol, double-clic, connexion par clics, sélection, copier-coller, auto-défilement, molette.</summary>
+    private static async Task Gestures()
+    {
+        await Tab(5);
+        var f = _win.Options;
+        f.FitView();
+        await Task.Delay(500);
+        Point Empty() => Screen(f, new Point(10, 10)); // coin de la vue : vide après un cadrage avec marge (la fenêtre peut bouger)
+
+        // Survol : entrer puis sortir d'un node lève les événements.
+        int enter = 0, leave = 0;
+        f.NodeMouseEnter += (_, _) => enter++;
+        f.NodeMouseLeave += (_, _) => leave++;
+        MoveTo(Empty());
+        await Task.Delay(150);
+        var b = Host(f, "oB");
+        MoveTo(Screen(b, new Point(b.ActualWidth / 2, b.ActualHeight / 2)));
+        await Task.Delay(200);
+        MoveTo(Empty());
+        await Task.Delay(200);
+        Check("survol: NodeMouseEnter puis NodeMouseLeave", enter >= 1 && leave >= 1, $"enter={enter}, leave={leave}");
+
+        // Double-clic sur un node, puis sur le fond (zoom ×2 animé).
+        var doubles = 0;
+        f.NodeDoubleClick += (_, _) => doubles++;
+        await DoubleClick(Screen(b, new Point(b.ActualWidth / 2, b.ActualHeight / 2)));
+        Check("double-clic: NodeDoubleClick levé", doubles == 1, $"{doubles}");
+        var zoom0 = f.Viewport.Zoom;
+        await DoubleClick(Empty());
+        await Task.Delay(500);
+        Check("double-clic sur le fond: zoom ×2 (animé)", f.Viewport.Zoom > zoom0 * 1.5 || f.Viewport.Zoom >= f.MaxZoom - 0.01,
+            $"zoom {zoom0:0.00} -> {f.Viewport.Zoom:0.00}");
+        f.FitView();
+        await Task.Delay(400);
+
+        // Connexion par deux clics.
+        f.ConnectOnClick = true;
+        Wpflow.Core.Node? from = null, to = null;
+        foreach (var x in f.Nodes)
+        foreach (var y in f.Nodes)
+            if (from == null && x.Id != y.Id && !f.Edges.Any(e => (e.Source == x.Id && e.Target == y.Id) || (e.Source == y.Id && e.Target == x.Id)))
+                (from, to) = (x, y);
+        var hs = Find<Handle>(Host(f, from!.Id)).First(h => h.Type == HandleType.Source);
+        var ht = Find<Handle>(Host(f, to!.Id)).First(h => h.Type == HandleType.Target);
+        var edgesBefore = f.Edges.Count;
+        ClickConnectEndEvent? ended = null;
+        f.ClickConnectEnded += (_, e) => ended = new ClickConnectEndEvent(e.IsValid);
+        await Click(Screen(hs, new Point(hs.ActualWidth / 2, hs.ActualHeight / 2)));
+        var armed = f.IsConnecting && f.ConnectionState != null;
+        MoveTo(Screen(ht, new Point(ht.ActualWidth / 2, ht.ActualHeight / 2)));
+        await Task.Delay(200);
+        var preview = f.ConnectionState;
+        await Click(Screen(ht, new Point(ht.ActualWidth / 2, ht.ActualHeight / 2)));
+        Check("connectOnClick: deux clics créent l'edge", armed && f.Edges.Count == edgesBefore + 1 && ended is { Valid: true } && !f.IsConnecting,
+            $"armé={armed}, edges {edgesBefore}->{f.Edges.Count}, fin={ended}, IsConnecting={f.IsConnecting}");
+        Check("connexion: l'état expose la cible et sa validité pendant le geste", preview is { IsValid: true, ToNodeId: not null }, $"{preview}");
+
+        // Échap annule une connexion par clics.
+        await Click(Screen(hs, new Point(hs.ActualWidth / 2, hs.ActualHeight / 2)));
+        Key(VkEscape);
+        await Task.Delay(200);
+        Check("connectOnClick: Échap annule", !f.IsConnecting && f.ConnectionState == null && f.Edges.Count == edgesBefore + 1);
+        f.ConnectOnClick = false;
+
+        // Rectangle de sélection : partiel puis complet, et sélection des edges entre nodes sélectionnés.
+        f.FitView();
+        await Task.Delay(400);
+        Point BC() => Screen(b, new Point(b.ActualWidth / 2, b.ActualHeight / 2));
+        var bc = BC();
+        f.AutoPanOnSelection = false; // le coin de départ est à moins de 40 px du bord : sinon la vue défilerait
+        f.SelectionMode = FlowSelectionMode.Full;
+        KeyDown(VkShift);
+        await Task.Delay(200); // laisse Keyboard.Modifiers suivre
+        await Drag(Empty(), (bc.X, bc.Y));
+        KeyRelease(VkShift);
+        var fullSelected = f.Nodes.First(n => n.Id == "oB").Selected;
+        f.SelectionMode = FlowSelectionMode.Partial;
+        KeyDown(VkShift);
+        await Task.Delay(200); // laisse Keyboard.Modifiers suivre
+        await Drag(Empty(), (bc.X, bc.Y));
+        KeyRelease(VkShift);
+        var partialSelected = f.Nodes.First(n => n.Id == "oB").Selected;
+        Check("sélection: Full exige le node entier, Partial le touche", !fullSelected && partialSelected, $"full={fullSelected}, partial={partialSelected}, sélection={string.Join(",", f.Nodes.Where(n => n.Selected).Select(n => n.Id))}, bc={bc}, oB={b.PointToScreen(new Point(0, 0))} {b.ActualWidth}x{b.ActualHeight}, vue={Screen(f, new Point(0, 0))} {f.ActualWidth}x{f.ActualHeight}");
+        var corner = Screen(f, new Point(f.ActualWidth - 10, f.ActualHeight - 10));
+        KeyDown(VkShift);
+        await Task.Delay(200); // laisse Keyboard.Modifiers suivre
+        await Drag(Empty(), (corner.X, corner.Y));
+        KeyRelease(VkShift);
+        Check("sélection: les edges entre nodes sélectionnés le sont aussi",
+            f.Nodes.All(n => n.Selected) && f.Edges.Count > 0 && f.Edges.All(e => e.Selected),
+            $"{f.Nodes.Count(n => n.Selected)}/{f.Nodes.Count} nodes, {f.Edges.Count(e => e.Selected)}/{f.Edges.Count} edges");
+
+        f.AutoPanOnSelection = true;
+
+        // Copier-coller au clavier (le clic donne le focus et sélectionne oB).
+        f.FitView();
+        await Task.Delay(400);
+        bc = BC();
+        await Click(Empty()); // désélectionne tout
+        await Click(bc);
+        var nodesBefore = f.Nodes.Count;
+        Key(VkC, ctrl: true);
+        Key(VkV, ctrl: true);
+        await Task.Delay(300);
+        Check("copier-coller: Ctrl+C / Ctrl+V dupliquent le node sélectionné",
+            f.Nodes.Count == nodesBefore + 1 && f.Nodes.Any(n => n.Id == "oB-copy" && n.Selected), $"{nodesBefore} -> {f.Nodes.Count} nodes, sélection={string.Join(",", f.Nodes.Where(n => n.Selected).Select(n => n.Id))}, focus={System.Windows.Input.Keyboard.FocusedElement}");
+        Key(VkZ, ctrl: true);
+        await Task.Delay(250);
+        Check("copier-coller: annulable", f.Nodes.Count == nodesBefore, $"{f.Nodes.Count} nodes");
+
+        // Molette : défilement au lieu du zoom avec PanOnScroll.
+        f.FitView();
+        await Task.Delay(400);
+        f.PanOnScroll = true;
+        var vp = f.Viewport;
+        MoveTo(Empty());
+        await Task.Delay(150);
+        Wheel(120);
+        await Task.Delay(300);
+        Check("panOnScroll: la molette déplace la vue sans zoomer",
+            Math.Abs(f.Viewport.Zoom - vp.Zoom) < 1e-6 && Math.Abs(f.Viewport.Y - vp.Y - 60) < 2, $"{vp} -> {f.Viewport}");
+        f.PanOnScroll = false;
+
+        // Auto-défilement : un node tenu près du bord droit fait défiler la vue.
+        f.FitView();
+        await Task.Delay(400);
+        var before = f.Viewport;
+        var nb = Screen(b, new Point(b.ActualWidth / 2, 12));
+        var edge = Screen(f, new Point(f.ActualWidth - 8, 0));
+        await DragHolding(nb, (edge.X, nb.Y), () => Task.Delay(700));
+        Check("auto-défilement: la vue défile quand on tire un node vers le bord", f.Viewport.X < before.X - 20, $"x {before.X:0} -> {f.Viewport.X:0}");
+        f.FitView();
+        await Task.Delay(300);
+    }
+
+    private sealed record ClickConnectEndEvent(bool Valid);
+
+    private static DataTemplate CardTemplate(bool grip, bool noDrag)
+    {
+        var root = new FrameworkElementFactory(typeof(Grid));
+        root.SetValue(FrameworkElement.WidthProperty, 150.0);
+        root.SetValue(FrameworkElement.HeightProperty, 60.0);
+        var card = new FrameworkElementFactory(typeof(Border));
+        card.SetValue(Border.BackgroundProperty, Brushes.White);
+        card.SetValue(Border.BorderBrushProperty, Brushes.Black);
+        card.SetValue(Border.BorderThicknessProperty, new Thickness(1));
+        root.AppendChild(card);
+        if (grip)
+        {
+            var handle = new FrameworkElementFactory(typeof(Border));
+            handle.SetValue(FrameworkElement.HeightProperty, 16.0);
+            handle.SetValue(FrameworkElement.VerticalAlignmentProperty, VerticalAlignment.Top);
+            handle.SetValue(Border.BackgroundProperty, Brushes.LightSkyBlue);
+            handle.SetValue(NodeHost.DragHandleProperty, "grip");
+            root.AppendChild(handle);
+        }
+
+        if (noDrag) root.SetValue(FlowView.NoDragProperty, true);
+        return new DataTemplate { VisualTree = root };
+    }
+
+    /// <summary>Zone de saisie (<c>DragHandle</c>), <c>NoDrag</c>, <c>PanOnDrag</c>, <c>SelectionOnDrag</c> et <c>DefaultEdgeOptions</c>, à la vraie souris.</summary>
+    private static async Task Gestures2()
+    {
+        await Tab(5);
+        var f = _win.Options;
+        f.Resources["wpflow-node-grip"] = CardTemplate(true, false);
+        f.Resources["wpflow-node-nodrag"] = CardTemplate(false, true);
+        var added = f.Nodes.ToList();
+        added.Add(new Node("gripN", new XYPosition(-250, -140), Type: "grip", DragHandle: "grip"));
+        added.Add(new Node("lockN", new XYPosition(-250, -40), Type: "nodrag"));
+        f.Nodes = added;
+        await Task.Delay(600);
+        f.FitView();
+        await Task.Delay(500);
+
+        // DragHandle : tirer le corps du node ne le déplace pas (la vue défile), tirer la poignée le déplace.
+        var grip = Host(f, "gripN");
+        var before = f.Nodes.First(n => n.Id == "gripN").Position;
+        var vp = f.Viewport;
+        var body = Screen(grip, new Point(75, 40));
+        await Drag(body, (body.X + 60, body.Y + 30));
+        var afterBody = f.Nodes.First(n => n.Id == "gripN").Position;
+        Check("dragHandle: tirer le corps ne déplace pas le node (la vue défile)", afterBody == before && f.Viewport.X > vp.X + 30,
+            $"node {before} -> {afterBody}, vue {vp.X:0} -> {f.Viewport.X:0}");
+        grip = Host(f, "gripN");
+        var handle = Screen(grip, new Point(75, 8));
+        await Drag(handle, (handle.X + 60, handle.Y + 30));
+        var afterGrip = f.Nodes.First(n => n.Id == "gripN").Position;
+        Check("dragHandle: tirer la poignée déplace le node", afterGrip.X > before.X + 30, $"{before} -> {afterGrip}");
+
+        // NoDrag : un node dont le contenu est marqué ne se déplace pas.
+        var lockHost = Host(f, "lockN");
+        var lockBefore = f.Nodes.First(n => n.Id == "lockN").Position;
+        var lp = Screen(lockHost, new Point(75, 30));
+        await Drag(lp, (lp.X + 60, lp.Y + 30));
+        Check("noDrag: le contenu marqué empêche le déplacement", f.Nodes.First(n => n.Id == "lockN").Position == lockBefore);
+
+        // PanOnDrag faux : glisser sur le fond ne déplace plus la vue.
+        f.PanOnDrag = false;
+        var empty = Screen(f, new Point(10, f.ActualHeight / 2));
+        var vp2 = f.Viewport;
+        await Drag(empty, (empty.X + 80, empty.Y + 40));
+        Check("panOnDrag faux: la vue reste en place", f.Viewport == vp2, $"{vp2} -> {f.Viewport}");
+        f.PanOnDrag = true;
+
+        // SelectionOnDrag : glisser sur le fond trace un rectangle (sans Maj).
+        f.SelectionOnDrag = true;
+        f.AutoPanOnSelection = false;
+        var oB = Host(f, "oB");
+        var target = Screen(oB, new Point(oB.ActualWidth / 2, oB.ActualHeight / 2));
+        await Drag(Screen(f, new Point(10, 10)), (target.X, target.Y));
+        Check("selectionOnDrag: le glisser sur le fond sélectionne", f.Nodes.First(n => n.Id == "oB").Selected);
+        f.SelectionOnDrag = false;
+        f.AutoPanOnSelection = true;
+
+        // DefaultEdgeOptions : l'edge créé à la souris reprend le type et l'animation par défaut.
+        f.DefaultEdgeOptions = new Edge("", "", "", Type: "smoothstep", Animated: true);
+        f.ConnectionMode = ConnectionMode.Strict;
+        Node? from = null, to = null;
+        foreach (var x in f.Nodes.Where(n => n.Type is "default" or "input"))
+        foreach (var y in f.Nodes.Where(n => n.Type is "default" or "output"))
+            if (from == null && x.Id != y.Id && !f.Edges.Any(e => (e.Source == x.Id && e.Target == y.Id) || (e.Source == y.Id && e.Target == x.Id)))
+                (from, to) = (x, y);
+        var hs = Find<Handle>(Host(f, from!.Id)).First(h => h.Type == HandleType.Source);
+        var ht = Find<Handle>(Host(f, to!.Id)).First(h => h.Type == HandleType.Target);
+        var count = f.Edges.Count;
+        await Drag(Screen(hs, new Point(hs.ActualWidth / 2, hs.ActualHeight / 2)), (Screen(ht, new Point(ht.ActualWidth / 2, ht.ActualHeight / 2)).X, Screen(ht, new Point(ht.ActualWidth / 2, ht.ActualHeight / 2)).Y));
+        var created = f.Edges.LastOrDefault();
+        Check("defaultEdgeOptions: le nouvel edge reprend type et animation", f.Edges.Count == count + 1 && created is { Type: "smoothstep", Animated: true },
+            $"{count} -> {f.Edges.Count}, {created?.Type}/{created?.Animated}");
+        f.DefaultEdgeOptions = null;
+        f.Nodes = f.Nodes.Where(n => n.Id is not ("gripN" or "lockN")).ToList();
+        f.FitView();
+        await Task.Delay(300);
     }
 
     private static async Task Perf()

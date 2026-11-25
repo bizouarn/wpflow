@@ -23,7 +23,7 @@ Appelez la disposition **après** que les nodes ont été mesurés si vous voule
 
 ## Conseils
 
-- Pour une disposition de haut en bas, appliquez la disposition puis permutez X et Y, et donnez aux handles les positions `Top` / `Bottom`.
+- `GraphLayout.Layered(nodes, edges, LayoutDirection.TopToBottom)` (ou `RightToLeft`, `BottomToTop`) dispose dans la direction voulue ; donnez alors aux handles les positions correspondantes (`Node.SourcePosition` / `TargetPosition` pour les nodes par défaut).
 - Les edges `smoothstep` ou `step` se prêtent mieux aux dispositions en couches que les courbes de Bézier.
 - Pour des graphes complexes (réduction de croisements, groupes), branchez un moteur externe : il suffit de produire un `Dictionary<string, XYPosition>` et de l'appliquer comme ci-dessus.
 

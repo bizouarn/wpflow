@@ -19,7 +19,7 @@ internal static class Sim
     private const uint KeyUp = 2;
 
     public const byte VkTab = 0x09, VkControl = 0x11, VkEscape = 0x1B, VkSpace = 0x20, VkLeft = 0x25, VkRight = 0x27,
-        VkDelete = 0x2E, VkZ = 0x5A;
+        VkDelete = 0x2E, VkZ = 0x5A, VkShift = 0x10, VkC = 0x43, VkV = 0x56;
 
     public static Point Screen(UIElement e, Point local) => e.PointToScreen(local);
 
@@ -63,6 +63,22 @@ internal static class Sim
     }
 
     public static Task Click(Point p) => Drag(p, (p.X, p.Y), steps: 1);
+
+    /// <summary>Deux clics rapprochés (moins que le délai de double-clic de Windows).</summary>
+    public static async Task DoubleClick(Point p)
+    {
+        SetCursorPos((int)p.X, (int)p.Y);
+        await Task.Delay(150);
+        for (var i = 0; i < 2; i++)
+        {
+            mouse_event(LeftDown, 0, 0, 0, 0);
+            await Task.Delay(40);
+            mouse_event(LeftUp, 0, 0, 0, 0);
+            await Task.Delay(60);
+        }
+
+        await Task.Delay(400);
+    }
 
     public static void MoveTo(Point p) => SetCursorPos((int)p.X, (int)p.Y);
 

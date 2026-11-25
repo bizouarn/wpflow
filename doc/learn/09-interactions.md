@@ -111,4 +111,20 @@ Flow.Nodes = Flow.Nodes.Select(n => n with { Selected = n.Id == "2" }).ToList();
 | `DropRequested` | objet déposé |
 | `StateChanged` | nodes, edges, viewport ou verrouillage modifiés (pour dessiner vos propres vues liées) |
 
+## Événements supplémentaires
+
+`ConnectStarted` / `ConnectEnded` (position du relâchement et connexion réalisée, pour « créer un node en lâchant le fil dans le vide »), `NodeDoubleClick`, `NodeContextMenuRequested` (et `Edge…`, `Pane…`, `SelectionContextMenuRequested`), `NodeMouseEnter`/`Move`/`Leave`, `NodeDragStarted`/`NodeDragging`/`NodeDragStopped`, `ViewportMoveStarted`/`Ended`, `FlowInitialized`, `BeforeDelete` (annulable), `ErrorOccurred`… La liste complète est dans la [référence de `FlowView`](../reference/flowview.md#événements-supplémentaires).
+
+## Réglages d'interaction
+
+Tout ce que React Flow règle par props est une propriété de `FlowView` : `NodesDraggable`, `NodesConnectable`, `ElementsSelectable`, `PanOnDrag`, `PanOnScroll`, `ZoomOnScroll`, `ZoomOnDoubleClick`, `SelectionOnDrag`, `SelectionMode`, `DeleteKeys`, `SelectionKey`, `MultiSelectionKey`, `PanActivationKey`, `NodeOrigin`, `ConnectOnClick`, `ConnectionLineType`, seuils de glisser, auto-défilement… ([tableau](../reference/flowview.md#options-dinteraction-avancées)). Sur un élément d'un template de node, `flow:FlowView.NoDrag="True"` / `NoPan` / `NoWheel` empêchent le déplacement du node, de la vue ou le zoom, et `flow:NodeHost.DragHandle="grip"` (avec `Node.DragHandle = "grip"`) limite le déplacement à une zone.
+
+## Copier-coller, transitions, image
+
+- Ctrl+C / Ctrl+X / Ctrl+V (ou `Flow.Copy()`, `Cut()`, `Paste()`, `FlowCommands.Copy`…) : les nodes sélectionnés, leurs descendants et les edges qui les relient sont dupliqués avec des ids neufs.
+- `Flow.SetCenter(x, y, zoom, TimeSpan.FromMilliseconds(400))`, `FitView(new FitViewOptions(Duration: …, NodeIds: …))`, `FitBounds`, `SetViewport` : le viewport se déplace avec une transition ; un geste de l'utilisateur l'interrompt.
+- `Flow.SaveImage("graphe.png")` ou `Flow.RenderToBitmap()` exporte le graphe entier (pour imprimer, passez le bitmap à `PrintDialog`).
+- **Zoom contextuel** : liez-vous à `Flow.Viewport` (ou `Zoom`) et changez l'affichage d'un node selon le niveau de zoom dans votre ViewModel.
+- **Collisions, lignes d'aide, connexion de proximité** : écoutez `NodeDragging` et utilisez `Flow.GetIntersectingNodes(node)` ou `GraphQueries`.
+
 Suivant : [Calculer avec un flow](10-computing-flows.md).

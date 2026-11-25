@@ -27,6 +27,14 @@ public sealed class NodeHost : ContentControl
         nameof(OutlineCornerRadius), typeof(CornerRadius), typeof(NodeHost),
         new FrameworkPropertyMetadata(new CornerRadius(8), FrameworkPropertyMetadataOptions.AffectsRender));
 
+    /// <summary>Marque l'élément du template qui sert de poignée de déplacement ; la valeur doit égaler <see cref="Node.DragHandle" />.</summary>
+    public static readonly DependencyProperty DragHandleProperty = DependencyProperty.RegisterAttached(
+        "DragHandle", typeof(string), typeof(NodeHost), new PropertyMetadata(null));
+
+    public static string? GetDragHandle(DependencyObject d) => (string?)d.GetValue(DragHandleProperty);
+
+    public static void SetDragHandle(DependencyObject d, string? value) => d.SetValue(DragHandleProperty, value);
+
     private readonly FlowView _flow;
     private Border? _defaultBorder;
     private bool _measureQueued;
@@ -78,7 +86,10 @@ public sealed class NodeHost : ContentControl
     /// <summary>Position absolue (coordonnées flow) actuellement appliquée ; diffère de <see cref="Node.Position" /> pour un enfant.</summary>
     internal XYPosition AbsolutePosition { get; private set; }
 
-    internal void SetNode(Node node, XYPosition absolute, int depth)
+    /// <summary>Vrai si le node a été élevé parce qu'un de ses descendants est sélectionné (<see cref="FlowZIndexMode.Auto" />).</summary>
+    internal bool Elevated { get; private set; }
+
+    internal void SetNode(Node node, XYPosition absolute, int depth, bool elevated = false)
     {
         var typeChanged = Node?.Type != node.Type;
         Node = node;
@@ -86,8 +97,23 @@ public sealed class NodeHost : ContentControl
         Canvas.SetLeft(this, absolute.X);
         Canvas.SetTop(this, absolute.Y);
         // Un parent est sous ses enfants ; un node sélectionné passe devant (sauf les groupes, qui masqueraient leurs enfants).
-        Panel.SetZIndex(this, depth + (node.Selected && node.Type != "group" ? 1000 : 0));
+        Elevated = elevated;
+        Panel.SetZIndex(this, node.ZIndex ?? _flow.ZIndexMode switch
+        {
+            FlowZIndexMode.Manual => 0, // seul Node.ZIndex compte
+            _ => depth + ((node.Selected && _flow.ElevateNodesOnSelect && node.Type != "group") || elevated ? 1000 : 0)
+        });
         IsSelected = node.Selected;
+        if (_rotation != node.Rotation)
+        {
+            _rotation = node.Rotation;
+            RenderTransformOrigin = new Point(0.5, 0.5);
+            RenderTransform = node.Rotation == 0 ? Transform.Identity : new RotateTransform(node.Rotation);
+        }
+
+        var aria = node.AriaLabel ?? _flow.NodeAriaLabelProvider?.Invoke(node);
+        if (aria != null) System.Windows.Automation.AutomationProperties.SetName(this, aria);
+        else ClearValue(System.Windows.Automation.AutomationProperties.NameProperty);
 
         // Taille explicite (redimensionnement) : null => taille naturelle du contenu.
         Width = node.FixedWidth ?? double.NaN;
@@ -143,10 +169,11 @@ public sealed class NodeHost : ContentControl
         root.Children.Add(_defaultBorder);
 
         // Comme React Flow : "input" = source seule, "output" = cible seule, "default" = les deux.
+        _defaultTarget = _defaultSource = null;
         if (node.Type != "input")
-            root.Children.Add(new Handle { Type = HandleType.Target, Position = Position.Top });
+            root.Children.Add(_defaultTarget = new Handle { Type = HandleType.Target, Position = node.TargetPosition ?? Position.Top });
         if (node.Type != "output")
-            root.Children.Add(new Handle { Type = HandleType.Source, Position = Position.Bottom });
+            root.Children.Add(_defaultSource = new Handle { Type = HandleType.Source, Position = node.SourcePosition ?? Position.Bottom });
 
         return root;
     }
@@ -172,11 +199,15 @@ public sealed class NodeHost : ContentControl
         return _defaultBorder;
     }
 
+    private double _rotation;
     private TextBlock? _defaultText;
+    private Handle? _defaultTarget, _defaultSource; // handles du node par défaut : leur côté suit Node.Target/SourcePosition
 
     private void UpdateDefaultVisual(Node node)
     {
         if (_defaultBorder == null) return;
+        if (_defaultTarget != null) _defaultTarget.Position = node.TargetPosition ?? Position.Top;
+        if (_defaultSource != null) _defaultSource.Position = node.SourcePosition ?? Position.Bottom;
         var group = node.Type == "group";
         _defaultBorder.Background = group
             ? _flow.ThemeBrush("Flow.GroupBackground")
