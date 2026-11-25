@@ -23,6 +23,10 @@ Objectif : fournir en WPF l'équivalent de [xyflow](https://github.com/xyflow/xy
 2. GitHub → *Settings → Secrets and variables → Actions* : secret `NUGET_USER` = le nom de profil nuget.org (`bizouarn`).
 3. `git push origin main`, vérifier que `ci.yml` passe, puis `git tag v1.0.0 && git push origin v1.0.0`.
 
+## Tests et usage réel
+
+Plan des tests complémentaires : [ROADMAP-TESTS.md](ROADMAP-TESTS.md).
+
 ## Reste à faire — faisable
 
 Rien d'identifié. Les écarts restants avec React Flow, tous volontaires ou sans objet en WPF, sont dans [ECART-XYFLOW.md](ECART-XYFLOW.md) (§ « Écarts restants »). Pour des graphes complexes, brancher un moteur de disposition externe : `GraphLayout.Layered` réduit les croisements mais n'est pas dagre/ELK.
