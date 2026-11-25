@@ -239,7 +239,7 @@ public partial class FlowView
     private void UpdateSelectionBox(Point pos)
     {
         if (_selectionBox == null) return;
-        var origin = FlowToScreenPoint(_mouseStartFlow); // le point de départ suit le fond quand la vue défile
+        var origin = FlowToScreen(_mouseStartFlow);// le point de départ suit le fond quand la vue défile
         var x = Math.Min(origin.X, pos.X);
         var y = Math.Min(origin.Y, pos.Y);
         var w = Math.Abs(pos.X - origin.X);
@@ -258,11 +258,5 @@ public partial class FlowView
 
         var (picked, pickedEdges) = SelectionOps.Box(rect, _nodeIndex.Values, Edges, SelectionMode);
         Select(picked, pickedEdges, false);
-    }
-
-    private Point FlowToScreenPoint(XYPosition p)
-    {
-        var s = ViewportMath.FlowToScreen(Viewport, p);
-        return new Point(s.X, s.Y);
     }
 }

@@ -113,7 +113,7 @@ public class P2Tests
         {
             var flow = Flow(edges: [new Edge("e1", "a", "b", Hidden: true), new Edge("e2", "b", "c", Selectable: false)]);
             Assert.DoesNotContain(FlowView.FindDescendants<EdgeVisual>(flow), v => v.EdgeId == "e1");
-            flow.SelectAllElements();
+            flow.SelectAll();
             Assert.All(flow.Edges, e => Assert.False(e.Selected));
         });
     }

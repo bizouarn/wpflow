@@ -107,7 +107,16 @@ Côté commandes, `CommandsReceiveEventArgs="True"` fait recevoir l'`ElementEven
 | `void ZoomBy(double factor)` | Zoom relatif autour du centre, borné par `MinZoom`/`MaxZoom`. |
 | `XYPosition ScreenToFlow(Point p)` | Convertit un point en coordonnées du contrôle vers les coordonnées flow. |
 | `void SelectNode(string id, bool additive = false)` | Sélectionne un node. |
+| `void SelectOnly(string? nodeId, string? edgeId)` | Sélectionne ce seul node ou ce seul edge ; avec deux `null`, désélectionne tout. |
+| `void SelectAll()` / `ClearSelection()` | Sélectionne tous les nodes et tous les edges / désélectionne tout. |
+| `Task<bool> DeleteSelected()` | Supprime la sélection comme `DeleteElementsAsync`, même si la vue est verrouillée (la touche Suppr, elle, respecte `IsLocked`). La tâche est déjà terminée sans `BeforeDeleteAsync`. |
+| `Point FlowToScreen(XYPosition position)` | Inverse de `ScreenToFlow`. |
+| `void CenterOn(XYPosition position)` | Centre la vue sur un point flow, sans changer le zoom. |
+| `void ApplyNodeChanges(changes)` / `ApplyEdgeChanges(changes)` | Injecte des changes comme le ferait un geste : `…ChangesRequested` est levé, puis ils sont appliqués si `AutoApplyChanges`. N'ajoute rien à l'historique. |
+| `IReadOnlyList<Node> GetIncomers(string nodeId)` / `GetOutgoers(string nodeId)` | Nodes reliés par un edge entrant / sortant. |
+| `void SetLocked(bool locked)` | Change `IsLocked` en gardant sa liaison. |
 | `void Undo()` / `Redo()` | Annule / rétablit (mode non contrôlé). |
+| `void ClearHistory()` | Vide l'historique de la vue. |
 | `string ToJson(Func<Node,object?>? data = null, bool indented = true)` | Exporte le graphe (format React Flow). Avec une source, `Node.Data` n'est écrit que via `data`. |
 | `void LoadJson(string json)` | Charge un graphe ; avec une source, passe par `NodeFactory` / `EdgeFactory`. |
 | `IReadOnlyCollection<Node> AbsoluteNodes` | Nodes en coordonnées absolues (pour dessiner des vues liées). |

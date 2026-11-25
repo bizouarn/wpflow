@@ -96,7 +96,8 @@ public partial class FlowView
         if (_edgeSource != null) ClearHistory();
     }
 
-    private void ClearHistory()
+    /// <summary>Vide l'historique de la vue (après le chargement d'un autre document, par exemple).</summary>
+    public void ClearHistory()
     {
         _history.Clear();
         UpdateHistoryState();

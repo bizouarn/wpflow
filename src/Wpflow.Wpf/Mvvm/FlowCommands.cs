@@ -93,7 +93,7 @@ internal sealed class FlowController(FlowView flow) : IFlowController
     public void ZoomOut() => flow.ZoomOut();
     public void ZoomTo(double zoom) => flow.Zoom = zoom;
     public bool CenterOn(string nodeId) => flow.CenterOn(nodeId);
-    public void SelectAll() => flow.SelectAllElements();
+    public void SelectAll() => flow.SelectAll();
     public void ClearSelection() => flow.ClearSelection();
     public void DeleteSelection() => flow.DeleteSelection();
     public bool Copy() => flow.Copy();

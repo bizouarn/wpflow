@@ -90,7 +90,7 @@ Défauts trouvés (2026-11-25), tous deux WPF, corrigés avec un test d'abord en
 1. `RenderToBitmap` / `SaveImage` : image prise avec le viewport courant (décalée, tronquée ou blanche). Le test existant ne contrôlait que la taille du bitmap. Côté Blazor, l'export SVG est produit depuis le modèle et n'est pas concerné par cette cause ; `SaveImage` Blazor (capture dans le navigateur) n'est pas vérifié par le script.
 2. MVVM : `UpdateNode` n'écrivait rien dans le ViewModel, `UpdateEdge` seulement les extrémités. Blazor n'a pas d'adaptateur MVVM.
 
-Ticket d'API : `FlowView.ApplyNodeChanges` / `ApplyEdgeChanges` sont publics en Blazor, mais internes en WPF (visibles des seuls tests du dépôt).
+Ticket d'API, **résolu** : `FlowView.ApplyNodeChanges` / `ApplyEdgeChanges`, publics en Blazor et internes en WPF, le sont désormais des deux côtés.
 
 ### Lot 2 — Application témoin réaliste : éditeur de schéma de base (L)
 
@@ -137,7 +137,9 @@ Limites des scénarios WPF : en mode contrôlé, `Undo()` ne fait rien en WPF, d
 - Au clic droit sur une sélection, WPF lève le menu de sélection **et** celui du node, Blazor seulement celui de la sélection.
 - Au double-clic, WPF lève `NodeClick` **après** `NodeDoubleClick` (au second relâchement) ; Blazor lève les clics avant.
 - En mode contrôlé, l'historique de la vue Blazor reste actif, celui de WPF non.
-- `ClearHistory()` est public en Blazor, privé en WPF (ticket d'API).
+- `SelectAll()` (et Ctrl+A) : WPF sélectionne nodes et edges, Blazor les nodes seuls.
+- `DeleteSelected`, `ApplyNodeChanges`, `Undo`… : mêmes noms des deux côtés, synchrones en WPF et asynchrones en Blazor (`DeleteSelected` rend une `Task<bool>` des deux côtés).
+- Sans équivalent WPF : `ExportSvg` (fonction à écrire), `ClientToFlow` (coordonnées de page, propres au navigateur). Les autres méthodes publiques Blazor existent en WPF (`ClearHistory` compris) ; `ApiParityTests` le vérifie pour celles ajoutées.
 
 Défauts trouvés côté Blazor, corrigés, chacun avec un scénario d'abord en échec :
 

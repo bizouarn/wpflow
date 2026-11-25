@@ -261,7 +261,7 @@ public partial class FlowView
         Bind(FlowCommands.ZoomOut, ZoomOut, () => Zoom > MinZoom);
         Bind(FlowCommands.Undo, Undo, () => CanUndo);
         Bind(FlowCommands.Redo, Redo, () => CanRedo);
-        Bind(FlowCommands.SelectAll, SelectAllElements, () => Nodes.Count + Edges.Count > 0);
+        Bind(FlowCommands.SelectAll, SelectAll, () => Nodes.Count + Edges.Count > 0);
         Bind(FlowCommands.ClearSelection, ClearSelection, () => Nodes.Any(n => n.Selected) || Edges.Any(e => e.Selected));
         Bind(FlowCommands.DeleteSelection, DeleteSelection, () => !IsLocked && (Nodes.Any(n => n.Selected) || Edges.Any(e => e.Selected)));
         Bind(FlowCommands.ToggleLock, () => IsLocked = !IsLocked);
@@ -270,9 +270,11 @@ public partial class FlowView
         Bind(FlowCommands.Paste, () => Paste(), () => CanPaste);
     }
 
-    internal void SelectAllElements() => Select(Nodes.Select(n => n.Id), Edges.Select(x => x.Id), false);
+    /// <summary>Sélectionne tous les nodes et tous les edges.</summary>
+    public void SelectAll() => Select(Nodes.Select(n => n.Id), Edges.Select(x => x.Id), false);
 
-    internal void ClearSelection() => Select([], [], false);
+    /// <summary>Désélectionne tout.</summary>
+    public void ClearSelection() => Select([], [], false);
 
     internal bool CenterOn(string nodeId)
     {

@@ -172,6 +172,38 @@ public partial class FlowView
         host.RequestMeasure();
     }
 
+    /// <summary>Convertit des coordonnées flow en point de la vue, en pixels (inverse de <see cref="ScreenToFlow" />).</summary>
+    public Point FlowToScreen(XYPosition position)
+    {
+        var s = ViewportMath.FlowToScreen(Viewport, position);
+        return new Point(s.X, s.Y);
+    }
+
+    /// <summary>Centre la vue sur un point flow, sans changer le zoom.</summary>
+    public void CenterOn(XYPosition position) => SetCenter(position.X, position.Y);
+
+    /// <summary>Les nodes qui ont un edge vers ce node (<c>getIncomers</c>) ; vide si l'id est inconnu.</summary>
+    public IReadOnlyList<Node> GetIncomers(string nodeId) =>
+        GetNode(nodeId) is { } node ? GraphQueries.GetIncomers(node, Nodes, Edges) : [];
+
+    /// <summary>Les nodes vers lesquels ce node a un edge (<c>getOutgoers</c>) ; vide si l'id est inconnu.</summary>
+    public IReadOnlyList<Node> GetOutgoers(string nodeId) =>
+        GetNode(nodeId) is { } node ? GraphQueries.GetOutgoers(node, Nodes, Edges) : [];
+
+    /// <summary>Sélectionne ce seul node, ou ce seul edge ; avec deux <c>null</c>, désélectionne tout.</summary>
+    public void SelectOnly(string? nodeId, string? edgeId) =>
+        Select(nodeId == null ? [] : [nodeId], edgeId == null ? [] : [edgeId], false);
+
+    /// <summary>
+    ///     Supprime les nodes et edges sélectionnés, comme <see cref="DeleteElementsAsync" /> (que la vue soit verrouillée ou
+    ///     non, contrairement à la touche Suppr). La tâche est déjà terminée sans <see cref="BeforeDeleteAsync" />.
+    /// </summary>
+    public Task<bool> DeleteSelected() =>
+        DeleteElementsAsync(Nodes.Where(n => n.Selected).Select(n => n.Id).ToList(), Edges.Where(e => e.Selected).Select(e => e.Id).ToList());
+
+    /// <summary>Verrouille ou déverrouille la vue ; une liaison sur <see cref="IsLocked" /> est conservée.</summary>
+    public void SetLocked(bool locked) => SetCurrentValue(IsLockedProperty, locked);
+
     /// <summary>Remplace <see cref="Node.Data" /> (<c>updateNodeData</c>).</summary>
     public void UpdateNodeData(string id, object? data) => UpdateNode(id, n => n with { Data = data });
 

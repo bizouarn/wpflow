@@ -848,7 +848,11 @@ public partial class FlowView : ContentControl
 
     #region Changes
 
-    internal void ApplyNodeChanges(IReadOnlyList<NodeChange> changes)
+    /// <summary>
+    ///     Injecte des changes de nodes, comme le ferait un geste : <see cref="NodeChangesRequested" /> est levé, puis ils sont
+    ///     appliqués (et reportés dans les ViewModels) si <see cref="AutoApplyChanges" /> est vrai. N'ajoute rien à l'historique.
+    /// </summary>
+    public void ApplyNodeChanges(IReadOnlyList<NodeChange> changes)
     {
         if (changes.Count == 0) return;
         var args = new NodeChangesEventArgs(changes);
@@ -864,7 +868,8 @@ public partial class FlowView : ContentControl
                     Announce(SelectionOps.AnnounceNode(picked, NodeAriaLabelProvider));
     }
 
-    internal void ApplyEdgeChanges(IReadOnlyList<EdgeChange> changes)
+    /// <summary>Comme <see cref="ApplyNodeChanges" />, pour les edges.</summary>
+    public void ApplyEdgeChanges(IReadOnlyList<EdgeChange> changes)
     {
         if (changes.Count == 0) return;
         var args = new EdgeChangesEventArgs(changes);
