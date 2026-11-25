@@ -156,7 +156,8 @@ public partial class FlowView
 
     public void UpdateNode(string id, Func<Node, Node> update)
     {
-        if (RawNode(id) is { } node) ApplyNodeChanges([new NodeReplaceChange(id, update(node))]);
+        // L'index n'existe qu'une fois le gabarit appliqué : avant le premier affichage, on lit la liste.
+        if ((RawNode(id) ?? Nodes.FirstOrDefault(n => n.Id == id)) is { } node) ApplyNodeChanges([new NodeReplaceChange(id, update(node))]);
     }
 
     /// <summary>
@@ -298,6 +299,8 @@ public partial class FlowView
         if (nodesByCommand && !NodesDeleteCommand!.CanExecute(nodeElements)) return false;
         if (edgesByCommand && !EdgesDeleteCommand!.CanExecute(edgeElements)) return false;
 
+        var gone = new DeletedEventArgs(Nodes.Where(n => nodeSet.Contains(n.Id)).ToList(),
+            Edges.Where(e => edgeSet.Contains(e.Id) || byNode.Contains(e.Id)).ToList());
         PushHistory();
         if (edgesByCommand) EdgesDeleteCommand!.Execute(edgeElements);
         if (nodesByCommand) NodesDeleteCommand!.Execute(nodeElements);
@@ -308,6 +311,7 @@ public partial class FlowView
             .Select(e => (EdgeChange)new EdgeRemoveChange(e.Id)).ToList();
         ApplyEdgeChanges(byView);
         if (!nodesByCommand) ApplyNodeChanges(nodeSet.Select(id => (NodeChange)new NodeRemoveChange(id)).ToList());
+        Deleted?.Invoke(this, gone);
         return true;
     }
 

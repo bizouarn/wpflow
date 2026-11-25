@@ -33,7 +33,7 @@ Fait : tout ce que couvre `ECART-XYFLOW.md` côté interface, sauf les points de
 
 | Élément | Raison |
 |---|---|
-| Adaptateur MVVM (`NodesSource`, commandes, `IFlowController`) | 🟡 autre idiome : `@bind` + `EventCallback`, voir [doc/blazor.md](../doc/blazor.md) |
+| Adaptateur MVVM (`NodesSource`, mappages, `IFlowController`, `IFlowHistory`) | ✅ logique commune dans le noyau ; les `EventCallback` tiennent lieu de commandes, voir [doc/blazor.md](../doc/blazor.md#mvvm) |
 | Export d'image | 🟡 le rendu est capturé par le navigateur (Chrome vérifié) ; le contenu non sérialisable en SVG (canvas, vidéo, images d'une autre origine) n'apparaît pas ; `vector: true` donne le dessin simplifié |
 | Lecteurs d'écran (Narrateur, NVDA, VoiceOver) | non vérifiables ici : rôles ARIA et région `aria-live` vérifiés par les tests, pas avec un lecteur |
 | Navigateurs autres que Chrome, vrai écran tactile | le pincement est vérifié avec des évènements tactiles simulés par Chrome (CDP), pas sur du matériel |

@@ -25,6 +25,7 @@ public partial class FlowView
         _forceLayer = true;
         Nodes = Changes.Apply(changes, Nodes);
         RebuildIndex();
+        _nodeSource?.WriteBack(changes); // un ViewModel qui ajuste ou refuse une valeur est relu
         await NodesChanged.InvokeAsync(Nodes);
         if (changes.Any(c => c is NodeSelectChange or NodeRemoveChange or NodeAddChange or NodeReplaceChange)) await AfterSelectionMaybeChanged();
     }
@@ -37,6 +38,7 @@ public partial class FlowView
         if (!AutoApplyChanges) return;
         _forceLayer = true;
         Edges = Changes.Apply(changes, Edges);
+        _edgeSource?.WriteBack(changes);
         await EdgesChanged.InvokeAsync(Edges);
         if (changes.Any(c => c is EdgeSelectChange or EdgeRemoveChange or EdgeAddChange or EdgeReplaceChange)) await AfterSelectionMaybeChanged();
     }
@@ -64,6 +66,7 @@ public partial class FlowView
                 _ => $"{nodes.Count + edges.Count} éléments sélectionnés"
             };
         await OnSelectionChange.InvokeAsync(new SelectionChangeArgs(nodes, edges));
+        await ReportBoundSelection();
     }
 
     /// <summary>Sélectionne uniquement ce node et/ou cet edge ; <c>null</c>, <c>null</c> efface la sélection.</summary>
@@ -76,10 +79,13 @@ public partial class FlowView
 
     public Task ClearSelection() => SelectOnly(null, null);
 
+    /// <summary>Sélectionne tous les nodes et tous les edges, comme en WPF.</summary>
     public async Task SelectAll()
     {
         if (!CanSelect) return;
-        await ApplyNodeChanges(Nodes.Where(n => !n.Selected && n.Selectable && !n.Hidden).Select(n => (NodeChange)new NodeSelectChange(n.Id, true)).ToList());
+        var (nodeChanges, edgeChanges) = SelectionOps.Select(Nodes, Edges, Nodes.Select(n => n.Id), Edges.Select(e => e.Id), false);
+        await ApplyNodeChanges(nodeChanges);
+        await ApplyEdgeChanges(edgeChanges);
     }
 
     // ---------- Suppression ----------
@@ -165,27 +171,47 @@ public partial class FlowView
 
     // ---------- Historique ----------
 
-    public bool CanUndo => _history?.CanUndo == true;
+    public bool CanUndo => History?.CanUndo ?? _history?.CanUndo == true;
 
-    public bool CanRedo => _history?.CanRedo == true;
+    public bool CanRedo => History?.CanRedo ?? _history?.CanRedo == true;
 
     /// <summary>Enregistre l'état courant avant une modification annulable.</summary>
     private void PushHistory()
     {
-        if (!HistoryEnabled) return;
+        if (History is { } own) // l'historique de l'application mémorise ce qu'il veut
+        {
+            own.Checkpoint();
+            return;
+        }
+
+        if (!HistoryEnabled || !AutoApplyChanges) return; // en mode contrôlé, l'historique appartient à l'application
         (_history ??= new GraphHistory(HistoryLimit)).Push(Nodes, Edges);
     }
 
     public async Task<bool> Undo()
     {
-        if (_history == null || !_history.TryUndo(Nodes, Edges, out var snapshot)) return false;
+        if (History is { } own)
+        {
+            if (!own.CanUndo) return false;
+            own.Undo();
+            return true;
+        }
+
+        if (!AutoApplyChanges || _history == null || !_history.TryUndo(Nodes, Edges, out var snapshot)) return false;
         await Restore(snapshot);
         return true;
     }
 
     public async Task<bool> Redo()
     {
-        if (_history == null || !_history.TryRedo(Nodes, Edges, out var snapshot)) return false;
+        if (History is { } own)
+        {
+            if (!own.CanRedo) return false;
+            own.Redo();
+            return true;
+        }
+
+        if (!AutoApplyChanges || _history == null || !_history.TryRedo(Nodes, Edges, out var snapshot)) return false;
         await Restore(snapshot);
         return true;
     }
@@ -220,6 +246,7 @@ public partial class FlowView
     private async Task OnKeyDown(KeyboardEventArgs e)
     {
         if (_keyFromField) return; // la touche appartient au champ : ni suppression, ni annulation, ni déplacement
+        _tabbed = e.Key == "Tab";
         if (e.Key == " " && PanActivationKey == "Space") _space = true;
         var ctrl = e.CtrlKey || e.MetaKey;
         var key = e.Key;
@@ -299,19 +326,58 @@ public partial class FlowView
         PushHistory();
         await ApplyNodeChanges(start.Select(kv => (NodeChange)new NodePositionChange(kv.Key,
             ConstrainPosition(_nodeIndex[kv.Key], new XYPosition(kv.Value.X + dx, kv.Value.Y + dy)))).ToList());
+        if (AutoPanOnNodeFocus) await EnsureVisible(start.Keys.First());
     }
 
-    internal void NodeFocused(Node n) => _focusedNode = n.Id;
+    internal async Task NodeFocused(Node n)
+    {
+        _focusedNode = n.Id;
+        if (!AutoPanOnNodeFocus || !_tabbed) return; // un clic donne aussi le focus : la vue ne doit pas bouger
+        _tabbed = false;
+        await EnsureVisible(n.Id);
+    }
 
     private void EdgeFocused(Edge e) => _focusedEdge = e.Id;
 
     // ---------- Double-clic, menu contextuel, survol, dépôt ----------
 
-    internal async Task NodeDoubleClick(Node n, MouseEventArgs e) =>
+    internal async Task NodeDoubleClick(Node n, MouseEventArgs e)
+    {
         await OnNodeDoubleClick.InvokeAsync(NodeArgs(n, MakePointer(Rel(e.ClientX, e.ClientY), e.ShiftKey, e.CtrlKey, e.AltKey, e.MetaKey)));
+        await ReleaseHeldClick();
+    }
 
-    private async Task EdgeDoubleClick(Edge edge, MouseEventArgs e) =>
+    private async Task EdgeDoubleClick(Edge edge, MouseEventArgs e)
+    {
         await OnEdgeDoubleClick.InvokeAsync(new EdgeEventArgs(edge, MakePointer(Rel(e.ClientX, e.ClientY), e.ShiftKey, e.CtrlKey, e.AltKey, e.MetaKey)));
+        await ReleaseHeldClick();
+    }
+
+    // En WPF, un double-clic donne : clic, double-clic, clic. Le navigateur envoie son « dblclick » après le second clic :
+    // celui-ci est retenu jusque-là.
+    private Func<Task>? _heldClick;
+
+    private Task RaiseClick(Func<Task> click, bool awaitsDoubleClick)
+    {
+        if (!_secondPress || !awaitsDoubleClick) return click();
+        _heldClick = click;
+        _ = ReleaseUnlessDoubleClicked(click);
+        return Task.CompletedTask;
+    }
+
+    // Un élément du modèle peut arrêter le « dblclick » : le clic retenu ne doit pas être perdu.
+    private async Task ReleaseUnlessDoubleClicked(Func<Task> click)
+    {
+        await Task.Delay(500);
+        if (ReferenceEquals(_heldClick, click)) await InvokeAsync(ReleaseHeldClick);
+    }
+
+    private Task ReleaseHeldClick()
+    {
+        var click = _heldClick;
+        _heldClick = null;
+        return click?.Invoke() ?? Task.CompletedTask;
+    }
 
     private async Task PaneDoubleClick(MouseEventArgs e)
     {
@@ -323,9 +389,10 @@ public partial class FlowView
     internal async Task NodeContextMenu(Node n, MouseEventArgs e)
     {
         var pointer = MakePointer(Rel(e.ClientX, e.ClientY), e.ShiftKey, e.CtrlKey, e.AltKey, e.MetaKey);
-        if (n.Selected && Nodes.Count(x => x.Selected) > 1 && OnSelectionContextMenu.HasDelegate)
-            await OnSelectionContextMenu.InvokeAsync(new PaneEventArgs(pointer));
-        else await OnNodeContextMenu.InvokeAsync(NodeArgs(n, pointer));
+        // Comme en WPF : le menu de la sélection, puis celui du node visé.
+        var args = NodeArgs(n, pointer);
+        if (n.Selected && Nodes.Count(x => x.Selected) > 1) await OnSelectionContextMenu.InvokeAsync(new PaneEventArgs(pointer));
+        await OnNodeContextMenu.InvokeAsync(args);
     }
 
     private async Task EdgeContextMenu(Edge edge, MouseEventArgs e) =>

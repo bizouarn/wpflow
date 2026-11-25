@@ -1,7 +1,8 @@
 @* Le contenu d'une table. L'état propre à l'affichage (renommage en cours, contrôles) vit ICI : un modèle de node est
    mémorisé et ne se redessine pas quand seul l'état du composant parent change (doc/blazor.md). *@
 @{
-    var table = (Table)Node.Data!;
+    // Mode contrôlé : Data est la table. MVVM : c'est le ViewModel.
+    var table = Node.Data as Table ?? ((TableViewModel)Node.Data!).ToTable();
 }
 <div class="table @(Node.Selected ? "selected" : "") @(table.Collapsed ? "collapsed" : "")">
     <div class="title">@table.Name <small class="rows">@table.Rows</small></div>
@@ -38,7 +39,7 @@
 
 @code {
     [Parameter, EditorRequired] public Node Node { get; set; } = default!;
-    [Parameter, EditorRequired] public SchemaStore Store { get; set; } = default!;
+    [Parameter, EditorRequired] public ISchemaModel Store { get; set; } = default!;
 
     private string? _editing;
     private string _name = "";

@@ -137,7 +137,9 @@ Trouvés en écrivant le scénario MVVM :
 
 Limites des scénarios WPF : en mode contrôlé, `Undo()` ne fait rien en WPF, donc « Ctrl+Z reste dans le champ » n'y prouve que le comportement du champ ; la `ListBox`, le `ScrollViewer` et le `DataGrid` portent `FlowView.NoWheel` (équivalent de `nowheel`), la molette sans cette marque n'est pas essayée ; la modification en mode contrôlé est appliquée de façon synchrone (le cas différé du défaut 4 n'est couvert que par le test du noyau) ; un seul DPI (100 %).
 
-Écarts de parité à traiter au lot 3 :
+**Parité entre les vues, comblée le 2026-11-26** (WPF fait référence). Les écarts ci-dessous, notés pendant ce lot, sont résolus : même suite d'évènements au clic droit sur une sélection et au double-clic (contrôlée dans les deux applications témoins), pas d'historique de la vue en mode contrôlé, `SelectAll` avec les edges, `ExportSvg` en WPF. `ViewParityTests` compare désormais par réflexion tous les évènements et réglages des deux vues. Le MVVM est complet en WPF (toutes les propriétés, annulation, une commande par évènement) et existe en Blazor ; les scénarios Blazor sont rejoués en MVVM (`?mvvm=1`), sur Server et WebAssembly. Restent propres à chaque plateforme : voir « Différences avec la version WPF » dans `doc/blazor.md`.
+
+Écarts tels qu'ils avaient été relevés :
 
 - Au clic droit sur une sélection, WPF lève le menu de sélection **et** celui du node, Blazor seulement celui de la sélection.
 - Au double-clic, WPF lève `NodeClick` **après** `NodeDoubleClick` (au second relâchement) ; Blazor lève les clics avant.
@@ -156,7 +158,6 @@ Défauts trouvés côté Blazor, corrigés, chacun avec un scénario d'abord en 
 
 Comportements voulus, ajoutés à `doc/blazor.md` : modèles de nodes mémorisés (l'état d'affichage va dans un composant enfant) ; `ClearHistory()` après le chargement d'un autre document.
 
-Écart de parité à traiter au lot 3 : au clic droit sur une sélection, WPF lève le menu de sélection **et** celui du node, Blazor seulement celui de la sélection.
 
 ### Lot 3 — Matrice des évènements et des gestes (L)
 

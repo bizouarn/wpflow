@@ -57,7 +57,10 @@ export function attach(root, dotnet) {
         if (e.target.closest && e.target.closest('.nowheel')) return;
         const zoomKey = e.ctrlKey || e.metaKey;
         const handled = s.options.zoomOnScroll || s.options.panOnScroll || zoomKey;
-        if (!handled && !s.options.preventScrolling) return; // la page défile
+        if (!handled && !s.options.preventScrolling) { // la page défile ; l'application en est tout de même prévenue
+            if (s.options.paneScroll) dotnet.invokeMethodAsync('OnWheel', e.clientX, e.clientY, e.deltaX, e.deltaY, e.ctrlKey, e.shiftKey, e.metaKey, e.deltaMode);
+            return;
+        }
         e.preventDefault();
         sendRect(false);
         dotnet.invokeMethodAsync('OnWheel', e.clientX, e.clientY, e.deltaX, e.deltaY, e.ctrlKey, e.shiftKey, e.metaKey, e.deltaMode);
@@ -137,6 +140,9 @@ export function attach(root, dotnet) {
         dotnet.invokeMethodAsync('OnPointerUp', e.clientX, e.clientY, e.shiftKey, e.type === 'pointercancel');
     };
     root.addEventListener('pointerdown', s.onDown);
+    // Seul « mousedown » porte le nombre de clics ; il suit « pointerdown », donc arrive après l'appui dans la vue.
+    s.onPress = (e) => { if (e.button === 0 && e.detail === 2) dotnet.invokeMethodAsync('OnSecondPress'); };
+    root.addEventListener('mousedown', s.onPress, true);
     // Suite du geste suivie sur la fenêtre : sans capture, le pointeur peut quitter la vue avant le premier mouvement.
     window.addEventListener('pointermove', s.onMove, true);
     window.addEventListener('pointerup', s.onUp, true);
@@ -172,6 +178,7 @@ export function detach(root) {
     window.removeEventListener('resize', s.onScroll);
     root.removeEventListener('wheel', s.onWheel);
     root.removeEventListener('pointerdown', s.onDown);
+    root.removeEventListener('mousedown', s.onPress, true);
     window.removeEventListener('pointermove', s.onMove, true);
     window.removeEventListener('pointerup', s.onUp, true);
     window.removeEventListener('pointercancel', s.onUp, true);

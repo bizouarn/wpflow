@@ -17,7 +17,7 @@ Le `Content` est un **overlay** affiché au-dessus du graphe ; il n'accepte qu'u
 | `Viewport` | `Viewport` | `(0, 0, 1)` | Position et zoom. Liable en `TwoWay`. Contraint par `TranslateExtent`. |
 | `AutoApplyChanges` | `bool` | `true` | Applique elle-même les changes à `Nodes`/`Edges`. `false` = mode contrôlé. |
 | `NodesSource` / `EdgesSource` | `IEnumerable?` | `null` | Collections de ViewModels projetées dans `Nodes`/`Edges` (mode [MVVM](../learn/13-mvvm.md)). Undo/Redo restent actifs. |
-| `NodeMapping` / `EdgeMapping` | `NodeMapping?` / `EdgeMapping?` | `Id`, `X`, `Y` / `Id`, `Source`, `Target` | Noms des propriétés des ViewModels. |
+| `NodeMapping` / `EdgeMapping` | `NodeMapping?` / `EdgeMapping?` | `Id`, `X`, `Y` / `Id`, `Source`, `Target` | Noms des propriétés des ViewModels ; toutes les propriétés de `Node` et d'`Edge` se mappent. |
 | `NodeFactory` / `EdgeFactory` | `Func<Node, object?>?` / `Func<Edge, object?>?` | `null` | Créent le ViewModel d'un node ou d'un edge ajouté par la vue (dépôt, connexion). Propriétés de dépendance : liables à une propriété du ViewModel. |
 | `SelectedNodes` / `SelectedEdges` | `IList` | vide | Éléments sélectionnés (ViewModels avec une source, sinon `Node`/`Edge`). Écrire = sélectionner ; une `ObservableCollection` liée est mise à jour sur place. |
 | `SelectedNode` | `object?` | `null` | Premier node sélectionné ; l'écrire le sélectionne seul. |
@@ -115,7 +115,8 @@ Côté commandes, `CommandsReceiveEventArgs="True"` fait recevoir l'`ElementEven
 | `void ApplyNodeChanges(changes)` / `ApplyEdgeChanges(changes)` | Injecte des changes comme le ferait un geste : `…ChangesRequested` est levé, puis ils sont appliqués si `AutoApplyChanges`. N'ajoute rien à l'historique. |
 | `IReadOnlyList<Node> GetIncomers(string nodeId)` / `GetOutgoers(string nodeId)` | Nodes reliés par un edge entrant / sortant. |
 | `void SetLocked(bool locked)` | Change `IsLocked` en gardant sa liaison. |
-| `void Undo()` / `Redo()` | Annule / rétablit (mode non contrôlé). |
+| `void Undo()` / `Redo()` | Annule / rétablit (en mode contrôlé, la vue ne tient pas d'historique et `CanUndo` reste faux). |
+| `string ExportSvg(double padding = 20, string? background = null)` | Dessin vectoriel simplifié (nodes en rectangles avec leur texte, edges et flèches) ; pour une image fidèle, `SaveImage`. |
 | `void ClearHistory()` | Vide l'historique de la vue. |
 | `string ToJson(Func<Node,object?>? data = null, bool indented = true)` | Exporte le graphe (format React Flow). Avec une source, `Node.Data` n'est écrit que via `data`. |
 | `void LoadJson(string json)` | Charge un graphe ; avec une source, passe par `NodeFactory` / `EdgeFactory`. |
@@ -160,6 +161,8 @@ Côté commandes, `CommandsReceiveEventArgs="True"` fait recevoir l'`ElementEven
 | `BeforeDeleteAsync` | `Func<BeforeDeleteEventArgs, Task<bool>>?` | `null` | Contrôle asynchrone avant suppression ; `false` annule. Utilisé par la touche de suppression et par `DeleteElementsAsync`. |
 | `NodesInitialized` | `bool` (lecture seule) | — | Tous les nodes visibles sont mesurés. |
 | `ConnectionState` | `FlowConnectionState?` (lecture seule) | `null` | Connexion en cours : origine, position, cible, validité (`useConnection`). |
+| `AutoConnect` | `bool` | `true` | Faux : une connexion lève `ConnectRequested` sans créer d'edge ; le reste de l'état reste appliqué par la vue. |
+| `HistoryEnabled` / `HistoryLimit` | `bool` / `int` | `true` / 100 | Historique de la vue (sans effet sur `History`, celui du ViewModel). |
 
 Attachées, à poser sur un élément d'un template de node : `flow:FlowView.NoDrag="True"`, `NoPan`, `NoWheel` (équivalents de `nodrag`, `nopan`, `nowheel`), et `flow:NodeHost.DragHandle="grip"` pour la zone qui déplace le node quand `Node.DragHandle = "grip"`.
 
@@ -182,6 +185,11 @@ Attachées, à poser sur un élément d'un template de node : `flow:FlowView.NoD
 | `ClickConnectStarted` / `ClickConnectEnded` | Connexion par deux clics. |
 | `ViewportMoveStarted` / `ViewportMoved` / `ViewportMoveEnded` | Mouvement de la vue (glisser, molette, transition ; `ViewportMoved` aussi pour les changements programmatiques). |
 | `PaneScroll` | Molette sur le fond. |
+| `Deleted` (`DeletedEventArgs` : `Nodes`, `Edges`) | Une suppression demandée à la vue a eu lieu (`onDelete`). |
+| `SelectionChanged` (`FlowSelectionEventArgs` : `Nodes`, `Edges`) | La sélection a changé (`onSelectionChange`). |
+| `NodesReady` | Une fois, quand tous les nodes ont été mesurés (`useNodesInitialized`). |
+
+Les mêmes évènements existent en Blazor, et les mêmes gestes les lèvent dans le même ordre : un double-clic donne clic, double-clic, clic ; un clic droit sur une sélection, le menu de la sélection puis celui du node.
 
 ## Méthodes d'instance (`useReactFlow`)
 
@@ -253,5 +261,6 @@ Voir le guide [MVVM](../learn/13-mvvm.md) pour le détail ; aide-mémoire :
 | `NodeClickCommand` / `EdgeClickCommand` | `ICommand?` | Paramètre : l'élément cliqué. |
 | `PaneClickCommand` | `ICommand?` | Paramètre : `XYPosition` flow. |
 | `CommandsReceiveEventArgs` | `bool` (faux) | Les commandes de clic, de double-clic et de menu contextuel reçoivent l'`ElementEventArgs` (dont `TargetData`). |
+| autres `…Command` | `ICommand?` | Une commande par évènement ([liste](../learn/13-mvvm.md#commandes)) ; elle reçoit les arguments de l'évènement. |
 
 `FlowCommands` (classe statique de `RoutedUICommand`) : `FitView`, `ZoomIn`, `ZoomOut`, `Undo`, `Redo`, `SelectAll`, `ClearSelection`, `DeleteSelection`, `ToggleLock`.

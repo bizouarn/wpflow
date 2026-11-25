@@ -101,7 +101,7 @@ public abstract class DemoFixture : IAsyncLifetime
     }
 
     /// <summary>Ouvre la démo (taille fixe) et attend qu'elle soit interactive et mesurée (les edges sont tracés).</summary>
-    public async Task<IPage> OpenAsync(bool touch = false)
+    public async Task<IPage> OpenAsync(bool touch = false, string query = "")
     {
         var context = await Browser.NewContextAsync(new BrowserNewContextOptions
         {
@@ -110,7 +110,7 @@ public abstract class DemoFixture : IAsyncLifetime
             AcceptDownloads = true
         });
         var page = await context.NewPageAsync();
-        await page.GotoAsync(Url);
+        await page.GotoAsync(Url + query);
         // WebAssembly télécharge d'abord le runtime : délai large.
         await page.WaitForFunctionAsync("document.querySelectorAll('.wf-edge-path').length >= " + ReadyEdges, null, new PageWaitForFunctionOptions { Timeout = 60000 });
         await page.WaitForTimeoutAsync(300); // cadrage initial

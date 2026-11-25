@@ -16,6 +16,8 @@
                 <button @onclick="Layout">Disposer</button>
                 <button @onclick="Png">PNG</button>
                 <span>@(_last ?? "Glissez, tirez depuis un handle, Maj + glisser pour sélectionner, Suppr, Ctrl+Z / Ctrl+C / Ctrl+V.")</span>
+                @* À part : le double-clic est suivi du second clic, qui remplace le message précédent. *@
+                <span class="demo-double">@_double</span>
             </FlowPanel>
             <SelectionToolbar>
                 <button @onclick="() => _flow!.DeleteSelected()">Supprimer la sélection</button>
@@ -31,6 +33,7 @@
     private bool _dark;
     private bool _snap;
     private string? _last;
+    private string? _double;
     private Dictionary<string, RenderFragment<Node>> _templates = default!;
 
     private IReadOnlyList<Node> _nodes =
@@ -81,7 +84,7 @@
     }
 
     private void OnDbl(NodeEventArgs e) =>
-        _last = $"double-clic sur {e.Node.Id}" + (e.TargetData.TryGetValue("column", out var column) ? $" ({column})" : "");
+        _double = $"double-clic sur {e.Node.Id}" + (e.TargetData.TryGetValue("column", out var column) ? $" ({column})" : "");
 
     private Task Png() => _flow!.SaveImage("graphe.png");
 

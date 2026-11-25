@@ -2,7 +2,7 @@ using System.Collections.Concurrent;
 using System.Globalization;
 using System.Reflection;
 
-namespace Wpflow.Wpf;
+namespace Wpflow.Core;
 
 /// <summary>Lecture/écriture de propriétés par nom, avec conversions numériques ; les <see cref="PropertyInfo" /> sont mises en cache par type.</summary>
 internal static class Reflect
@@ -70,7 +70,11 @@ internal static class Reflect
         }
 
         if (converted == null && property.PropertyType.IsValueType && Nullable.GetUnderlyingType(property.PropertyType) == null)
-            return;
+        {
+            if (property.PropertyType != typeof(double)) return;
+            converted = double.NaN; // une taille automatique, pour un double non nullable
+        }
+
         if (Equals(property.GetValue(target), converted)) return;
         property.SetValue(target, converted);
     }

@@ -85,12 +85,13 @@
                             <path class="wf-edge-path" d="@ev.Context.Path.Path" style="@EdgeStyle(edge)"
                                   marker-start="@ev.MarkerStart" marker-end="@ev.MarkerEnd" />
                         }
-                        <path class="wf-edge-hit" d="@ev.Context.Path.Path" style="@(edge.InteractionWidth is { } iw ? $"stroke-width:{F(iw)}px" : null)"
+                        <path class="wf-edge-hit" d="@ev.Context.Path.Path" style="@EdgeHitStyle(edge)"
                               @onpointerdown="e => OnEdgePointerDown(edge, e)" @onpointerdown:stopPropagation
                               @ondblclick="e => EdgeDoubleClick(edge, e)" @ondblclick:stopPropagation
                               @oncontextmenu="e => EdgeContextMenu(edge, e)" @oncontextmenu:preventDefault="OnEdgeContextMenu.HasDelegate"
                               @oncontextmenu:stopPropagation
-                              @onpointerenter="EdgeEnterHandler(edge)" @onpointerleave="EdgeLeaveHandler(edge)" />
+                              @onpointerenter="EdgeEnterHandler(edge)" @onpointerleave="EdgeLeaveHandler(edge)"
+                              @onpointermove="EdgeMoveHandler(edge)" />
                         @if (edge.Selected && EdgesReconnectable && edge.Reconnectable && !IsLocked)
                         {
                             <circle class="wf-edge-anchor" cx="@F(ev.Context.Geometry.Source.X)" cy="@F(ev.Context.Geometry.Source.Y)" r="@F(ReconnectRadius / 2)" />
@@ -116,7 +117,8 @@
                 <FlowNodeHost @key="n.Id" Flow="this" Node="n" Classes="@NodeClasses(n)" Style="@NodeStyle(n)" Label="@NodeLabel(n)"
                               Focusable="@(NodesFocusable && !DisableKeyboardA11y)" Template="TemplateFor(n)"
                               PreventContextMenu="@(OnNodeContextMenu.HasDelegate || OnSelectionContextMenu.HasDelegate)"
-                              HasEnter="OnNodeMouseEnter.HasDelegate" HasLeave="OnNodeMouseLeave.HasDelegate" />
+                              HasEnter="OnNodeMouseEnter.HasDelegate" HasLeave="OnNodeMouseLeave.HasDelegate"
+                              HasMove="OnNodeMouseMove.HasDelegate" />
             }
 
             @foreach (var ev in edgeViews)

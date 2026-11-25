@@ -8,7 +8,7 @@
      @ondblclick="e => Flow.NodeDoubleClick(Node, e)" @ondblclick:stopPropagation
      @oncontextmenu="e => Flow.NodeContextMenu(Node, e)" @oncontextmenu:preventDefault="PreventContextMenu"
      @oncontextmenu:stopPropagation
-     @onpointerenter="Enter" @onpointerleave="Leave">
+     @onpointerenter="Enter" @onpointerleave="Leave" @onpointermove="Move">
     <CascadingValue Value="Node" Name="WfNode">
         @if (Template != null)
         {
@@ -25,7 +25,7 @@
     private Node? _node;
     private string? _classes, _style, _label;
     private RenderFragment<Node>? _template;
-    private bool _focusable, _preventContext, _hasEnter, _hasLeave;
+    private bool _focusable, _preventContext, _hasEnter, _hasLeave, _hasMove;
     private bool _changed = true;
 
     [Parameter, EditorRequired] public FlowView Flow { get; set; } = default!;
@@ -37,17 +37,21 @@
     [Parameter] public bool PreventContextMenu { get; set; }
     [Parameter] public bool HasEnter { get; set; }
     [Parameter] public bool HasLeave { get; set; }
+    [Parameter] public bool HasMove { get; set; }
     [Parameter] public RenderFragment<Node>? Template { get; set; }
 
     private EventCallback<PointerEventArgs> Enter => HasEnter ? Flow.NodeEnterHandler(Node) : default;
 
     private EventCallback<PointerEventArgs> Leave => HasLeave ? Flow.NodeLeaveHandler(Node) : default;
 
+    private EventCallback<PointerEventArgs> Move => HasMove ? Flow.NodeMoveHandler(Node) : default;
+
     protected override void OnParametersSet()
     {
         _changed = !ReferenceEquals(_node, Node) || _classes != Classes || _style != Style || _label != Label
                    || !Equals(_template, Template) || _focusable != Focusable || _preventContext != PreventContextMenu
-                   || _hasEnter != HasEnter || _hasLeave != HasLeave;
+                   || _hasEnter != HasEnter || _hasLeave != HasLeave || _hasMove != HasMove;
+        _hasMove = HasMove;
         (_node, _classes, _style, _label, _template, _focusable, _preventContext, _hasEnter, _hasLeave) =
             (Node, Classes, Style, Label, Template, Focusable, PreventContextMenu, HasEnter, HasLeave);
     }

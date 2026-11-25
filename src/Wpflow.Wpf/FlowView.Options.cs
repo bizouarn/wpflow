@@ -506,7 +506,9 @@ public partial class FlowView
 
     internal void SetNodesInitialized(bool value)
     {
-        if (NodesInitialized != value) SetValue(NodesInitializedPropertyKey, value);
+        if (NodesInitialized == value) return;
+        SetValue(NodesInitializedPropertyKey, value);
+        if (value) RaiseNodesReadyOnce();
     }
 
     internal void SetConnectionState(FlowConnectionState? state) => SetValue(ConnectionStatePropertyKey, state);

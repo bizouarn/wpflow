@@ -158,7 +158,12 @@ internal static class Runner
         Check("menu contextuel : la colonne est connue", _window.MenuText == "colonne orders.customer_id", _window.MenuText);
         var zoom = F.Viewport.Zoom;
         _window.DoubleClicks.Clear();
+        _window.Events.Clear();
         await DoubleClick(Center(Row("customers", "email")));
+        await Task.Delay(500);
+        Check("ordre : un double-clic donne clic, double-clic, clic (comme en Blazor)",
+            string.Join(" > ", _window.Events) == "clic customers.email > double-clic customers.email > clic customers.email",
+            string.Join(" > ", _window.Events));
         // En WPF, NodeClick suit le double-clic (au second relâchement) : les deux sont enregistrés à part.
         Check("double-clic : la colonne est connue, une fois, sans zoom",
             _window.DoubleClicks.SequenceEqual(["customers.email"]) && F.Viewport.Zoom == zoom,
@@ -258,7 +263,10 @@ internal static class Runner
         await Click(Title("lines"));
         KeyRelease(VkControl);
         await Task.Delay(400);
+        _window.Events.Clear();
         await RightClick(Title("lines"));
+        Check("ordre : clic droit sur une sélection, son menu puis celui de la table (comme en Blazor)",
+            string.Join(" > ", _window.Events) == "sélection de 2 > table lines", string.Join(" > ", _window.Events));
         Check("menu d'une sélection", _window.SelectionMenus.LastOrDefault() == "sélection de 2",
             $"{_window.SelectionMenus.LastOrDefault()}, sélection={string.Join(",", Store.Nodes.Where(n => n.Selected).Select(n => n.Id))}");
         Check("clic droit : la sélection est gardée", Store.Nodes.Count(n => n.Selected) == 2);

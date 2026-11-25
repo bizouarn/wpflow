@@ -28,6 +28,9 @@ public partial class MainWindow : Window
     internal string MenuText => Menu.Text;
     internal List<string> SelectionMenus { get; } = [];
     internal List<string> DoubleClicks { get; } = [];
+
+    /// <summary>La suite des évènements reçus, pour en vérifier l'ordre (le même qu'en Blazor).</summary>
+    internal List<string> Events { get; } = [];
     internal int TemplateMenuClicks { get; private set; }
 
     /// <summary>Exceptions non gérées levées pendant les scénarios.</summary>
@@ -90,7 +93,7 @@ public partial class MainWindow : Window
     // Tout passe par les sources, des commandes et les ViewModels : aucun évènement, aucune écriture des records.
     private void WireMvvm()
     {
-        var schema = _mvvm = new MvvmSchema(Flow);
+        var schema = _mvvm = new MvvmSchema(Flow.ApplyNodeChanges);
         Flow.NodeMapping = new NodeMapping { SelectedPath = "IsSelected", TypePath = "Type", WidthPath = "Width", HeightPath = "Height" };
         Flow.EdgeMapping = new EdgeMapping
         {
@@ -121,20 +124,26 @@ public partial class MainWindow : Window
         });
     }
 
-    private void OnNodeClicked(ElementEventArgs e) => Log.Text = "clic " + Describe(e);
+    private void OnNodeClicked(ElementEventArgs e) => Events.Add(Log.Text = "clic " + Describe(e));
 
     private void OnNodeDoubleClicked(ElementEventArgs e)
     {
         DoubleClicks.Add(Describe(e));
+        Events.Add("double-clic " + Describe(e));
         if (e.TargetData is string && e.OriginalSource != null) StartRename(e.OriginalSource);
     }
 
     private void OnEdgeClicked(ElementEventArgs e) => Log.Text = "clic relation " + e.Id;
     private void OnPaneClicked() => Log.Text = "clic sur le fond";
-    private void OnNodeMenu(ElementEventArgs e) => Menu.Text = (e.TargetData is string ? "colonne " : "table ") + Describe(e);
+    private void OnNodeMenu(ElementEventArgs e) => Events.Add(Menu.Text = (e.TargetData is string ? "colonne " : "table ") + Describe(e));
     private void OnEdgeMenu(ElementEventArgs e) => Menu.Text = "relation " + e.Id;
     private void OnPaneMenu() => Menu.Text = "fond";
-    private void OnSelectionMenu() => SelectionMenus.Add("sélection de " + Store.Nodes.Count(n => n.Selected));
+    private void OnSelectionMenu()
+    {
+        var menu = "sélection de " + Store.Nodes.Count(n => n.Selected);
+        SelectionMenus.Add(menu);
+        Events.Add(menu);
+    }
 
     private static string Describe(ElementEventArgs e) => e.TargetData is string column ? $"{e.Id}.{column}" : e.Id ?? "";
 

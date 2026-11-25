@@ -25,6 +25,20 @@ public class ApiParityTests
         Assert.Contains(typeof(FlowView).GetMethods(BindingFlags.Instance | BindingFlags.Public), m => m.Name == name);
 
     [Fact]
+    public void The_graph_exports_as_a_vector_drawing() => Sta.Run(() =>
+    {
+        var flow = CustomizationTests.Realize();
+
+        var svg = System.Xml.Linq.XDocument.Parse(flow.ExportSvg(padding: 5, background: "#123456"));
+
+        var shapes = svg.Descendants().ToList();
+        Assert.Equal(3, shapes.Count(e => e.Name.LocalName == "rect")); // le fond et les deux nodes
+        var path = Assert.Single(shapes, e => e.Name.LocalName == "path");
+        Assert.StartsWith("M", path.Attribute("d")!.Value);
+        Assert.Contains(shapes, e => e.Attribute("fill")?.Value == "#123456");
+    });
+
+    [Fact]
     public void The_public_methods_select_delete_and_query_the_graph()
     {
         Sta.Run(() =>

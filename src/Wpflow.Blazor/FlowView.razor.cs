@@ -63,8 +63,9 @@ public partial class FlowView : ComponentBase, IAsyncDisposable
 
     // ---------- Cycle de vie ----------
 
-    protected override void OnParametersSet()
+    protected override async Task OnParametersSetAsync()
     {
+        ConfigureSources();
         if (!ReferenceEquals(_indexedNodes, Nodes)) RebuildIndex();
         if (_edgeCache.Count > Edges.Count) _edgeCache.Clear();
         // Ce qui change le contenu de la couche des nodes et des edges (hors viewport) : elle est alors refaite.
@@ -72,9 +73,11 @@ public partial class FlowView : ComponentBase, IAsyncDisposable
             HashCode.Combine(IsLocked, ZIndexMode, ElevateNodesOnSelect, ElevateEdgesOnSelect, NodeOrigin, DefaultMarkerColor, NodesFocusable, EdgesFocusable),
             HashCode.Combine(DisableKeyboardA11y, NodeAriaLabelProvider, EdgeAriaLabelProvider, EdgesReconnectable, ReconnectRadius, ConnectionLineTemplate, ConnectionLineType),
             HashCode.Combine(OnlyRenderVisibleElements, OnNodeContextMenu.HasDelegate, OnSelectionContextMenu.HasDelegate, OnNodeMouseEnter.HasDelegate,
-                OnNodeMouseLeave.HasDelegate, OnEdgeMouseEnter.HasDelegate, OnEdgeContextMenu.HasDelegate));
+                OnNodeMouseLeave.HasDelegate, OnEdgeMouseEnter.HasDelegate,
+                HashCode.Combine(OnEdgeContextMenu.HasDelegate, OnNodeMouseMove.HasDelegate, OnEdgeMouseMove.HasDelegate, EdgeHitWidth)));
         if (signature != _layerSignature) _forceLayer = true;
         _layerSignature = signature;
+        await ApplyBoundSelection();
     }
 
     private int _layerSignature;
@@ -104,6 +107,7 @@ public partial class FlowView : ComponentBase, IAsyncDisposable
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         Rendered?.Invoke();
+        await RaiseStateChangeIfNeeded();
 
         if (firstRender)
         {
@@ -111,16 +115,21 @@ public partial class FlowView : ComponentBase, IAsyncDisposable
             _self = DotNetObjectReference.Create(this);
             await _module.InvokeVoidAsync("attach", _root, _self);
             _attached = true;
+            await PublishController();
         }
 
         if (!_attached || _module == null) return;
 
-        var options = $"{PreventScrolling}|{ZoomOnPinch}|{ZoomOnScroll}|{PanOnScroll}|{DisableKeyboardA11y}";
+        var options = $"{PreventScrolling}|{ZoomOnPinch}|{ZoomOnScroll}|{PanOnScroll}|{DisableKeyboardA11y}|{OnPaneScroll.HasDelegate}";
         if (options != _jsOptions)
         {
             _jsOptions = options;
             await _module.InvokeVoidAsync("setOptions", _root,
-                new { preventScrolling = PreventScrolling, pinch = ZoomOnPinch, zoomOnScroll = ZoomOnScroll, panOnScroll = PanOnScroll });
+                new
+                {
+                    preventScrolling = PreventScrolling, pinch = ZoomOnPinch, zoomOnScroll = ZoomOnScroll, panOnScroll = PanOnScroll,
+                    paneScroll = OnPaneScroll.HasDelegate
+                });
         }
 
         // Les nodes apparus ou disparus du DOM : (dé)branche l'observation de leur taille.
@@ -142,6 +151,7 @@ public partial class FlowView : ComponentBase, IAsyncDisposable
     {
         StopAutoPan();
         _wheelCts?.Cancel();
+        DisposeSources();
         try
         {
             if (_module != null)
@@ -224,6 +234,9 @@ public partial class FlowView : ComponentBase, IAsyncDisposable
         => InvokeAsync(async () =>
         {
             var k = deltaMode == 1 ? 20 : 1; // lignes -> pixels
+            if (OnPaneScroll.HasDelegate)
+                await OnPaneScroll.InvokeAsync(new PaneScrollEventArgs(
+                    MakePointer(Rel(clientX, clientY), shift, ctrl, false, meta), deltaX * k, deltaY * k));
             var wheel = WheelInput.Resolve(deltaX * k, deltaY * k, Held(ZoomActivationKey, shift, ctrl, false, meta), shift, ZoomOnScroll,
                 PanOnScroll, PanOnScrollSpeed, PanOnScrollMode, PreventScrolling, pinch: ctrl || meta);
             switch (wheel.Kind)

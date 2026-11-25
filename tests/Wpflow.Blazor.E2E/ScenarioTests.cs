@@ -20,12 +20,25 @@ public sealed class ServerScenarioTests(ScenarioServerFixture app) : ScenarioTes
 
 public sealed class WasmScenarioTests(ScenarioWasmFixture app) : ScenarioTests(app), IClassFixture<ScenarioWasmFixture>;
 
+// Les mêmes scénarios, l'application tenant son schéma dans des ViewModels (NodesSource / EdgesSource).
+public sealed class ServerMvvmScenarioTests(ScenarioServerFixture app) : ScenarioTests(app), IClassFixture<ScenarioServerFixture>
+{
+    protected override string Query => "?mvvm=1";
+}
+
+public sealed class WasmMvvmScenarioTests(ScenarioWasmFixture app) : ScenarioTests(app), IClassFixture<ScenarioWasmFixture>
+{
+    protected override string Query => "?mvvm=1";
+}
+
 /// <summary>L'éditeur de schéma témoin, piloté par de vraies entrées (ROADMAP-TESTS, lot 2).</summary>
 public abstract class ScenarioTests(DemoFixture app)
 {
+    protected virtual string Query => "";
+
     private async Task<(IPage Page, List<string> Errors)> OpenAsync()
     {
-        var page = await app.OpenAsync();
+        var page = await app.OpenAsync(query: Query);
         var errors = new List<string>();
         page.Console += (_, m) => { if (m.Type == "error") errors.Add(m.Text); };
         page.PageError += (_, e) => errors.Add(e);
@@ -104,7 +117,7 @@ public abstract class ScenarioTests(DemoFixture app)
         var zoom = (await page.ViewportAsync()).Zoom;
         var p = await page.CenterAsync(Column("customers", "email") + " em");
         await page.Mouse.DblClickAsync((float)p.X, (float)p.Y);
-        await ExpectTextAsync(page, "log", "double-clic customers.email");
+        await page.UntilAsync(async () => (await TextAsync(page, "events")).Contains("double-clic customers.email"), "double-clic reçu");
         await page.WaitForTimeoutAsync(400);
         Assert.Equal(zoom, (await page.ViewportAsync()).Zoom);
         Assert.Empty(errors);
@@ -213,6 +226,43 @@ public abstract class ScenarioTests(DemoFixture app)
         await page.WaitForTimeoutAsync(500);
         Assert.Equal(1, await page.CountAsync("[data-node-id='orders'][aria-selected='true']"));
         await ExpectTextAsync(page, "log", "clic orders");
+        Assert.Empty(errors);
+    }
+
+    /// <summary>La même suite d'évènements qu'en WPF (scénario « ordre des évènements » de Scenarios.Wpf).</summary>
+    [Fact]
+    public async Task A_double_click_raises_click_double_click_click()
+    {
+        var (page, errors) = await OpenAsync();
+        await page.ClickAsync("#clear-events");
+
+        var p = await page.CenterAsync(Column("customers", "email") + " em");
+        await page.Mouse.DblClickAsync((float)p.X, (float)p.Y);
+        await page.WaitForTimeoutAsync(900);
+        await ExpectTextAsync(page, "events", "clic customers.email > double-clic customers.email > clic customers.email");
+
+        // Un clic simple ensuite n'est pas retardé ni doublé.
+        await page.ClickAsync("#clear-events");
+        await ClickAsync(page, Column("orders", "note") + " span");
+        await page.WaitForTimeoutAsync(900);
+        await ExpectTextAsync(page, "events", "clic orders.note");
+        Assert.Empty(errors);
+    }
+
+    [Fact]
+    public async Task A_right_click_on_a_selection_raises_the_selection_menu_then_the_node_menu()
+    {
+        var (page, errors) = await OpenAsync();
+        await ClickAsync(page, "[data-node-id='orders'] .title");
+        await page.Keyboard.DownAsync("Control");
+        await ClickAsync(page, "[data-node-id='lines'] .title");
+        await page.Keyboard.UpAsync("Control");
+        await page.WaitForTimeoutAsync(300);
+        await page.ClickAsync("#clear-events");
+
+        await ClickAsync(page, "[data-node-id='lines'] .title", MouseButton.Right);
+
+        await ExpectTextAsync(page, "events", "sélection de 2 > table lines");
         Assert.Empty(errors);
     }
 
@@ -363,7 +413,9 @@ public abstract class ScenarioTests(DemoFixture app)
     {
         var (page, errors) = await OpenAsync();
         if (virtualize) await page.CheckAsync("#virtualize");
-        await page.ClickAsync("#load-large");
+        // En WebAssembly le chargement occupe le seul thread de la page : le clic ne rend la main qu'ensuite, au bout d'une
+        // trentaine de secondes sur une machine de 8 Go, soit le délai par défaut de Playwright.
+        await page.ClickAsync("#load-large", new() { Timeout = 90000 });
         await page.UntilAsync(async () => (await TextAsync(page, "count")).Trim() == "200 tables, 400 relations", "chargé", 30000);
         await page.WaitForTimeoutAsync(3000);
         var shown = await page.CountAsync(".wf-node");

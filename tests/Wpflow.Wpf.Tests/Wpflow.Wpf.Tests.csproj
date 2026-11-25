@@ -23,6 +23,8 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\Wpflow.Wpf\Wpflow.Wpf.csproj" />
+    <!-- Pour comparer les API des deux vues (ViewParityTests). -->
+    <ProjectReference Include="..\..\src\Wpflow.Blazor\Wpflow.Blazor.csproj" />
   </ItemGroup>
 
 </Project>

@@ -478,6 +478,8 @@ public partial class FlowView : ContentControl
             return;
         }
 
+        // Pas d'historique en mode contrôlé : il appartient à l'application, et la vue ne pourrait pas l'appliquer.
+        if (!HistoryEnabled || !AutoApplyChanges) return;
         _history.Push(Nodes, Edges);
         UpdateHistoryState();
     }
@@ -618,12 +620,14 @@ public partial class FlowView : ContentControl
     {
         OnNodesChanged();
         UpdateSelectedNodes();
+        RaiseSelectionChangedIfNeeded();
     }
 
     private void OnEdgesPropertyChanged()
     {
         OnEdgesChanged();
         UpdateSelectedEdges();
+        RaiseSelectionChangedIfNeeded();
     }
 
     private void OnEdgesChanged()

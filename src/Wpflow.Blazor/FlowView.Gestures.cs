@@ -31,6 +31,7 @@ public partial class FlowView
     private bool _pressedMulti;
     private bool _pressedWasSelected;
     private long _pressedButton;
+    private bool _secondPress; // second appui d'un double-clic, signalé par le pont JS
     private Dictionary<string, XYPosition> _dragStart = new();
     private (string NodeId, HandleInfo Handle)? _from;
     private (string NodeId, HandleInfo Handle)? _candidate;
@@ -80,6 +81,13 @@ public partial class FlowView
         return Task.CompletedTask;
     }
 
+    [JSInvokable]
+    public Task OnSecondPress()
+    {
+        _secondPress = true;
+        return Task.CompletedTask;
+    }
+
     private NodeEventArgs NodeArgs(Node n, FlowPointer pointer) =>
         _pressData is { } p && p.NodeId == n.Id ? new NodeEventArgs(n, pointer) { TargetData = p.Data } : new NodeEventArgs(n, pointer);
 
@@ -97,6 +105,8 @@ public partial class FlowView
         _pressedNode = _pressedEdge = null;
         _pressedMulti = e.ShiftKey || Held(MultiSelectionKey, e.ShiftKey, e.CtrlKey, e.AltKey, e.MetaKey);
         _pressedWasSelected = false;
+        _secondPress = false;
+        _tabbed = false;
         _pressedButton = e.Button;
         _dragStart = new();
         _resize = null;
@@ -384,12 +394,13 @@ public partial class FlowView
                 if (!n.Selected || Nodes.Count(x => x.Selected) > 1 || Edges.Any(x => x.Selected)) await SelectOnly(n.Id, null);
             }
 
-            await OnNodeClick.InvokeAsync(NodeArgs(_nodeIndex[n.Id], pointer));
+            var args = NodeArgs(_nodeIndex[n.Id], pointer);
+            await RaiseClick(() => OnNodeClick.InvokeAsync(args), OnNodeDoubleClick.HasDelegate);
         }
         else if (_pressedEdge != null)
         {
             var edge = Edges.FirstOrDefault(x => x.Id == _pressedEdge);
-            if (edge != null) await OnEdgeClick.InvokeAsync(new EdgeEventArgs(edge, pointer));
+            if (edge != null) await RaiseClick(() => OnEdgeClick.InvokeAsync(new EdgeEventArgs(edge, pointer)), OnEdgeDoubleClick.HasDelegate);
         }
         else if (mode is Mode.Pan or Mode.None or Mode.Box)
         {

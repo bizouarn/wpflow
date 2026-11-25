@@ -1,4 +1,5 @@
 @implements IDisposable
+@inject NavigationManager Navigation
 
 <div class="bar">
     <button id="load-library" @onclick="() => Open(Schemas.Library())">autre schéma</button>
@@ -12,27 +13,27 @@
     <button id="fit" @onclick="async () => await _flow!.FitView()">cadrer</button>
     <button id="undo" @onclick="async () => await _flow!.Undo()">annuler</button>
     <button id="save" @onclick="Save">enregistrer</button>
-    <button id="restore" @onclick="() => Open(Schemas.FromJson(_json))">relire</button>
+    <button id="restore" @onclick="Restore">relire</button>
+    <button id="clear-events" @onclick="() => _events.Clear()">vider le journal</button>
     <button id="ticks" @onclick="ToggleTicks">@(_timer == null ? "mises à jour de fond" : "arrêter les mises à jour")</button>
 </div>
 <div class="status">
     <span id="log">@_log</span> |
     <span id="menu">@_menu</span> |
     <span id="selection-menu">@_selectionMenu</span> |
+    <span id="events">@string.Join(" > ", _events)</span> |
     <span id="refused">@string.Join(", ", Store.Refused)</span> |
     <span id="count">@Store.Nodes.Count tables, @Store.Edges.Count relations</span>
 </div>
 
 <div class="graph">
-    <FlowView @ref="_flow" Nodes="Store.Nodes" Edges="Store.Edges" AutoApplyChanges="false" AutoConnect="false"
-              OnNodesChange="c => Store.Apply(c)" OnEdgesChange="c => Store.Apply(c)" OnConnect="c => Store.Connect(c)"
-              IsValidConnection="Store.CanConnect" EdgeTypes="_edgeTypes" NodeTemplates="_nodeTemplates"
+    <FlowView @ref="_flow" @attributes="DataParameters()" EdgeTypes="_edgeTypes" NodeTemplates="_nodeTemplates"
               EdgeLabelTemplate="Label" OnlyRenderVisibleElements="_virtualize" FitViewOnInit="true" MinZoom="0.05"
-              OnNodeClick='a => _log = "clic " + Describe(a)' OnNodeDoubleClick='a => _log = "double-clic " + Describe(a)'
-              OnNodeContextMenu='a => _menu = (a.TargetData.ContainsKey("column") ? "colonne " : "table ") + Describe(a)'
+              OnNodeClick='a => Note(_log = "clic " + Describe(a))' OnNodeDoubleClick='a => Note(_log = "double-clic " + Describe(a))'
+              OnNodeContextMenu='a => Note(_menu = (a.TargetData.ContainsKey("column") ? "colonne " : "table ") + Describe(a))'
               OnEdgeContextMenu='a => _menu = "relation " + a.Edge.Id'
               OnPaneContextMenu='_ => _menu = "fond"'
-              OnSelectionContextMenu='_ => _selectionMenu = "sélection de " + Store.Nodes.Count(n => n.Selected)'
+              OnSelectionContextMenu='_ => Note(_selectionMenu = "sélection de " + Store.Nodes.Count(n => n.Selected))'
               OnPaneClick='_ => _log = "clic sur le fond"'
               OnEdgeClick='a => _log = "clic relation " + a.Edge.Id'>
         <FlowControls />
@@ -40,20 +41,65 @@
 </div>
 
 @code {
-    private readonly SchemaStore Store = new();
+    // Deux façons de tenir le schéma, comme en WPF : un service en mode contrôlé, ou (?mvvm=1) des ViewModels.
+    private SchemaStore? _store;
+    private MvvmSchema? _mvvm;
+    private ISchemaModel Store => (ISchemaModel?)_mvvm ?? _store!;
+
+    private readonly NodeMapping _nodeMapping = new() { SelectedPath = "IsSelected", TypePath = "Type", WidthPath = "Width", HeightPath = "Height" };
+
+    private readonly EdgeMapping _edgeMapping = new()
+    {
+        SourceHandlePath = "SourceColumn", TargetHandlePath = "TargetColumn", TypePath = "Type", SelectedPath = "IsSelected",
+        LabelPath = "Label", DataPath = "Data", MarkerStartPath = "MarkerStart", MarkerEndPath = "MarkerEnd"
+    };
+
+    private Dictionary<string, object> DataParameters() => _mvvm is { } schema
+        ? new()
+        {
+            ["NodesSource"] = schema.Tables, ["EdgesSource"] = schema.Relations,
+            ["NodeMapping"] = _nodeMapping, ["EdgeMapping"] = _edgeMapping,
+            ["NodeFactory"] = (Func<Node, object?>)schema.NodeFactory, ["EdgeFactory"] = (Func<Edge, object?>)schema.EdgeFactory,
+            ["AutoConnect"] = false, ["OnConnect"] = EventCallback.Factory.Create<Connection>(this, schema.Connect),
+            ["IsValidConnection"] = (Func<Connection, bool>)schema.CanConnect,
+            ["OnBeforeDelete"] = (Func<DeleteRequest, Task<bool>>)(r => Task.FromResult(schema.MayDelete(r.Nodes, r.Edges)))
+        }
+        : new()
+        {
+            ["Nodes"] = _store!.Nodes, ["Edges"] = _store.Edges, ["AutoApplyChanges"] = false, ["AutoConnect"] = false,
+            ["OnNodesChange"] = EventCallback.Factory.Create<IReadOnlyList<NodeChange>>(this, c => _store.Apply(c)),
+            ["OnEdgesChange"] = EventCallback.Factory.Create<IReadOnlyList<EdgeChange>>(this, c => _store.Apply(c)),
+            ["OnConnect"] = EventCallback.Factory.Create<Connection>(this, c => _store.Connect(c)),
+            ["IsValidConnection"] = (Func<Connection, bool>)_store.CanConnect
+        };
+
+    private bool _refreshQueued;
     private readonly IReadOnlyDictionary<string, IEdgePathProvider> _edgeTypes =
         new Dictionary<string, IEdgePathProvider> { [Schemas.RelationType] = new RelationPath() };
     private Dictionary<string, RenderFragment<Node>>? _nodeTemplates;
     private FlowView? _flow;
     private bool _virtualize;
     private string _log = "", _menu = "", _selectionMenu = "", _json = "";
+    // La suite des évènements reçus, pour en vérifier l'ordre (le même qu'en WPF).
+    private readonly List<string> _events = [];
+    private void Note(string what) => _events.Add(what);
     private Timer? _timer;
     private int _tick;
 
     protected override void OnInitialized()
     {
         _nodeTemplates = new Dictionary<string, RenderFragment<Node>> { [Schemas.TableType] = TableTemplate };
-        Store.Changed += Refresh;
+        if (Navigation.Uri.Contains("mvvm=1"))
+        {
+            _mvvm = new MvvmSchema(changes => _ = _flow!.ApplyNodeChanges(changes));
+            _mvvm.Observe();
+            _mvvm.Changed += Refresh;
+        }
+        else
+        {
+            _store = new SchemaStore();
+            _store.Changed += Refresh;
+        }
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
@@ -66,7 +112,18 @@
         if (_flow != null) await _flow.FitView();
     }
 
-    private void Refresh() => _ = InvokeAsync(StateHasChanged);
+    // En MVVM, une rafale de notifications ne redessine l'application qu'une fois.
+    private void Refresh()
+    {
+        if (_refreshQueued) return;
+        _refreshQueued = true;
+        _ = InvokeAsync(async () =>
+        {
+            await Task.Yield();
+            _refreshQueued = false;
+            StateHasChanged();
+        });
+    }
 
     private static string Describe(NodeEventArgs a) =>
         a.TargetData.TryGetValue("column", out var column) ? $"{a.Node.Id}.{column}" : a.Node.Id;
@@ -78,7 +135,15 @@
         _flow!.ClearHistory();
     }
 
-    private void Save() => _json = Schemas.ToJson(Store.Nodes, Store.Edges, _flow!.Viewport);
+    private void Save() => _json = _mvvm == null
+        ? Schemas.ToJson(Store.Nodes, Store.Edges, _flow!.Viewport)
+        : _flow!.ToJson(n => ((TableViewModel)n.Data!).ToTable());
+
+    private async Task Restore()
+    {
+        if (_mvvm == null) Open(Schemas.FromJson(_json));
+        else await _flow!.LoadJson(_json); // les fabriques recréent les ViewModels
+    }
 
     private void ToggleTicks()
     {
@@ -96,7 +161,8 @@
     public void Dispose()
     {
         _timer?.Dispose();
-        Store.Changed -= Refresh;
+        if (_mvvm != null) _mvvm.Changed -= Refresh;
+        if (_store != null) _store.Changed -= Refresh;
     }
 
     private RenderFragment<EdgeRenderContext> Label => context =>

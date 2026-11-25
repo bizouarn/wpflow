@@ -27,6 +27,7 @@ public partial class FlowView
         var from = Viewport;
         var started = DateTime.UtcNow;
         await OnMoveStart.InvokeAsync(from);
+        _animating++;
         try
         {
             while (!cts.IsCancellationRequested)
@@ -40,6 +41,10 @@ public partial class FlowView
         catch (OperationCanceledException)
         {
             return;
+        }
+        finally
+        {
+            _animating--;
         }
 
         await OnMoveEnd.InvokeAsync(Viewport);
@@ -95,13 +100,13 @@ public partial class FlowView
     public Node? GetInternalNode(string id) =>
         _absNodes.GetValueOrDefault(id);
 
-    private IEnumerable<Node> AbsoluteNodes() =>
+    private IEnumerable<Node> VisibleAbsoluteNodes() =>
         _absNodes.Values.Where(n => !n.Hidden);
 
-    public IReadOnlyList<Node> GetIntersectingNodes(Rect area, bool partially = true) => GraphQueries.GetIntersectingNodes(area, AbsoluteNodes(), partially);
+    public IReadOnlyList<Node> GetIntersectingNodes(Rect area, bool partially = true) => GraphQueries.GetIntersectingNodes(area, VisibleAbsoluteNodes(), partially);
 
     public IReadOnlyList<Node> GetIntersectingNodes(Node node, bool partially = true) =>
-        GetInternalNode(node.Id) is { } abs ? GraphQueries.GetIntersectingNodes(abs, AbsoluteNodes(), partially) : [];
+        GetInternalNode(node.Id) is { } abs ? GraphQueries.GetIntersectingNodes(abs, VisibleAbsoluteNodes(), partially) : [];
 
     public bool IsNodeIntersecting(Node node, Rect area, bool partially = true) =>
         GetInternalNode(node.Id) is { } abs && GraphQueries.IsNodeIntersecting(abs, area, partially);
@@ -122,14 +127,23 @@ public partial class FlowView
     // ---------- JSON ----------
 
     /// <summary>Le graphe au format JSON de React Flow (<c>toObject</c>).</summary>
-    public string ToJson(bool indented = true) => GraphSerializer.ToJson(Nodes, Edges, Viewport, indented);
+    /// <remarks>Avec <see cref="NodesSource" />, <c>Node.Data</c> n'est pas écrit : donnez un sélecteur pour choisir quoi écrire.</remarks>
+    public string ToJson(bool indented = true) =>
+        GraphSerializer.ToJson(Nodes, Edges, Viewport, indented, _nodeSource != null ? _ => null : null);
+
+    /// <summary>Comme <see cref="ToJson(bool)" />, en écrivant <paramref name="data" /> à la place de <c>Node.Data</c>.</summary>
+    public string ToJson(Func<Node, object?> data, bool indented = true) =>
+        GraphSerializer.ToJson(Nodes, Edges, Viewport, indented, data);
 
     /// <summary>Remplace le graphe et le viewport par ceux du JSON ; l'historique est vidé.</summary>
     public async Task LoadJson(string json)
     {
         var graph = GraphSerializer.FromJson(json);
-        await ApplyEdgeChanges(Changesets.Diff(Edges, graph.Edges));
-        await ApplyNodeChanges(Changesets.Diff(Nodes, graph.Nodes));
+        // Avec une source, les collections sont vidées puis remplies par les fabriques (obligatoires).
+        _nodeSource?.Load(graph.Nodes);
+        _edgeSource?.Load(graph.Edges);
+        if (_edgeSource == null) await ApplyEdgeChanges(Changesets.Diff(Edges, graph.Edges));
+        if (_nodeSource == null) await ApplyNodeChanges(Changesets.Diff(Nodes, graph.Nodes));
         ClearHistory();
         await SetViewport(graph.Viewport);
     }
@@ -140,46 +154,10 @@ public partial class FlowView
     ///     Dessin vectoriel simplifié du graphe (nodes en rectangles avec leur texte, edges et flèches) ; les nodes à contenu
     ///     personnalisé apparaissent comme leur rectangle et leur <see cref="Node.Data" />.
     /// </summary>
-    public string ExportSvg(double padding = 20, string? background = null)
-    {
-        var bounds = GraphUtils.GetNodesBounds(Nodes.Where(n => !n.Hidden)) ?? new Rect(0, 0, 100, 100);
-        var dark = Dark;
-        var bg = background ?? (dark ? "#141414" : "#ffffff");
-        var fg = dark ? "#f2f2f2" : "#222222";
-        var stroke = dark ? "#888888" : "#1a192b";
-        var edgeColor = dark ? "#666666" : "#b1b1b7";
-        var x = bounds.X - padding;
-        var y = bounds.Y - padding;
-        var w = bounds.Width + 2 * padding;
-        var h = bounds.Height + 2 * padding;
-        var sb = new StringBuilder();
-        sb.Append($"<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"{F(w)}\" height=\"{F(h)}\" viewBox=\"{F(x)} {F(y)} {F(w)} {F(h)}\">");
-        sb.Append($"<defs><marker id=\"a\" viewBox=\"-10 -10 20 20\" markerWidth=\"20\" markerHeight=\"20\" orient=\"auto-start-reverse\"><polyline points=\"-5,-4 0,0 -5,4 -5,-4\" fill=\"{edgeColor}\" stroke=\"{edgeColor}\"/></marker></defs>");
-        sb.Append($"<rect x=\"{F(x)}\" y=\"{F(y)}\" width=\"{F(w)}\" height=\"{F(h)}\" fill=\"{bg}\"/>");
-        foreach (var ev in EdgeViews())
-        {
-            var color = ev.Edge.Style?.Stroke is { } c && !c.StartsWith("var(") ? c : edgeColor;
-            sb.Append($"<path d=\"{ev.Context.Path.Path}\" fill=\"none\" stroke=\"{color}\" stroke-width=\"{F(ev.Edge.Style?.StrokeWidth ?? 1)}\"");
-            if (ev.Edge.Animated) sb.Append(" stroke-dasharray=\"5\"");
-            if (ev.MarkerEnd != null) sb.Append(" marker-end=\"url(#a)\"");
-            if (ev.MarkerStart != null) sb.Append(" marker-start=\"url(#a)\"");
-            sb.Append("/>");
-            if (!string.IsNullOrEmpty(ev.Edge.Label))
-                sb.Append($"<text x=\"{F(ev.Context.Path.LabelX)}\" y=\"{F(ev.Context.Path.LabelY)}\" text-anchor=\"middle\" dominant-baseline=\"middle\" font-size=\"10\" fill=\"{fg}\">{SecurityElement.Escape(ev.Edge.Label)}</text>");
-        }
-
-        foreach (var n in Nodes.Where(n => !n.Hidden && n.Width != null && n.Height != null))
-        {
-            var p = _abs[n.Id];
-            var fill = n.Type == "group" ? "none" : dark ? "#1e1e1e" : "#ffffff";
-            sb.Append($"<rect x=\"{F(p.X)}\" y=\"{F(p.Y)}\" width=\"{F(n.Width!.Value)}\" height=\"{F(n.Height!.Value)}\" fill=\"{fill}\" stroke=\"{stroke}\"/>");
-            if (n.Type != "group")
-                sb.Append($"<text x=\"{F(p.X + n.Width.Value / 2)}\" y=\"{F(p.Y + n.Height.Value / 2)}\" text-anchor=\"middle\" dominant-baseline=\"middle\" font-size=\"12\" fill=\"{fg}\">{SecurityElement.Escape(n.Data?.ToString() ?? n.Id)}</text>");
-        }
-
-        sb.Append("</svg>");
-        return sb.ToString();
-    }
+    public string ExportSvg(double padding = 20, string? background = null) =>
+        SvgExport.Build(Nodes.Where(n => !n.Hidden).Select(n => n with { Position = _abs[n.Id] }),
+            EdgeViews().Select(ev => new SvgEdge(ev.Edge, ev.Context.Path, ev.MarkerStart != null, ev.MarkerEnd != null)),
+            Dark, padding, background);
 
     /// <summary>
     ///     Télécharge le graphe en image (<c>png</c> ou <c>svg</c>) par le navigateur. Par défaut le rendu réel est capturé (nodes

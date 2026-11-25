@@ -186,7 +186,7 @@ public partial class FlowView
         }
 
         ConnectRequested?.Invoke(this, new ConnectEventArgs(connection));
-        if (AutoApplyChanges)
+        if (AutoApplyChanges && AutoConnect)
         {
             PushHistory();
             var id = GraphQueries.ConnectionId(connection.Source, connection.SourceHandle, connection.Target, connection.TargetHandle);

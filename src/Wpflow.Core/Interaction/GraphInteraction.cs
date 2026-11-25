@@ -87,6 +87,9 @@ public static class EdgeEndpoints
 /// <summary>Historique annuler / rétablir par instantanés (nodes et edges immuables : pas de copie).</summary>
 public sealed class GraphHistory(int limit = 100)
 {
+    /// <summary>Nombre d'états gardés ; réduit, les plus anciens partent à la prochaine modification.</summary>
+    public int Limit { get; set; } = limit;
+
     public readonly record struct Snapshot(IReadOnlyList<Node> Nodes, IReadOnlyList<Edge> Edges);
 
     private readonly List<Snapshot> _undo = new();
@@ -100,7 +103,7 @@ public sealed class GraphHistory(int limit = 100)
     public void Push(IReadOnlyList<Node> nodes, IReadOnlyList<Edge> edges)
     {
         _undo.Add(new Snapshot(nodes, edges));
-        if (_undo.Count > limit) _undo.RemoveAt(0);
+        while (_undo.Count > Math.Max(0, Limit)) _undo.RemoveAt(0);
         _redo.Clear();
     }
 
@@ -123,6 +126,16 @@ public sealed class GraphHistory(int limit = 100)
         _redo.RemoveAt(_redo.Count - 1);
         _undo.Add(new Snapshot(currentNodes, currentEdges));
         return true;
+    }
+
+    /// <summary>
+    ///     Réécrit tous les états gardés : sert à y reporter un changement qui ne doit pas être annulé (fait par
+    ///     l'application, pas par un geste).
+    /// </summary>
+    public void Rewrite(Func<Snapshot, Snapshot> rewrite)
+    {
+        for (var i = 0; i < _undo.Count; i++) _undo[i] = rewrite(_undo[i]);
+        for (var i = 0; i < _redo.Count; i++) _redo[i] = rewrite(_redo[i]);
     }
 
     public void Clear()

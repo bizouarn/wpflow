@@ -84,16 +84,29 @@ public partial class FlowView
     {
         _nodeSource?.Dispose();
         _nodeSource = null;
-        if (NodesSource is { } source) _nodeSource = new NodeSourceAdapter(this, source, NodeMapping ?? Wpflow.Wpf.NodeMapping.Default);
-        if (_nodeSource != null) ClearHistory();
+        if (NodesSource is not { } source) return;
+        var adapter = _nodeSource = new NodeSourceAdapter(source, NodeMapping ?? Wpflow.Wpf.NodeMapping.Default, () => Nodes,
+            items => SetCurrentValue(NodesProperty, items), () => NodeFactory);
+        // Un changement fait par l'application ne doit pas être défait par l'annulation d'un geste.
+        adapter.ChangedBySource += (before, after) => _history.Rewrite(s => s with
+        {
+            Nodes = s.Nodes.Select(n => n.Id == before.Id ? adapter.Rebase(n, before, after) : n).ToList()
+        });
+        ClearHistory();
     }
 
     private void ResetEdgeSource()
     {
         _edgeSource?.Dispose();
         _edgeSource = null;
-        if (EdgesSource is { } source) _edgeSource = new EdgeSourceAdapter(this, source, EdgeMapping ?? Wpflow.Wpf.EdgeMapping.Default);
-        if (_edgeSource != null) ClearHistory();
+        if (EdgesSource is not { } source) return;
+        var adapter = _edgeSource = new EdgeSourceAdapter(source, EdgeMapping ?? Wpflow.Wpf.EdgeMapping.Default, () => Edges,
+            items => SetCurrentValue(EdgesProperty, items), () => EdgeFactory);
+        adapter.ChangedBySource += (before, after) => _history.Rewrite(s => s with
+        {
+            Edges = s.Edges.Select(e => e.Id == before.Id ? adapter.Rebase(e, before, after) : e).ToList()
+        });
+        ClearHistory();
     }
 
     /// <summary>Vide l'historique de la vue (après le chargement d'un autre document, par exemple).</summary>

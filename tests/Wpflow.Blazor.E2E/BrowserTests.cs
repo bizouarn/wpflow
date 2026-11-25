@@ -30,7 +30,7 @@ public abstract class BrowserTests(DemoFixture demo)
 
         await page.Mouse.DblClickAsync((float)centre.X, (float)centre.Y);
 
-        await page.UntilAsync(async () => await page.Locator(".demo-toolbar span").InnerTextAsync() == "double-clic sur 2", "le node a reçu le double-clic");
+        await page.UntilAsync(async () => await page.Locator(".demo-double").InnerTextAsync() == "double-clic sur 2", "le node a reçu le double-clic");
         await page.WaitForTimeoutAsync(400); // le zoom du fond serait animé sur 200 ms
         Assert.Equal(zoom, (await page.ViewportAsync()).Zoom);
     }
@@ -52,7 +52,7 @@ public abstract class BrowserTests(DemoFixture demo)
 
         await page.Mouse.DblClickAsync((float)cell.X, (float)cell.Y);
 
-        await page.UntilAsync(async () => await page.Locator(".demo-toolbar span").InnerTextAsync() == "double-clic sur 2 (client_id)", "la colonne est identifiée");
+        await page.UntilAsync(async () => await page.Locator(".demo-double").InnerTextAsync() == "double-clic sur 2 (client_id)", "la colonne est identifiée");
     }
 
     [Fact]

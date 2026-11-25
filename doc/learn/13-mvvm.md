@@ -64,7 +64,11 @@ Chaque propriété de `NodeMapping` / `EdgeMapping` est le **nom d'une propriét
 | `ParentIdPath` | — | Groupe parent |
 | `DataPath` | — | Valeur donnée à `Node.Data` (le ViewModel lui-même si `null`) |
 
-`EdgeMapping` : `IdPath` (`Id`), `SourcePath` (`Source`), `TargetPath` (`Target`), `SourceHandlePath`, `TargetHandlePath`, `TypePath`, `LabelPath`, `AnimatedPath`, `SelectedPath`, `DataPath`, `MarkerStartPath`, `MarkerEndPath`.
+Les autres propriétés d'un node se mappent aussi, avec une propriété du type indiqué : `HiddenPath`, `ConnectablePath`, `DeletablePath`, `ExtentParentPath`, `ExpandParentPath` (`bool`) ; `ExtentPath` (`Rect?`) ; `SourcePositionPath`, `TargetPositionPath` (`Position?`) ; `OriginPath` (`XYPosition?`) ; `RotationPath`, `InitialWidthPath`, `InitialHeightPath` (nombres) ; `ZIndexPath` (`int?`) ; `DragHandlePath`, `AriaLabelPath` (chaînes) ; `HandlesPath` (`IReadOnlyList<HandleInfo>`).
+
+`EdgeMapping` : `IdPath` (`Id`), `SourcePath` (`Source`), `TargetPath` (`Target`), `SourceHandlePath`, `TargetHandlePath`, `TypePath`, `LabelPath`, `AnimatedPath`, `SelectedPath`, `HiddenPath`, `SelectablePath`, `DeletablePath`, `ReconnectablePath`, `DataPath`, `MarkerStartPath`, `MarkerEndPath`, `MarkerStartKeyPath`, `MarkerEndKeyPath`, `InteractionWidthPath`, `ZIndexPath`, `AriaLabelPath`, `StylePath`, `LabelStylePath`, `PathOptionsPath`, `MarkerStartOptionsPath`, `MarkerEndOptionsPath`.
+
+En Blazor, tout ce chapitre s'applique aussi, avec les différences décrites dans [Wpflow.Blazor](../blazor.md#mvvm).
 
 - `DataPath` donne la valeur de `Edge.Data`, celle que lisent un [fournisseur de tracé](05-edges.md) ou un modèle d'edge. Contrairement à `NodeMapping.DataPath`, `null` **ne met pas** le ViewModel dans `Data`.
 - `MarkerStartPath` et `MarkerEndPath` désignent des propriétés de type `EdgeMarker`.
@@ -169,6 +173,19 @@ Les actions de l'utilisateur sont exposées en `ICommand` (propriétés de dépe
 | `PaneContextMenuCommand` | `XYPosition` | Clic droit sur le fond |
 | `SelectionContextMenuCommand` | liste des éléments sélectionnés | Clic droit sur une sélection de plusieurs nodes (la commande du node est appelée aussi) |
 
+**Tous les autres évènements ont aussi leur commande**, qui reçoit les arguments de l'évènement et ne remplace aucune action :
+
+| Domaine | Commandes |
+|---|---|
+| Cycle de vie | `InitCommand`, `NodesReadyCommand`, `StateChangedCommand`, `ErrorCommand` |
+| Changements | `NodeChangesCommand`, `EdgeChangesCommand`, `SelectionChangedCommand`, `DeletedCommand` |
+| Survol | `NodeMouseEnterCommand` / `MoveCommand` / `LeaveCommand`, et de même pour `EdgeMouse…` et `PaneMouse…` ; `PaneScrollCommand` |
+| Glisser | `NodeDragStartCommand`, `NodeDragCommand`, `SelectionDragStartCommand`, `SelectionDragCommand`, `SelectionDragStopCommand`, `SelectionStartCommand`, `SelectionEndCommand` |
+| Connexions | `ConnectStartCommand`, `ConnectEndCommand`, `ClickConnectStartCommand`, `ClickConnectEndCommand`, `ReconnectStartCommand`, `ReconnectEndCommand`, `EdgeReconnectCommand` |
+| Vue | `ViewportMoveStartCommand`, `ViewportMoveCommand`, `ViewportMoveEndCommand` |
+
+Une commande de notification ne coûte rien tant qu'elle n'est pas définie. La suppression a une seule exception sans commande : `BeforeDelete`, qui doit **répondre** ; liez `BeforeDeleteAsync`.
+
 Avec `CommandsReceiveEventArgs="True"`, les commandes de clic, de double-clic et de menu contextuel reçoivent à la place un `ElementEventArgs` : élément, position et `TargetData`, la partie du modèle visée (voir [Interactions](09-interactions.md)).
 
 ```xml
@@ -213,7 +230,9 @@ Le contrôleur ne laisse voir que ces opérations, pas le contrôle.
 
 ## Undo / Redo
 
-Avec une source, Ctrl+Z fonctionne pour les changements faits par la vue : l'historique garde des états de records et reporte la différence dans vos ViewModels (un node supprimé revient avec le **même** ViewModel). Les modifications faites directement par votre code dans un ViewModel ne sont pas dans cet historique.
+Avec une source, Ctrl+Z fonctionne pour les changements faits par la vue : l'historique garde des états de records et reporte la différence dans vos ViewModels, pour **toutes les propriétés mappées** (un node supprimé revient avec le **même** ViewModel).
+
+Les modifications faites directement par votre code ne sont pas dans cet historique, et annuler un geste ne les défait pas : une propriété changée par une tâche de fond garde sa nouvelle valeur. La **géométrie** fait exception (position, taille, sélection, rotation, extrémités d'un edge) : elle est restaurée même si votre code l'a ajustée après le geste, par exemple en alignant un node en fin de glisser.
 
 Si l'application a **son propre** historique, implémentez `IFlowHistory` (`Checkpoint()`, `Undo()`, `Redo()`, `CanUndo`, `CanRedo`) et liez-le : `History="{Binding History}"`. La vue demande alors `Checkpoint()` avant chaque modification faite par un geste (déplacement, suppression, connexion) et délègue Ctrl+Z / Ctrl+Y ; `CanUndo` / `CanRedo` suivent l'objet (via `INotifyPropertyChanged` s'il l'implémente).
 
@@ -228,7 +247,7 @@ Si l'application a **son propre** historique, implémentez `IFlowHistory` (`Chec
 
 ## Limites
 
-- Les modifications faites par votre code dans un ViewModel ne sont pas annulables par Ctrl+Z de la vue (sauf avec votre `IFlowHistory`).
+- Les modifications faites par votre code dans un ViewModel ne sont pas annulables par Ctrl+Z de la vue (sauf avec votre `IFlowHistory`) ; voir [Undo / Redo](#undo--redo).
 - Une propriété mappée qui change des milliers de fois par seconde sur de nombreux nodes recopie la liste à chaque fois : regroupez vos mises à jour.
 - Les dimensions mesurées par la vue (`Width`/`Height` du `Node`) ne sont pas écrites dans le ViewModel (seule la taille explicite l'est).
 - Un `ConnectCommand` n'est pas consulté pendant le tracé (pas d'aperçu « connexion refusée »), seulement au relâchement.
