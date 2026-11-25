@@ -1,11 +1,20 @@
 <Project>
   <PropertyGroup>
-    <Version>0.1.0</Version>
-    <Authors>Wpflow contributors</Authors>
+    <!-- Remplacée par la version du tag (v1.2.3) dans le workflow de release. -->
+    <Version>1.0.0</Version>
+    <Authors>bizouarn</Authors>
+    <Copyright>Copyright (c) bizouarn</Copyright>
     <Product>Wpflow</Product>
     <Description>Éditeur de graphes node/edge interactif pour WPF, porté de xyflow (React Flow).</Description>
     <PackageTags>wpf;diagram;graph;node-editor;flow;xyflow;reactflow</PackageTags>
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageProjectUrl>https://github.com/bizouarn/wpflow</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/bizouarn/wpflow</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <PublishRepositoryUrl>true</PublishRepositoryUrl>
+    <IncludeSymbols>true</IncludeSymbols>
+    <SymbolPackageFormat>snupkg</SymbolPackageFormat>
+    <EmbedUntrackedSources>true</EmbedUntrackedSources>
   </PropertyGroup>
 </Project>

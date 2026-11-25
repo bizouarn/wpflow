@@ -1,0 +1,40 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  build-test:
+    # WPF et les tests WPF (net10.0-windows) demandent Windows.
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: |
+            8.0.x
+            10.0.x
+
+      - name: Restore
+        run: dotnet restore wpflow.sln
+
+      - name: Build
+        run: dotnet build wpflow.sln -c Release --no-restore
+
+      # Les auto-tests à la vraie souris (WPFLOW_SELFTEST, WPFLOW_EXAMPLES) ne tournent pas ici : pas de bureau interactif.
+      - name: Tests du noyau
+        run: dotnet test tests/Wpflow.Core.Tests -c Release --no-build
+
+      - name: Tests WPF
+        run: dotnet test tests/Wpflow.Wpf.Tests -c Release --no-build
+
+      - name: Pack (vérification)
+        run: dotnet pack src/Wpflow.Wpf -c Release --no-build -o artifacts
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: packages
+          path: artifacts/*.nupkg

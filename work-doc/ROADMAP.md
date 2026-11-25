@@ -14,8 +14,14 @@ Objectif : fournir en WPF l'équivalent de [xyflow](https://github.com/xyflow/xy
 |---|---|
 | Pincement tactile (`ManipulationDelta`) | implémenté, jamais essayé sur un écran tactile |
 | Lecteurs d'écran (Narrateur, NVDA) | les `AutomationPeer` sont vérifiés par code, pas avec un lecteur |
-| CI GitHub Actions (`.github/workflows/ci.yml`) | écrite, jamais exécutée : aucun dépôt distant n'est configuré |
-| Publication des packages NuGet | `Wpflow.Core` et `Wpflow.Wpf` 0.1.0 se construisent (`dotnet pack`) et s'utilisent depuis un projet tiers (vérifié avec une source locale) ; reste à les publier (clé d'API, dépôt) |
+| CI GitHub Actions (`.github/workflows/ci.yml`) et publication (`release.yml`) | écrites, jamais exécutées : à valider au premier push et au premier tag `v1.0.0` |
+| Publication NuGet 1.0.0 | les packages se construisent (`dotnet pack`) et s'utilisent depuis un projet tiers (vérifié avec une source locale) ; la publication passe par le trusted publishing nuget.org (voir ci-dessous) |
+
+### Publier la v1 (une seule fois, côté GitHub et nuget.org)
+
+1. nuget.org → *Trusted Publishing* : ajouter une politique (propriétaire du dépôt `bizouarn`, dépôt `wpflow`, workflow `release.yml`, environnement vide).
+2. GitHub → *Settings → Secrets and variables → Actions* : secret `NUGET_USER` = le nom de profil nuget.org (`bizouarn`).
+3. `git push origin main`, vérifier que `ci.yml` passe, puis `git tag v1.0.0 && git push origin v1.0.0`.
 
 ## Reste à faire — faisable
 

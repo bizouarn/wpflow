@@ -1,0 +1,59 @@
+name: Release NuGet
+
+# Publication sur nuget.org par « trusted publishing » (OIDC) : aucune clé d'API n'est stockée dans GitHub.
+# Déclenchée par un tag de version : git tag v1.0.0 && git push origin v1.0.0
+on:
+  push:
+    tags: ['v*']
+
+jobs:
+  publish:
+    runs-on: windows-latest
+    permissions:
+      contents: write   # créer la release GitHub
+      id-token: write   # jeton OIDC échangé contre une clé d'API temporaire par NuGet/login
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: |
+            8.0.x
+            10.0.x
+
+      # v1.2.3 -> 1.2.3 ; v1.0.0-rc.1 -> 1.0.0-rc.1 (préversion)
+      - name: Version depuis le tag
+        id: version
+        shell: bash
+        run: echo "value=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+
+      - name: Build
+        run: dotnet build wpflow.sln -c Release -p:Version=${{ steps.version.outputs.value }}
+
+      - name: Tests du noyau
+        run: dotnet test tests/Wpflow.Core.Tests -c Release --no-build
+
+      - name: Tests WPF
+        run: dotnet test tests/Wpflow.Wpf.Tests -c Release --no-build
+
+      - name: Pack
+        run: |
+          dotnet pack src/Wpflow.Core -c Release --no-build -p:Version=${{ steps.version.outputs.value }} -o artifacts
+          dotnet pack src/Wpflow.Wpf -c Release --no-build -p:Version=${{ steps.version.outputs.value }} -o artifacts
+
+      # Échange le jeton OIDC contre une clé d'API NuGet valable une heure (politique « trusted publishing » du compte).
+      - name: Connexion à nuget.org
+        id: login
+        uses: NuGet/login@v1
+        with:
+          user: ${{ secrets.NUGET_USER }}
+
+      - name: Publication
+        shell: bash
+        run: dotnet nuget push "artifacts/*.nupkg" --api-key "${{ steps.login.outputs.NUGET_API_KEY }}" --source https://api.nuget.org/v3/index.json --skip-duplicate
+
+      - name: Release GitHub
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "$GITHUB_REF_NAME" artifacts/*.nupkg --generate-notes ${{ contains(steps.version.outputs.value, '-') && '--prerelease' || '' }}
