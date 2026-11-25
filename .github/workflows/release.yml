@@ -50,7 +50,12 @@ jobs:
 
       - name: Publication
         shell: bash
-        run: dotnet nuget push "artifacts/*.nupkg" --api-key "${{ steps.login.outputs.NUGET_API_KEY }}" --source https://api.nuget.org/v3/index.json --skip-duplicate
+        run: |
+          # Un fichier à la fois : le joker "artifacts/*.nupkg" n'est pas résolu par dotnet sous Windows.
+          # Le .snupkg correspondant est poussé automatiquement avec chaque .nupkg.
+          for f in artifacts/*.nupkg; do
+            dotnet nuget push "$f" --api-key "${{ steps.login.outputs.NUGET_API_KEY }}" --source https://api.nuget.org/v3/index.json --skip-duplicate
+          done
 
       - name: Release GitHub
         shell: bash
