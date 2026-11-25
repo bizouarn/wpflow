@@ -1,0 +1,105 @@
+@namespace Wpflow.Blazor
+@implements IDisposable
+
+@if (Flow != null)
+{
+    var m = Flow.MiniMapBounds(Width, Height);
+    var view = m.View;
+    var scale = view.Width / Width;
+    <div class="wf-panel wf-minimap wf-panel-@(PanelPosition.ToString().ToLowerInvariant()) nopan nodrag nowheel @Class" style="width:@(Width)px;height:@(Height)px">
+        <svg @ref="_svg" width="@Width" height="@Height" viewBox="@FlowView.F(view.X) @FlowView.F(view.Y) @FlowView.F(view.Width) @FlowView.F(view.Height)"
+             @onpointerdown="e => Down(e, view)" @onpointerdown:stopPropagation
+             @onpointermove="DragHandler(view)" @onpointerup="Up" @onpointerleave="Up"
+             @onwheel="e => Wheel(e)" @onwheel:preventDefault="Zoomable" @onwheel:stopPropagation>
+            @foreach (var (node, r) in m.Nodes)
+            {
+                var n = node;
+                var fill = NodeColor?.Invoke(n) ?? (n.Selected ? "var(--wf-node-selected)" : "var(--wf-minimap-node)");
+                var stroke = NodeStrokeColor?.Invoke(n) ?? "var(--wf-node-border)";
+                <rect class="wf-minimap-node" x="@FlowView.F(r.X)" y="@FlowView.F(r.Y)" width="@FlowView.F(r.Width)" height="@FlowView.F(r.Height)"
+                      rx="@FlowView.F(NodeBorderRadius * scale)" fill="@fill" stroke="@stroke" stroke-width="@FlowView.F(NodeStrokeWidth * scale)"
+                      @onpointerdown="e => NodeDown(n, e)" @onpointerdown:stopPropagation="@OnNodeClick.HasDelegate" />
+            }
+            <path fill-rule="evenodd" fill="@(MaskColor ?? "var(--wf-minimap-mask)")" pointer-events="none"
+                  d="M@(FlowView.F(view.X)) @(FlowView.F(view.Y))h@(FlowView.F(view.Width))v@(FlowView.F(view.Height))h@(FlowView.F(-view.Width))z M@(FlowView.F(m.Visible.X)) @(FlowView.F(m.Visible.Y))h@(FlowView.F(m.Visible.Width))v@(FlowView.F(m.Visible.Height))h@(FlowView.F(-m.Visible.Width))z" />
+        </svg>
+    </div>
+}
+
+@code {
+    private ElementReference _svg;
+    private XYPosition _origin;
+    private bool _down;
+
+    [CascadingParameter] private FlowView? Flow { get; set; }
+
+    [Parameter] public int Width { get; set; } = 200;
+    [Parameter] public int Height { get; set; } = 150;
+    [Parameter] public PanelPosition PanelPosition { get; set; } = PanelPosition.BottomRight;
+
+    /// <summary>Couleur d'un node (<c>nodeColor</c>) ; <c>null</c> = thème.</summary>
+    [Parameter] public Func<Node, string?>? NodeColor { get; set; }
+
+    [Parameter] public Func<Node, string?>? NodeStrokeColor { get; set; }
+    [Parameter] public double NodeStrokeWidth { get; set; } = 2;
+    [Parameter] public double NodeBorderRadius { get; set; } = 3;
+
+    /// <summary>Voile hors de la vue ; <c>null</c> = thème.</summary>
+    [Parameter] public string? MaskColor { get; set; }
+
+    /// <summary>Glisser dans la minimap recentre la vue (<c>pannable</c>).</summary>
+    [Parameter] public bool Pannable { get; set; } = true;
+
+    /// <summary>La molette sur la minimap zoome (<c>zoomable</c>).</summary>
+    [Parameter] public bool Zoomable { get; set; }
+
+    [Parameter] public bool InversePan { get; set; }
+    [Parameter] public double ZoomStep { get; set; } = 10;
+
+    /// <summary>Clic sur un node de la minimap (<c>onNodeClick</c>).</summary>
+    [Parameter] public EventCallback<Node> OnNodeClick { get; set; }
+
+    [Parameter] public string? Class { get; set; }
+
+    protected override void OnInitialized()
+    {
+        if (Flow != null) Flow.Rendered += Refresh;
+    }
+
+    private void Refresh() => _ = InvokeAsync(StateHasChanged);
+
+    public void Dispose()
+    {
+        if (Flow != null) Flow.Rendered -= Refresh;
+    }
+
+    // Les coordonnées d'un clic sont relatives à l'élément cible : on les ramène à la minimap grâce à son origine mesurée.
+    private XYPosition ToFlow(PointerEventArgs e, Rect view) =>
+        new(view.X + (e.ClientX - _origin.X) / Width * view.Width, view.Y + (e.ClientY - _origin.Y) / Height * view.Height);
+
+    private async Task Down(PointerEventArgs e, Rect view)
+    {
+        if (Flow == null || !Pannable) return;
+        _origin = await Flow.ElementOrigin(_svg);
+        _down = true;
+        await Flow.CenterOn(ToFlow(e, view));
+    }
+
+    private EventCallback<PointerEventArgs> DragHandler(Rect view) => _down && Flow != null
+        ? EventCallback.Factory.Create<PointerEventArgs>(this, e => Flow.CenterOn(ToFlow(e, view)))
+        : default;
+
+    private void Up() => _down = false;
+
+    private async Task NodeDown(Node n, PointerEventArgs e)
+    {
+        if (OnNodeClick.HasDelegate) await OnNodeClick.InvokeAsync(n);
+    }
+
+    private async Task Wheel(WheelEventArgs e)
+    {
+        if (!Zoomable || Flow == null) return;
+        var factor = Math.Pow(2, -e.DeltaY * 0.001 * ZoomStep / 10);
+        await Flow.ZoomBy(factor);
+    }
+}

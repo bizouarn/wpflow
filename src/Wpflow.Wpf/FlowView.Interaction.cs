@@ -150,7 +150,6 @@ public partial class FlowView
         set => SetValue(AutoPanSpeedProperty, value);
     }
 
-    private const double AutoPanEdge = 40; // distance au bord (pixels) à partir de laquelle la vue défile
     private DispatcherTimer? _autoPanTimer;
     private XYPosition _mouseStartFlow; // position flow du bouton enfoncé : les gestes (déplacement, boîte) en sont indépendants du défilement automatique
 
@@ -170,19 +169,6 @@ public partial class FlowView
 
     private void StopAutoPan() => _autoPanTimer?.Stop();
 
-    /// <summary>Défilement (en pixels, signe du déplacement du <b>contenu</b>) pour une position de souris donnée.</summary>
-    internal static (double X, double Y) AutoPanDelta(Point mouse, double width, double height, double speed)
-    {
-        double Axis(double p, double size)
-        {
-            if (p < AutoPanEdge) return speed * Math.Min(1, (AutoPanEdge - Math.Max(p, 0)) / AutoPanEdge);
-            if (p > size - AutoPanEdge) return -speed * Math.Min(1, (AutoPanEdge - Math.Max(size - p, 0)) / AutoPanEdge);
-            return 0;
-        }
-
-        return (Axis(mouse.X, width), Axis(mouse.Y, height));
-    }
-
     private void AutoPanTick()
     {
         if (_mode is not (Mode.DragNodes or Mode.Connect or Mode.Select) || !IsMouseCaptured)
@@ -192,7 +178,7 @@ public partial class FlowView
         }
 
         var pos = Mouse.GetPosition(this);
-        var (dx, dy) = AutoPanDelta(pos, ActualWidth, ActualHeight, AutoPanSpeed);
+        var (dx, dy) = AutoPan.Delta(pos.X, pos.Y, ActualWidth, ActualHeight, AutoPanSpeed);
         if (dx == 0 && dy == 0) return;
         var before = Viewport;
         Viewport = new Viewport(before.X + dx, before.Y + dy, before.Zoom);

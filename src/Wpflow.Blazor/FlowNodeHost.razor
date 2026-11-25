@@ -1,0 +1,56 @@
+@namespace Wpflow.Blazor
+
+@* Un node : ne se rend que si ce qui l'affecte a changé (déplacer un node ne refait pas les autres). *@
+<div class="@Classes" data-node-id="@Node.Id" data-drag-handle="@Node.DragHandle" style="@Style"
+     role="group" aria-label="@Label" aria-selected="@(Node.Selected ? "true" : "false")"
+     tabindex="@(Focusable ? 0 : (int?)null)" @onfocus="() => Flow.NodeFocused(Node)"
+     @onpointerdown="e => Flow.OnNodePointerDown(Node, e)" @onpointerdown:stopPropagation
+     @ondblclick="e => Flow.NodeDoubleClick(Node, e)" @ondblclick:stopPropagation
+     @oncontextmenu="e => Flow.NodeContextMenu(Node, e)" @oncontextmenu:preventDefault="PreventContextMenu"
+     @oncontextmenu:stopPropagation
+     @onpointerenter="Enter" @onpointerleave="Leave">
+    <CascadingValue Value="Node" Name="WfNode">
+        @if (Template != null)
+        {
+            @Template(Node)
+        }
+        else
+        {
+            <FlowDefaultNode Node="Node" />
+        }
+    </CascadingValue>
+</div>
+
+@code {
+    private Node? _node;
+    private string? _classes, _style, _label;
+    private RenderFragment<Node>? _template;
+    private bool _focusable, _preventContext, _hasEnter, _hasLeave;
+    private bool _changed = true;
+
+    [Parameter, EditorRequired] public FlowView Flow { get; set; } = default!;
+    [Parameter, EditorRequired] public Node Node { get; set; } = default!;
+    [Parameter] public string Classes { get; set; } = "";
+    [Parameter] public string Style { get; set; } = "";
+    [Parameter] public string? Label { get; set; }
+    [Parameter] public bool Focusable { get; set; }
+    [Parameter] public bool PreventContextMenu { get; set; }
+    [Parameter] public bool HasEnter { get; set; }
+    [Parameter] public bool HasLeave { get; set; }
+    [Parameter] public RenderFragment<Node>? Template { get; set; }
+
+    private EventCallback<PointerEventArgs> Enter => HasEnter ? Flow.NodeEnterHandler(Node) : default;
+
+    private EventCallback<PointerEventArgs> Leave => HasLeave ? Flow.NodeLeaveHandler(Node) : default;
+
+    protected override void OnParametersSet()
+    {
+        _changed = !ReferenceEquals(_node, Node) || _classes != Classes || _style != Style || _label != Label
+                   || !Equals(_template, Template) || _focusable != Focusable || _preventContext != PreventContextMenu
+                   || _hasEnter != HasEnter || _hasLeave != HasLeave;
+        (_node, _classes, _style, _label, _template, _focusable, _preventContext, _hasEnter, _hasLeave) =
+            (Node, Classes, Style, Label, Template, Focusable, PreventContextMenu, HasEnter, HasLeave);
+    }
+
+    protected override bool ShouldRender() => _changed;
+}

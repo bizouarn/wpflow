@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
@@ -11,7 +11,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\src\Wpflow.Wpf\Wpflow.Wpf.csproj" />
+    <ProjectReference Include="..\..\src\Wpflow.Wpf\Wpflow.Wpf.csproj" />
   </ItemGroup>
 
 </Project>

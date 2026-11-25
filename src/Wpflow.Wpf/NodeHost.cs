@@ -99,11 +99,7 @@ public sealed class NodeHost : ContentControl
         Canvas.SetTop(this, absolute.Y);
         // Un parent est sous ses enfants ; un node sélectionné passe devant (sauf les groupes, qui masqueraient leurs enfants).
         Elevated = elevated;
-        Panel.SetZIndex(this, node.ZIndex ?? _flow.ZIndexMode switch
-        {
-            FlowZIndexMode.Manual => 0, // seul Node.ZIndex compte
-            _ => depth + ((node.Selected && _flow.ElevateNodesOnSelect && node.Type != "group") || elevated ? 1000 : 0)
-        });
+        Panel.SetZIndex(this, NodeZOrder.Compute(node, depth, _flow.ZIndexMode, _flow.ElevateNodesOnSelect, elevated));
         IsSelected = node.Selected;
         if (_rotation != node.Rotation)
         {

@@ -2,7 +2,7 @@
 
 *Équivalent React Flow : Computing Flows — c'est la démo de la page d'accueil de reactflow.dev.*
 
-Un flow peut servir à **calculer** : des nodes produisent des valeurs, d'autres les consomment le long des edges. La démo de Wpflow (`dotnet run --project demo`) reproduit celle de React Flow :
+Un flow peut servir à **calculer** : des nodes produisent des valeurs, d'autres les consomment le long des edges. La démo de Wpflow (`dotnet run --project demo/wpf`) reproduit celle de React Flow :
 
 - trois nodes d'entrée — **shape color** (un vrai sélecteur de couleur), **shape type** (cube ou pyramide), **zoom level** (un curseur) ;
 - un node **output** qui affiche un nuage de solides 3D animés ;
@@ -106,6 +106,6 @@ Comme `Edges` change à chaque connexion, reconnexion, suppression ou annulation
 - **Zoom** : l'échelle de la « caméra » suit `EffectiveZoom` avec une inertie (le zoom affiché rattrape la cible de façon exponentielle, indépendamment de la cadence).
 - **Couleur et forme** : `EffectiveColor` et `EffectiveIsCube`.
 
-Le code complet est dans `demo/CubeField.cs`, `demo/DemoState.cs` et `demo/MainWindow.xaml`.
+Le code complet est dans `demo/wpf/CubeField.cs`, `demo/wpf/DemoState.cs` et `demo/wpf/MainWindow.xaml`.
 
 Suivant : [Performance et accessibilité](11-performance-accessibility.md).

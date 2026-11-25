@@ -31,8 +31,18 @@ jobs:
       - name: Tests WPF
         run: dotnet test tests/Wpflow.Wpf.Tests -c Release --no-build
 
+      - name: Tests Blazor
+        run: dotnet test tests/Wpflow.Blazor.Tests -c Release --no-build
+
+      # Démo lancée en vrai (Server et WebAssembly) et pilotée dans le Chrome du runner : le pont JS de bout en bout.
+      - name: Tests Blazor de bout en bout (Chrome)
+        timeout-minutes: 15
+        run: dotnet test tests/Wpflow.Blazor.E2E -c Release --no-build
+
       - name: Pack (vérification)
-        run: dotnet pack src/Wpflow.Wpf -c Release --no-build -o artifacts
+        run: |
+          dotnet pack src/Wpflow.Wpf -c Release --no-build -o artifacts
+          dotnet pack src/Wpflow.Blazor -c Release --no-build -o artifacts
 
       - uses: actions/upload-artifact@v4
         with:

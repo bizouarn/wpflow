@@ -13,7 +13,7 @@ Tout ce qui s'affiche se remplace avec des **ressources WPF** (dans `FlowView.Re
 | Un marqueur | `wpflow-marker-{clé}` | `Geometry` |
 | L'apparence des handles | style implicite `flow:Handle` | `Style` (taille, `Template`) |
 
-Le démonstrateur de cette page est l'onglet **Personnalisation** des exemples (`demo/CustomizationExample.xaml`, `CustomEdges.cs`).
+Le démonstrateur de cette page est l'onglet **Personnalisation** des exemples (`demo/wpf/CustomizationExample.xaml`, `CustomEdges.cs`).
 
 ## Redéfinir un node intégré
 

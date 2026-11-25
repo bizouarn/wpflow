@@ -44,7 +44,6 @@ public partial class FlowView : ContentControl
         Select
     }
 
-    private sealed record HandleRef(string NodeId, HandleInfo Info);
 
     #region Dependency properties
 
@@ -364,8 +363,7 @@ public partial class FlowView : ContentControl
     private bool _pressedPane;
     private bool _flushQueued;
     private readonly Dictionary<string, (double W, double H)> _measured = new();
-    private readonly List<(IReadOnlyList<Node> Nodes, IReadOnlyList<Edge> Edges)> _undo = new();
-    private readonly List<(IReadOnlyList<Node> Nodes, IReadOnlyList<Edge> Edges)> _redo = new();
+    private readonly GraphHistory _history = new();
 
     /// <summary>Bornes de déplacement des nodes (<c>nodeExtent</c>) ; <c>null</c> = illimité.</summary>
     public static readonly DependencyProperty NodeExtentProperty = DependencyProperty.Register(
@@ -480,9 +478,7 @@ public partial class FlowView : ContentControl
             return;
         }
 
-        _undo.Add((Nodes, Edges));
-        if (_undo.Count > 100) _undo.RemoveAt(0);
-        _redo.Clear();
+        _history.Push(Nodes, Edges);
         UpdateHistoryState();
     }
 
@@ -495,10 +491,8 @@ public partial class FlowView : ContentControl
             return;
         }
 
-        if (!AutoApplyChanges || _undo.Count == 0) return; // en mode contrôlé, l'historique appartient à l'appelant
-        _redo.Add((Nodes, Edges));
-        Restore(_undo[^1]);
-        _undo.RemoveAt(_undo.Count - 1);
+        if (!AutoApplyChanges || !_history.TryUndo(Nodes, Edges, out var snapshot)) return; // en mode contrôlé, l'historique appartient à l'appelant
+        Restore(snapshot);
         UpdateHistoryState();
     }
 
@@ -511,14 +505,12 @@ public partial class FlowView : ContentControl
             return;
         }
 
-        if (!AutoApplyChanges || _redo.Count == 0) return;
-        _undo.Add((Nodes, Edges));
-        Restore(_redo[^1]);
-        _redo.RemoveAt(_redo.Count - 1);
+        if (!AutoApplyChanges || !_history.TryRedo(Nodes, Edges, out var snapshot)) return;
+        Restore(snapshot);
         UpdateHistoryState();
     }
 
-    private void Restore((IReadOnlyList<Node> Nodes, IReadOnlyList<Edge> Edges) state)
+    private void Restore(GraphHistory.Snapshot state)
     {
         var (before, beforeEdges) = (Nodes, Edges);
         Nodes = state.Nodes;
@@ -530,8 +522,8 @@ public partial class FlowView : ContentControl
 
     public XYPosition ScreenToFlow(Point p) => ViewportMath.ScreenToFlow(Viewport, new XYPosition(p.X, p.Y));
 
-    public void ZoomIn() => ZoomBy(1.2);
-    public void ZoomOut() => ZoomBy(1 / 1.2);
+    public void ZoomIn() => ZoomBy(ViewportMath.ZoomStep);
+    public void ZoomOut() => ZoomBy(1 / ViewportMath.ZoomStep);
 
     public void ZoomBy(double factor)
     {
@@ -563,22 +555,7 @@ public partial class FlowView : ContentControl
         var nodes = Nodes;
         _hasTree = nodes.Any(n => n.ParentId != null);
         _depths = _hasTree ? NodeTree.Depths(nodes) : null;
-        _elevated = null;
-        if (ZIndexMode == FlowZIndexMode.Auto && _hasTree)
-        {
-            var byId = nodes.ToDictionary(n => n.Id);
-            _elevated = new HashSet<string>();
-            foreach (var selected in nodes.Where(n => n.Selected))
-                for (var p = selected.ParentId; p != null && byId.TryGetValue(p, out var parent) && _elevated.Add(p); p = parent.ParentId) { }
-            // Les descendants d'un parent élevé le suivent, sinon le parent passerait devant ses autres enfants.
-            var followers = nodes.Where(n =>
-            {
-                for (var p = n.ParentId; p != null && byId.TryGetValue(p, out var parent); p = parent.ParentId)
-                    if (_elevated.Contains(p)) return true;
-                return false;
-            }).Select(n => n.Id).ToList();
-            _elevated.UnionWith(followers);
-        }
+        _elevated = NodeZOrder.ElevatedSet(nodes, ZIndexMode);
         var origin = NodeOrigin;
         var shifted = origin != XYPosition.Zero || nodes.Any(n => n.Origin != null); // origine non nulle : positions décalées
         // Avec une origine, le coin haut-gauche d'un enfant part du coin haut-gauche (déjà décalé) de son parent.
@@ -598,7 +575,7 @@ public partial class FlowView : ContentControl
         {
             // _nodeIndex contient des nodes en coordonnées absolues (edges, handles, minimap).
             var absolute = abs == null ? node : node with { Position = abs[node.Id], ParentId = null };
-            if (shifted && abs == null) absolute = absolute with { Position = absolute.Position - OriginOffset(node) };
+            if (shifted && abs == null) absolute = absolute with { Position = absolute.Position - NodeConstraints.OriginOffset(node, NodeOrigin) };
             if (_useRaw) _rawIndex[node.Id] = node;
             _nodeIndex[node.Id] = absolute;
 
@@ -681,20 +658,15 @@ public partial class FlowView : ContentControl
     {
         if (!_virtualized) return;
         var view = ViewportMath.GetVisibleRect(Viewport, Math.Max(ActualWidth, 1), Math.Max(ActualHeight, 1));
-        // Affichés : la vue + 300 px (on mesure un peu avant l'entrée). Gardés : + 900 px, pour ne pas recréer un node
-        // à chaque va-et-vient du pan. Au-delà, plus aucun élément visuel n'existe.
-        _showRect = Inflate(view, 300 / Viewport.Zoom);
-        _keepRect = Inflate(view, 900 / Viewport.Zoom);
+        (_showRect, _keepRect) = Virtualization.Zones(view, Viewport.Zoom);
     }
 
-    private static Core.Rect Inflate(Core.Rect r, double m) => new(r.X - m, r.Y - m, r.Width + 2 * m, r.Height + 2 * m);
+    private static Core.Rect Inflate(Core.Rect r, double m) => Virtualization.Inflate(r, m);
 
     /// <summary>Taille supposée d'un node jamais mesuré, pour décider s'il faut le créer.</summary>
-    private static Core.Rect AssumedRect(Node n) =>
-        new(n.Position.X, n.Position.Y, n.Width ?? n.InitialWidth ?? 200, n.Height ?? n.InitialHeight ?? 100);
+    private static Core.Rect AssumedRect(Node n) => Virtualization.AssumedRect(n);
 
-    private static Node WithInitialSize(Node n) =>
-        n.Rect == null && n.InitialWidth is { } w && n.InitialHeight is { } h ? n with { Width = w, Height = h } : n;
+    private static Node WithInitialSize(Node n) => Virtualization.WithInitialSize(n);
 
     private Presence PresenceOf(Node absolute)
     {
@@ -861,32 +833,15 @@ public partial class FlowView : ContentControl
         FitView(null);
     }
 
+    /// <summary>Extrémités d'un edge (point d'attache et côté du handle) ; la résolution est partagée avec Blazor (<see cref="EdgeEndpoints" />).</summary>
     internal (XYPosition Source, Position SourcePos, XYPosition Target, Position TargetPos)? GetEdgeEnds(Edge edge)
     {
-        if (edge.Hidden) return null;
-        if (!_nodeIndex.TryGetValue(edge.Source, out var sn) || !_nodeIndex.TryGetValue(edge.Target, out var tn))
-        {
-            var missing = _nodeIndex.ContainsKey(edge.Source) ? edge.Target : edge.Source;
-            if (Nodes.Count > 0) ReportError("node:" + edge.Id, "edge-node-missing", $"Edge {edge.Id} : node {missing} introuvable.");
-            return null;
-        }
-
-if (sn.Hidden || tn.Hidden) return null;        // Taille et handles annoncés par le node (initialWidth, handles) : l'edge se dessine avant la première mesure.        (sn, tn) = (WithInitialSize(sn), WithInitialSize(tn));
-        var s = ResolveHandle(sn, edge.SourceHandle, HandleType.Source, Position.Right);
-        var t = ResolveHandle(tn, edge.TargetHandle, HandleType.Target, Position.Left);
-        return s is null || t is null ? null : (s.Value.Pos, s.Value.Side, t.Value.Pos, t.Value.Side);
-    }
-
-    private (XYPosition Pos, Position Side)? ResolveHandle(Node node, string? handleId, HandleType type,
-        Position fallback)
-    {
-        var list = _handleMap.GetValueOrDefault(node.Id) ?? node.Handles;        if (list != null)
-        {
-            var info = list.FirstOrDefault(h => h.Type == type && (handleId == null || h.Id == handleId));
-            if (info != null) return (GraphUtils.GetHandlePosition(node, info.Position, info), info.Position);
-        }
-
-        return node.Rect is null ? null : (GraphUtils.GetHandlePosition(node, fallback), fallback);
+        if (!edge.Hidden && Nodes.Count > 0 && EdgeEndpoints.MissingNode(edge, id => _nodeIndex.GetValueOrDefault(id)) is { } missing)
+            ReportError("node:" + edge.Id, "edge-node-missing", $"Edge {edge.Id} : node {missing} introuvable.");
+        return EdgeEndpoints.Resolve(edge, id => _nodeIndex.GetValueOrDefault(id), id => _handleMap.GetValueOrDefault(id), Position.Right, Position.Left)
+            is { } e
+            ? (e.Source, e.SourcePosition, e.Target, e.TargetPosition)
+            : null;
     }
 
     #endregion
@@ -906,7 +861,7 @@ if (sn.Hidden || tn.Hidden) return null;        // Taille et handles annoncés p
         if (AnnounceSelection)
             foreach (var c in changes.OfType<NodeSelectChange>().Where(c => c.Selected))
                 if (Nodes.FirstOrDefault(x => x.Id == c.Id) is { } picked)
-                    Announce($"{picked.AriaLabel ?? NodeAriaLabelProvider?.Invoke(picked) ?? "Node " + (picked.Data as string ?? picked.Id)} sélectionné");
+                    Announce(SelectionOps.AnnounceNode(picked, NodeAriaLabelProvider));
     }
 
     internal void ApplyEdgeChanges(IReadOnlyList<EdgeChange> changes)
@@ -921,25 +876,15 @@ if (sn.Hidden || tn.Hidden) return null;        // Taille et handles annoncés p
         WriteBackEdges(changes);
         if (AnnounceSelection)
             foreach (var c in changes.OfType<EdgeSelectChange>().Where(c => c.Selected))
-                Announce(EdgeAriaLabelProvider?.Invoke(Edges.First(x => x.Id == c.Id)) is { } name ? $"{name} sélectionné" : $"Edge {c.Id} sélectionné");
+                Announce(SelectionOps.AnnounceEdge(Edges.First(x => x.Id == c.Id), EdgeAriaLabelProvider));
     }
 
     private void Select(IEnumerable<string> nodeIds, IEnumerable<string> edgeIds, bool additive)
     {
         // ElementsSelectable faux : on ne peut plus que désélectionner.
-        var n = ElementsSelectable ? nodeIds.ToHashSet() : [];
-        var e = ElementsSelectable ? edgeIds.ToHashSet() : [];
-        additive &= ElementsSelectable;
-        ApplyNodeChanges(Nodes
-            .Where(x => x.Selectable)
-            .Select(x => (x, want: n.Contains(x.Id) || (additive && x.Selected)))
-            .Where(p => p.x.Selected != p.want)
-            .Select(p => (NodeChange)new NodeSelectChange(p.x.Id, p.want)).ToList());
-        ApplyEdgeChanges(Edges
-            .Where(x => x.Selectable && !x.Hidden)
-            .Select(x => (x, want: e.Contains(x.Id) || (additive && x.Selected)))
-            .Where(p => p.x.Selected != p.want)
-            .Select(p => (EdgeChange)new EdgeSelectChange(p.x.Id, p.want)).ToList());
+        var (nodeChanges, edgeChanges) = SelectionOps.Select(Nodes, Edges, nodeIds, edgeIds, additive, ElementsSelectable);
+        ApplyNodeChanges(nodeChanges);
+        ApplyEdgeChanges(edgeChanges);
     }
 
     /// <summary>
@@ -949,73 +894,15 @@ if (sn.Hidden || tn.Hidden) return null;        // Taille et handles annoncés p
     private XYPosition ConstrainPosition(string id, XYPosition relative)
     {
         if (RawNode(id) is not { } node) return relative;
-        // Les contraintes portent sur le coin haut-gauche ; l'origine du node décale la position qu'on stocke.
-        var shift = OriginOffset(node);
-        relative -= shift;
-        var parentAbs = XYPosition.Zero;
-        if (node.ParentId != null && _nodeIndex.TryGetValue(node.ParentId, out var parent))
-        {
-            relative = NodeTree.ClampToParent(node, relative, parent);
-            parentAbs = parent.Position;
-        }
-
-        // L'extent propre au node l'emporte sur NodeExtent ; relatif au parent s'il en a un.
-        var extent = node.Extent is { } own ? own with { X = own.X + parentAbs.X, Y = own.Y + parentAbs.Y } : NodeExtent;
-        if (extent is { } limit)
-        {
-            var abs = GraphUtils.ClampToExtent(relative + parentAbs, node.Width ?? 0, node.Height ?? 0, limit);
-            relative = abs - parentAbs;
-        }
-
-        return relative + shift;
+        var parent = node.ParentId != null ? _nodeIndex.GetValueOrDefault(node.ParentId) : null;
+        return NodeConstraints.Constrain(node, relative, parent, NodeExtent, NodeOrigin);
     }
 
-    /// <summary>Coins haut-gauche absolus quand des origines sont en jeu : parent (déjà décalé) + position relative − décalage du node.</summary>
-    private Dictionary<string, XYPosition> AbsoluteWithOrigin(IReadOnlyList<Node> nodes)
-    {
-        var byId = nodes.ToDictionary(n => n.Id);
-        var result = new Dictionary<string, XYPosition>(nodes.Count);
-        XYPosition Of(Node n, int depth)
-        {
-            if (result.TryGetValue(n.Id, out var known)) return known;
-            var parent = depth < 64 && n.ParentId != null && byId.TryGetValue(n.ParentId, out var p) ? Of(p, depth + 1) : XYPosition.Zero;
-            return result[n.Id] = parent + n.Position - OriginOffset(n);
-        }
-
-        foreach (var n in nodes) Of(n, 0);
-        return result;
-    }
-
-    /// <summary>Décalage entre la position stockée d'un node et son coin haut-gauche : origine × taille.</summary>
-    private XYPosition OriginOffset(Node node)
-    {
-        var o = node.Origin ?? NodeOrigin;
-        if (o == XYPosition.Zero) return XYPosition.Zero;
-        return new XYPosition(o.X * (node.Width ?? node.FixedWidth ?? 0), o.Y * (node.Height ?? node.FixedHeight ?? 0));
-    }
+    private Dictionary<string, XYPosition> AbsoluteWithOrigin(IReadOnlyList<Node> nodes) => NodeConstraints.AbsoluteWithOrigin(nodes, NodeOrigin);
 
     /// <summary>Nodes déplaçables sélectionnés ; un enfant dont un ancêtre est aussi sélectionné suit déjà son parent.</summary>
-    private Dictionary<string, XYPosition> CollectDragStart(string? pressedId = null)
-    {
-        if (!NodesDraggable) return new Dictionary<string, XYPosition>();
-        // Sans sélection possible (ou sans sélection au glisser sur un node non sélectionné), seul le node saisi se déplace.
-        if (pressedId != null && (!ElementsSelectable || (!SelectNodesOnDrag && Nodes.FirstOrDefault(n => n.Id == pressedId) is { Selected: false })))
-            return Nodes.FirstOrDefault(n => n.Id == pressedId) is { Draggable: true } one
-                ? new Dictionary<string, XYPosition> { [one.Id] = one.Position }
-                : new Dictionary<string, XYPosition>();
-        var selected = Nodes.Where(n => n.Selected).Select(n => n.Id).ToHashSet();
-        var result = new Dictionary<string, XYPosition>();
-        foreach (var n in Nodes)
-        {
-            if (!n.Selected || !n.Draggable) continue;
-            var covered = false;
-            for (var p = n.ParentId; p != null && RawNode(p) is { } parent; p = parent.ParentId)
-                if (selected.Contains(p)) { covered = true; break; }
-            if (!covered) result[n.Id] = n.Position;
-        }
-
-        return result;
-    }
+    private Dictionary<string, XYPosition> CollectDragStart(string? pressedId = null) =>
+        DragSelection.CollectStart(Nodes, NodesDraggable, ElementsSelectable, SelectNodesOnDrag, pressedId);
 
     internal void DeleteSelection()
     {

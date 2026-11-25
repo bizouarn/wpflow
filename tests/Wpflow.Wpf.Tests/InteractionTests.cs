@@ -7,23 +7,7 @@ namespace Wpflow.Wpf.Tests;
 /// <summary>Options d'interaction globales, auto-défilement et finitions du lot P1.</summary>
 public class InteractionTests
 {
-    [Fact]
-    public void AutoPanDelta_is_zero_inside_and_pushes_content_away_from_the_edge()
-    {
-        Assert.Equal((0.0, 0.0), FlowView.AutoPanDelta(new Point(200, 150), 400, 300, 15));
-
-        var (x, y) = FlowView.AutoPanDelta(new Point(0, 150), 400, 300, 15);
-        Assert.Equal(15, x, 6); // souris au bord gauche : le contenu glisse vers la droite
-        Assert.Equal(0, y);
-
-        var (x2, y2) = FlowView.AutoPanDelta(new Point(400, 300), 400, 300, 15);
-        Assert.Equal(-15, x2, 6);
-        Assert.Equal(-15, y2, 6);
-
-        // Vitesse proportionnelle à la proximité du bord.
-        var (half, _) = FlowView.AutoPanDelta(new Point(20, 150), 400, 300, 15);
-        Assert.Equal(7.5, half, 6);
-    }
+    // Le calcul du défilement automatique est dans le noyau (AutoPan.Delta, testé dans Wpflow.Core.Tests).
 
     [Fact]
     public void Global_interaction_options_default_to_true()

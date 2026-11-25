@@ -112,11 +112,10 @@ internal sealed class EdgeVisual : FrameworkElement, IEdgePart
     {
         if (kind == EdgeMarker.None && custom == null) return default;
         var fill = options?.Color is { } c && EdgeColors.Parse(c) is { } own ? own : style.MarkerColor ?? _stroke;
-        var pen = new Pen(fill, options?.StrokeWidth ?? thickness) { LineJoin = PenLineJoin.Round }; // la plupart des edges n'en ont pas
+        var pen = new Pen(fill, EdgeMarkerMath.StrokeWidth(options, thickness)) { LineJoin = PenLineJoin.Round }; // la plupart des edges n'en ont pas
         var transform = options?.Orient is { } angle ? FixedTransform(at, angle) : ArrowTransform(at, side);
         // Taille : 12,5 (valeur par défaut de xyflow) correspond à la flèche telle que dessinée.
-        var sx = (options?.Width ?? 12.5) / 12.5;
-        var sy = (options?.Height ?? 12.5) / 12.5;
+        var (sx, sy) = EdgeMarkerMath.Scale(options);
         if (sx != 1 || sy != 1) transform = Matrix.Multiply(new Matrix(sx, 0, 0, sy, 0, 0), transform);
         return new Marker(kind, custom, transform, fill, pen);
     }
@@ -133,7 +132,7 @@ internal sealed class EdgeVisual : FrameworkElement, IEdgePart
     internal static Matrix ArrowTransform(XYPosition at, Position side)
     {
         var m = Matrix.Identity;
-        m.Rotate(side switch { Position.Left => 0, Position.Top => 90, Position.Right => 180, _ => 270 });
+        m.Rotate(EdgeMarkerMath.SideAngle(side));
         m.Translate(at.X, at.Y);
         return m;
     }
@@ -395,7 +394,7 @@ public sealed class EdgeLayer : Canvas
                 ((EdgeVisual)visual!).Update(edge, path, s, sp, t, tp, style, resolver.Marker(edge.MarkerStartKey),
                     resolver.Marker(edge.MarkerEndKey));
             UpdateLabel(edge, path, style, info.Label);
-            var z = edge.ZIndex ?? (edge.Selected && style.ElevateSelected ? 1000 : 0);
+            var z = EdgeZOrder.Compute(edge, style.ElevateSelected);
             Panel.SetZIndex(visual!, z);
             if (_labels.TryGetValue(edge.Id, out var labelVisual)) Panel.SetZIndex(labelVisual, z + 1);
             var aria = edge.AriaLabel ?? flow.EdgeAriaLabelProvider?.Invoke(edge);

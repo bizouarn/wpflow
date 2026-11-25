@@ -1,0 +1,37 @@
+@namespace Wpflow.Blazor
+
+@* Barre d'outils affichée à côté du node quand il est sélectionné (<NodeToolbar>). À placer dans le modèle du node. *@
+@if (IsToolbarVisible ?? Node?.Selected ?? false)
+{
+    <div class="wf-toolbar wf-toolbar-@(ToolbarPosition.ToString().ToLowerInvariant()) wf-toolbar-@(Align.ToString().ToLowerInvariant()) nodrag nopan @Class"
+         style="@OffsetStyle" @onpointerdown:stopPropagation>@ChildContent</div>
+}
+
+@code {
+    [CascadingParameter(Name = "WfNode")] private Node? Node { get; set; }
+
+    [Parameter] public Position ToolbarPosition { get; set; } = Position.Top;
+    [Parameter] public double Offset { get; set; } = 10;
+    [Parameter] public ToolbarAlign Align { get; set; } = ToolbarAlign.Center;
+
+    /// <summary>Force la visibilité ; <c>null</c> = visible quand le node est sélectionné.</summary>
+    [Parameter] public bool? IsToolbarVisible { get; set; }
+
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+    [Parameter] public string? Class { get; set; }
+
+    private string OffsetStyle
+    {
+        get
+        {
+            var o = FlowView.F(Offset);
+            return ToolbarPosition switch
+            {
+                Position.Top => $"bottom:calc(100% + {o}px);",
+                Position.Bottom => $"top:calc(100% + {o}px);",
+                Position.Left => $"right:calc(100% + {o}px);",
+                _ => $"left:calc(100% + {o}px);"
+            };
+        }
+    }
+}

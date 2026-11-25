@@ -1,0 +1,152 @@
+@namespace Wpflow.Blazor
+
+@{
+    // Le pan ne change que la transformation du calque : la couche des nodes et des edges n'est pas refaite (sauf virtualisation).
+    if (_forceLayer || !_viewportOnly || OnlyRenderVisibleElements) _layerRevision++;
+    _viewportOnly = false;
+    _forceLayer = false;
+}
+
+<CascadingValue Value="this" IsFixed="true">
+    <div @ref="_root" class="@RootClass" style="@Style" tabindex="0" role="application" aria-label="Éditeur de graphe"
+         @onpointerdown="OnPanePointerDown" @onkeydown="OnKeyDown" @onkeyup="OnKeyUp"
+         @onpointermove="HoverMoveHandler" @onpointerenter="PaneEnterHandler" @onpointerleave="PaneLeaveHandler"
+         @ondblclick="PaneDoubleClick" @oncontextmenu="PaneContextMenu" @oncontextmenu:preventDefault="OnPaneContextMenu.HasDelegate"
+         @ondragover:preventDefault @ondrop="OnDropped">
+        @foreach (var (bgId, layer) in BackgroundLayers())
+        {
+            var gap = Math.Max(1, layer.Gap * Viewport.Zoom);
+            var ox = ((Viewport.X + layer.Offset.GetValueOrDefault().X * Viewport.Zoom) % gap + gap) % gap;
+            var oy = ((Viewport.Y + layer.Offset.GetValueOrDefault().Y * Viewport.Zoom) % gap + gap) % gap;
+            var dot = Math.Max(0.5, (layer.Size ?? 1) * Viewport.Zoom);
+            var arm = (layer.Size ?? 6) * Viewport.Zoom;
+            var color = layer.Color ?? "var(--wf-dot)";
+            <svg class="wf-background" aria-hidden="true">
+                <pattern id="wf-bg-@(_uid)-@bgId" x="@F(ox)" y="@F(oy)" width="@F(gap)" height="@F(gap)" patternUnits="userSpaceOnUse">
+                    @switch (layer.Variant)
+                    {
+                        case BackgroundVariant.Dots:
+                            <circle cx="0" cy="0" r="@F(dot)" fill="@color" />
+                            <circle cx="@F(gap)" cy="0" r="@F(dot)" fill="@color" />
+                            <circle cx="0" cy="@F(gap)" r="@F(dot)" fill="@color" />
+                            <circle cx="@F(gap)" cy="@F(gap)" r="@F(dot)" fill="@color" />
+                            break;
+                        case BackgroundVariant.Lines:
+                            <path d="M0 0H@(F(gap))M0 0V@(F(gap))" stroke="@color" stroke-width="@F(layer.LineWidth)" opacity=".4" />
+                            break;
+                        case BackgroundVariant.Cross:
+                            <path d="M@(F(-arm)) 0H@(F(arm))M0 @(F(-arm))V@(F(arm))" stroke="@color" stroke-width="@F(layer.LineWidth)" />
+                            break;
+                    }
+                </pattern>
+                <rect width="100%" height="100%" fill="url(#wf-bg-@(_uid)-@bgId)" />
+            </svg>
+        }
+
+        <div class="wf-viewport" style="transform:translate(@(F(Viewport.X))px,@(F(Viewport.Y))px) scale(@(F(Viewport.Zoom)))">
+            <FlowLayer Revision="_layerRevision">
+            @{
+                var renderNodes = PrepareRender();
+                var edgeViews = EdgeViews().ToList();
+            }
+            <svg class="wf-edges">
+                <defs>
+                    @foreach (var m in MarkerDefs())
+                    {
+                        <marker id="@m.Id" viewBox="-10 -10 20 20" refX="0" refY="0" markerWidth="@F(m.Width)" markerHeight="@F(m.Height)"
+                                markerUnits="strokeWidth" orient="@(m.Orient is { } deg ? F(deg) : "auto-start-reverse")">
+                            @if (m.Key != null && MarkerTemplates != null && MarkerTemplates.TryGetValue(m.Key, out var customMarker))
+                            {
+                                @customMarker(m.Color)
+                            }
+                            else if (m.Kind == EdgeMarker.ArrowClosed)
+                            {
+                                <polyline points="-5,-4 0,0 -5,4 -5,-4" style="stroke:@m.Color;fill:@m.Color;stroke-width:@F(m.StrokeWidth);stroke-linecap:round;stroke-linejoin:round" />
+                            }
+                            else
+                            {
+                                <polyline points="-5,-4 0,0 -5,4" style="stroke:@m.Color;fill:none;stroke-width:@F(m.StrokeWidth * 1.5);stroke-linecap:round;stroke-linejoin:round" />
+                            }
+                        </marker>
+                    }
+                </defs>
+                @foreach (var ev in edgeViews)
+                {
+                    var edge = ev.Edge;
+                    <g @key="edge.Id" class="wf-edge @(edge.Selected ? "wf-selected" : "") @(edge.Animated ? "wf-edge-animated" : "")"
+                       role="group" aria-label="@EdgeLabelText(edge)" aria-selected="@(edge.Selected ? "true" : "false")"
+                       tabindex="@(EdgesFocusable && !DisableKeyboardA11y ? 0 : (int?)null)" @onfocus="() => EdgeFocused(edge)">
+                        @if (ev.Template != null)
+                        {
+                            @ev.Template(ev.Context)
+                        }
+                        else
+                        {
+                            <path class="wf-edge-path" d="@ev.Context.Path.Path" style="@EdgeStyle(edge)"
+                                  marker-start="@ev.MarkerStart" marker-end="@ev.MarkerEnd" />
+                        }
+                        <path class="wf-edge-hit" d="@ev.Context.Path.Path" style="@(edge.InteractionWidth is { } iw ? $"stroke-width:{F(iw)}px" : null)"
+                              @onpointerdown="e => OnEdgePointerDown(edge, e)" @onpointerdown:stopPropagation
+                              @ondblclick="e => EdgeDoubleClick(edge, e)" @ondblclick:stopPropagation
+                              @oncontextmenu="e => EdgeContextMenu(edge, e)" @oncontextmenu:preventDefault="OnEdgeContextMenu.HasDelegate"
+                              @oncontextmenu:stopPropagation
+                              @onpointerenter="EdgeEnterHandler(edge)" @onpointerleave="EdgeLeaveHandler(edge)" />
+                        @if (edge.Selected && EdgesReconnectable && edge.Reconnectable && !IsLocked)
+                        {
+                            <circle class="wf-edge-anchor" cx="@F(ev.Context.Geometry.Source.X)" cy="@F(ev.Context.Geometry.Source.Y)" r="@F(ReconnectRadius / 2)" />
+                            <circle class="wf-edge-anchor" cx="@F(ev.Context.Geometry.Target.X)" cy="@F(ev.Context.Geometry.Target.Y)" r="@F(ReconnectRadius / 2)" />
+                        }
+                    </g>
+                }
+                @if (ConnectionPath() is { } cp)
+                {
+                    if (ConnectionLineTemplate != null)
+                    {
+                        @ConnectionLineTemplate(CurrentConnection)
+                    }
+                    else
+                    {
+                        <path class="wf-connection-line @(_candidate == null ? "" : "wf-valid-line")" d="@cp" />
+                    }
+                }
+            </svg>
+
+            @foreach (var n in renderNodes)
+            {
+                <FlowNodeHost @key="n.Id" Flow="this" Node="n" Classes="@NodeClasses(n)" Style="@NodeStyle(n)" Label="@NodeLabel(n)"
+                              Focusable="@(NodesFocusable && !DisableKeyboardA11y)" Template="TemplateFor(n)"
+                              PreventContextMenu="@(OnNodeContextMenu.HasDelegate || OnSelectionContextMenu.HasDelegate)"
+                              HasEnter="OnNodeMouseEnter.HasDelegate" HasLeave="OnNodeMouseLeave.HasDelegate" />
+            }
+
+            @foreach (var ev in edgeViews)
+            {
+                var edge = ev.Edge;
+                if (string.IsNullOrEmpty(edge.Label) && EdgeLabelTemplate == null) continue;
+                <div @key="@("l" + edge.Id)" class="wf-edge-label @(EdgeLabelTemplate != null ? "wf-edge-label-custom" : "")" style="@EdgeLabelStyle(ev)"
+                     @onpointerdown="e => OnEdgePointerDown(edge, e)" @onpointerdown:stopPropagation>
+                    <CascadingValue Value="edge" Name="WfEdge">
+                        @if (EdgeLabelTemplate != null)
+                        {
+                            @EdgeLabelTemplate(ev.Context)
+                        }
+                        else
+                        {
+                            @edge.Label
+                        }
+                    </CascadingValue>
+                </div>
+            }
+            </FlowLayer>
+        </div>
+
+        @if (_mode == Mode.Box && _moved)
+        {
+            <div class="wf-selection-box" style="@BoxStyle()"></div>
+        }
+
+        @ChildContent
+
+        <div class="wf-sr-only" role="status" aria-live="polite">@_announce</div>
+    </div>
+</CascadingValue>

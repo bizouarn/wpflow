@@ -6,6 +6,9 @@ public sealed record ClipboardData(IReadOnlyList<Node> Nodes, IReadOnlyList<Edge
 /// <summary>Copier / couper / coller de nodes et d'edges (absent de <c>@xyflow/system</c> : l'exemple « Copy Paste » le fait à la main).</summary>
 public static class GraphClipboard
 {
+    /// <summary>Décalage du n-ième collage consécutif (20 px de plus à chaque fois), pour que les copies ne se superposent pas.</summary>
+    public static XYPosition PasteOffset(int pasteCount) => new(20 * pasteCount, 20 * pasteCount);
+
     /// <summary>
     ///     Copie les nodes sélectionnés avec leurs descendants et les edges dont les deux extrémités sont copiées.
     ///     Un node dont le parent n'est pas copié devient une racine, à sa position absolue. <c>null</c> si rien n'est sélectionné.

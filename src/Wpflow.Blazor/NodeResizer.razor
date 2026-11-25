@@ -1,0 +1,77 @@
+@namespace Wpflow.Blazor
+
+@* Poignées de redimensionnement (4 coins, 4 côtés), visibles quand le node est sélectionné. À placer dans le modèle du node. *@
+@if (Visible)
+{
+    <div class="wf-resizer" style="@AccentStyle">
+        @foreach (var d in Directions)
+        {
+            var dir = d;
+            <div class="wf-resize wf-resize-@(dir.ToString().ToLowerInvariant()) @(IsCorner(dir) ? "wf-resize-corner" : "wf-resize-side") @(Variant == ResizerVariant.Line ? "wf-resize-line" : "wf-resize-handle") nodrag"
+                 style="@HandleStyle(dir)" @onpointerdown="e => Down(dir, e)" @onpointerdown:stopPropagation></div>
+        }
+    </div>
+}
+
+@code {
+    private static readonly ResizeDirection[] Directions =
+    [
+        ResizeDirection.Top, ResizeDirection.Right, ResizeDirection.Bottom, ResizeDirection.Left,
+        ResizeDirection.TopLeft, ResizeDirection.TopRight, ResizeDirection.BottomLeft, ResizeDirection.BottomRight
+    ];
+
+    [CascadingParameter] private FlowView? Flow { get; set; }
+    [CascadingParameter(Name = "WfNode")] private Node? Node { get; set; }
+
+    [Parameter] public double NodeMinWidth { get; set; } = 60;
+    [Parameter] public double NodeMinHeight { get; set; } = 40;
+    [Parameter] public double NodeMaxWidth { get; set; } = double.PositiveInfinity;
+    [Parameter] public double NodeMaxHeight { get; set; } = double.PositiveInfinity;
+
+    /// <summary>Conserve le rapport largeur/hauteur pendant le redimensionnement.</summary>
+    [Parameter] public bool KeepAspectRatio { get; set; }
+
+    /// <summary>Faux : poignées masquées (<c>isVisible</c>) ; par défaut elles apparaissent quand le node est sélectionné.</summary>
+    [Parameter] public bool? ShowResizer { get; set; }
+
+    /// <summary>Poignées de taille constante à l'écran quel que soit le zoom.</summary>
+    [Parameter] public bool AutoScale { get; set; }
+
+    [Parameter] public ResizerVariant Variant { get; set; } = ResizerVariant.Handle;
+
+    /// <summary>Refuse une taille proposée.</summary>
+    [Parameter] public Func<ResizeDirection, Rect, bool>? ShouldResize { get; set; }
+
+    [Parameter] public EventCallback<ResizeInfo> OnResizeStart { get; set; }
+    [Parameter] public EventCallback<ResizeInfo> OnResize { get; set; }
+    [Parameter] public EventCallback<ResizeInfo> OnResizeEnd { get; set; }
+
+    /// <summary>Couleur des poignées (CSS).</summary>
+    [Parameter] public string? Accent { get; set; }
+
+    private bool Visible => ShowResizer ?? Node?.Selected ?? false;
+
+    private string? AccentStyle => Accent == null ? null : $"--wf-resize-accent:{Accent};";
+
+    private static bool IsCorner(ResizeDirection d) => d is ResizeDirection.TopLeft or ResizeDirection.TopRight or ResizeDirection.BottomLeft or ResizeDirection.BottomRight;
+
+    private string? HandleStyle(ResizeDirection d)
+    {
+        if (!AutoScale || Flow == null) return null;
+        var k = 1 / Flow.Viewport.Zoom;
+        return IsCorner(d) ? $"width:{FlowView.F(8 * k)}px;height:{FlowView.F(8 * k)}px;" : null;
+    }
+
+    private void Down(ResizeDirection dir, PointerEventArgs e)
+    {
+        if (Flow == null || Node == null) return;
+        Flow.StartResize(Node.Id, dir, new ResizeOptions
+        {
+            MinWidth = NodeMinWidth, MinHeight = NodeMinHeight, MaxWidth = NodeMaxWidth, MaxHeight = NodeMaxHeight,
+            KeepAspectRatio = KeepAspectRatio, ShouldResize = ShouldResize,
+            Started = a => _ = OnResizeStart.InvokeAsync(a),
+            Resizing = a => _ = OnResize.InvokeAsync(a),
+            Ended = a => _ = OnResizeEnd.InvokeAsync(a)
+        }, e);
+    }
+}

@@ -1,0 +1,102 @@
+@* Démo Wpflow.Blazor : nodes par défaut et à modèle (redimensionnable, pivotant, barre d'outils), edges animés avec flèches et labels,
+   minimap, contrôles, historique, presse-papier, export, thème sombre. *@
+
+<div class="demo">
+    <FlowView @ref="_flow" @bind-Nodes="_nodes" @bind-Edges="_edges" Dark="_dark" NodeTemplates="_templates"
+              SnapGrid="@(_snap ? 10 : null)" OnConnect="OnConn" OnNodeClick="OnClick" OnSelectionChange="OnSelection"
+              OnNodeDoubleClick="OnDbl">
+        <ChildContent>
+            <FlowPanel PanelPosition="PanelPosition.TopLeft" Class="demo-toolbar">
+                <button @onclick="() => _dark = !_dark">@(_dark ? "Clair" : "Sombre")</button>
+                <button @onclick="() => _snap = !_snap" aria-pressed="@_snap">Grille @(_snap ? "on" : "off")</button>
+                <button @onclick="() => _flow!.Undo()" disabled="@(_flow?.CanUndo != true)">Annuler</button>
+                <button @onclick="() => _flow!.Redo()" disabled="@(_flow?.CanRedo != true)">Rétablir</button>
+                <button @onclick="() => _flow!.Copy()">Copier</button>
+                <button @onclick="() => _flow!.Paste()">Coller</button>
+                <button @onclick="Layout">Disposer</button>
+                <button @onclick="Png">PNG</button>
+                <span>@(_last ?? "Glissez, tirez depuis un handle, Maj + glisser pour sélectionner, Suppr, Ctrl+Z / Ctrl+C / Ctrl+V.")</span>
+            </FlowPanel>
+            <SelectionToolbar>
+                <button @onclick="() => _flow!.DeleteSelected()">Supprimer la sélection</button>
+            </SelectionToolbar>
+            <FlowMiniMap />
+            <FlowControls />
+        </ChildContent>
+    </FlowView>
+</div>
+
+@code {
+    private FlowView? _flow;
+    private bool _dark;
+    private bool _snap;
+    private string? _last;
+    private Dictionary<string, RenderFragment<Node>> _templates = default!;
+
+    private IReadOnlyList<Node> _nodes =
+    [
+        new Node("1", new XYPosition(0, 0), "input", "Entrée"),
+        new Node("2", new XYPosition(-200, 120), "default", "Traitement A"),
+        new Node("3", new XYPosition(200, 120), "default", "Traitement B"),
+        new Node("s", new XYPosition(-60, 260), "slider", 40),
+        new Node("r", new XYPosition(260, 280), "resizable", "Redimensionnable"),
+        new Node("g", new XYPosition(-340, 300), "grip", "Poignée", DragHandle: ".grip"),
+        new Node("4", new XYPosition(0, 420), "output", "Sortie")
+    ];
+
+    private IReadOnlyList<Edge> _edges =
+    [
+        new Edge("e1-2", "1", "2", Animated: true, MarkerEnd: EdgeMarker.ArrowClosed),
+        new Edge("e1-3", "1", "3", Type: "smoothstep", Label: "lisse", MarkerEnd: EdgeMarker.ArrowClosed),
+        new Edge("e2-s", "2", "s", MarkerEnd: EdgeMarker.Arrow),
+        new Edge("es-4", "s", "4", Type: "step"),
+        new Edge("e3-r", "3", "r", Type: "straight", Animated: true)
+    ];
+
+    protected override void OnInitialized()
+    {
+        _templates = new Dictionary<string, RenderFragment<Node>>
+        {
+            ["slider"] = n => @<div class="wf-node-default" style="width:200px">
+                <NodeToolbar><button @onclick="() => _flow!.DeleteElements([n.Id])">Supprimer</button></NodeToolbar>
+                <div>@n.Id : @(n.Data ?? 50)</div>
+                <input class="demo-slider nodrag" type="range" min="0" max="100" value="@(n.Data ?? 50)"
+                       @oninput="e => SetValue(n.Id, e.Value)" />
+                <FlowHandle Type="HandleType.Target" Position="Position.Left" />
+                <FlowHandle Type="HandleType.Source" Position="Position.Right" />
+            </div>,
+            ["grip"] = n => @<div class="demo-grip-node">
+                <div class="grip">⠿ glisser ici</div>
+                <div class="body">@n.Data (le corps ne déplace pas)</div>
+                <FlowHandle Type="HandleType.Source" Position="Position.Right" />
+            </div>,
+            ["resizable"] = n => @<div class="demo-resizable">
+                <NodeResizer />
+                <NodeRotator />
+                <div>@n.Data</div>
+                <FlowHandle Type="HandleType.Target" Position="Position.Top" />
+                <FlowHandle Type="HandleType.Source" Position="Position.Bottom" />
+            </div>
+        };
+    }
+
+    private void OnDbl(NodeEventArgs e) => _last = $"double-clic sur {e.Node.Id}";
+
+    private Task Png() => _flow!.SaveImage("graphe.png");
+
+    private void OnConn(Connection c) => _last = $"connexion {c.Source} → {c.Target}";
+
+    private void OnClick(NodeEventArgs e) => _last = $"clic sur {e.Node.Id}";
+
+    private void OnSelection(SelectionChangeArgs s) => _last = $"{s.Nodes.Count} node(s) et {s.Edges.Count} edge(s) sélectionnés";
+
+    private void SetValue(string id, object? value) =>
+        _nodes = _nodes.Select(n => n.Id == id ? n with { Data = int.TryParse(value?.ToString(), out var v) ? v : n.Data } : n).ToList();
+
+    private async Task Layout()
+    {
+        var positions = GraphLayout.Layered(_nodes, _edges, LayoutDirection.TopToBottom);
+        await _flow!.ApplyNodeChanges(positions.Select(p => (NodeChange)new NodePositionChange(p.Key, p.Value)).ToList());
+        await _flow.FitView(new FitViewOptions(Duration: TimeSpan.FromMilliseconds(300)));
+    }
+}

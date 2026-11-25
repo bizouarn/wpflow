@@ -3,7 +3,7 @@
 Tous les exemples sont dans le dossier `demo/` et se lancent avec :
 
 ```bash
-dotnet run --project demo
+dotnet run --project demo/wpf
 ```
 
 La page d'accueil reproduit la démo de [reactflow.dev](https://reactflow.dev/) ; son bouton **« Exemples »** ouvre la fenêtre d'exemples (un onglet par cas). Chaque exemple est vérifié par un auto-test qui pilote la vraie souris et le vrai clavier (voir `CLAUDE.md`).
@@ -12,7 +12,7 @@ La page d'accueil reproduit la démo de [reactflow.dev](https://reactflow.dev/) 
 
 ## Page d'accueil : calculer avec un flow
 
-*Fichiers : `demo/MainWindow.xaml`, `MainWindow.xaml.cs`, `DemoState.cs`, `CubeField.cs`.*
+*Fichiers : `demo/wpf/MainWindow.xaml`, `MainWindow.xaml.cs`, `DemoState.cs`, `CubeField.cs`.*
 
 La page est pilotée par un ViewModel (`HomeViewModel.cs` : nodes, liens et viewport liés, aucune logique dans la vue) — voir [MVVM](../learn/13-mvvm.md).
 
@@ -73,7 +73,7 @@ Guides : [Thèmes](../learn/08-theming.md), [Interactions](../learn/09-interacti
 
 ## Personnalisation
 
-*Onglet « Personnalisation » — `demo/CustomizationExample.xaml`, `CustomEdges.cs`.*
+*Onglet « Personnalisation » — `demo/wpf/CustomizationExample.xaml`, `CustomEdges.cs`.*
 
 Tout vient de ressources, sans toucher à la bibliothèque : le node `default` redéfini, des handles en losange (style implicite avec `Template`), un type d'edge `wave` (un `IEdgePathProvider`), un type `pulse` dessiné par un `DataTemplate` avec son propre label, des marqueurs `dot` et `diamond`, et un aperçu de connexion en pointillés.
 
@@ -81,7 +81,7 @@ Guide : [Personnaliser](../learn/14-customization.md).
 
 ## MVVM
 
-*Onglet « MVVM » — `demo/MvvmExample.xaml`, `MvvmViewModel.cs`.*
+*Onglet « MVVM » — `demo/wpf/MvvmExample.xaml`, `MvvmViewModel.cs`.*
 
 Les nodes et les liens sont des ViewModels (`NodesSource`, `EdgesSource`) : glisser un node écrit `X`/`Y` dans le ViewModel, les boutons (commandes du ViewModel) ajoutent, suppriment ou replacent des nodes, la sélection est liée à une `ObservableCollection`, et le titre est un `TextBox` lié à `Data.Title`.
 
@@ -98,7 +98,7 @@ Guide : [Performance et accessibilité](../learn/11-performance-accessibility.md
 ## Mesurer les performances en ligne de commande
 
 ```bash
-WPFLOW_PERF=5000 WPFLOW_PERF_VIRT=1 WPFLOW_SCREENSHOT="chemin/perf.png" dotnet run --project demo --no-build
+WPFLOW_PERF=5000 WPFLOW_PERF_VIRT=1 WPFLOW_SCREENSHOT="chemin/perf.png" dotnet run --project demo/wpf --no-build
 # écrit chemin/perf.perf.log : temps d'affichage, ms/image en déplacement et en pan
 ```
 

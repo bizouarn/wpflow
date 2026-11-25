@@ -64,15 +64,13 @@ public sealed class NodeRotator : Thumb
         FlowView.FindAncestor<NodeHost>(this) is { } host && FlowView.FindAncestor<FlowView>(host) is { } flow ? (flow, host) : null;
 
     /// <summary>Angle (degrés, 0 = poignée en haut) du point flow <paramref name="p" /> vu du centre du node.</summary>
-    internal static double AngleTo(XYPosition center, XYPosition p) =>
-        Math.Atan2(p.Y - center.Y, p.X - center.X) * 180 / Math.PI + 90;
+    internal static double AngleTo(XYPosition center, XYPosition p) => NodeRotation.AngleTo(center, p);
 
     private void Rotate()
     {
         if (Context() is not { } c || c.Host.Node is not { } node || c.Flow.GetInternalNode(node.Id)?.Rect is not { } rect) return;
         var angle = AngleTo(rect.Center, c.Flow.ScreenToFlow(Mouse.GetPosition(c.Flow)));
-        if (Keyboard.Modifiers.HasFlag(ModifierKeys.Shift) && SnapAngle > 0) angle = Math.Round(angle / SnapAngle) * SnapAngle;
-        angle = ((angle % 360) + 360) % 360;
+        angle = NodeRotation.Resolve(angle, Keyboard.Modifiers.HasFlag(ModifierKeys.Shift), SnapAngle);
         c.Flow.UpdateNode(node.Id, n => n with { Rotation = angle });
     }
 }

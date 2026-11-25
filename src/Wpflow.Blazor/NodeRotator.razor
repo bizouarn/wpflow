@@ -1,0 +1,24 @@
+@namespace Wpflow.Blazor
+
+@* Poignée de rotation : un rond au-dessus du node sélectionné ; le glisser fait tourner le node autour de son centre (Node.Rotation, en degrés). *@
+@if (Node?.Selected == true)
+{
+    <div class="wf-rotator nodrag" style="top:-@(FlowView.F(Distance))px" title="Pivoter (Maj : par pas de @(FlowView.F(SnapAngle))°)"
+         @onpointerdown="Down" @onpointerdown:stopPropagation></div>
+}
+
+@code {
+    [CascadingParameter] private FlowView? Flow { get; set; }
+    [CascadingParameter(Name = "WfNode")] private Node? Node { get; set; }
+
+    /// <summary>Pas d'arrondi quand Maj est maintenu, en degrés.</summary>
+    [Parameter] public double SnapAngle { get; set; } = 15;
+
+    /// <summary>Distance entre la poignée et le bord haut du node, en pixels.</summary>
+    [Parameter] public double Distance { get; set; } = 28;
+
+    private void Down(PointerEventArgs e)
+    {
+        if (Flow != null && Node != null) Flow.StartRotate(Node.Id, SnapAngle, e);
+    }
+}

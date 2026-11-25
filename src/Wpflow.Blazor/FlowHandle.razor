@@ -1,0 +1,83 @@
+@namespace Wpflow.Blazor
+@implements IDisposable
+
+<div class="wf-handle wf-handle-@PositionName @State" data-handleid="@HandleId"
+     data-type="@(Type == HandleType.Target ? "target" : "source")" data-position="@PositionName"
+     data-connectable="@(IsConnectable ? "true" : "false")" data-connectable-start="@(IsConnectableStart ? "true" : "false")"
+     data-connectable-end="@(IsConnectableEnd ? "true" : "false")" style="@HandleStyle"
+     @onpointerdown="OnDown" @onpointerdown:stopPropagation>@ChildContent</div>
+
+@code {
+    private (string NodeId, string? HandleId, HandleType Type)? _key;
+    private string? _lastState;
+
+    // L'état (origine, cible valide ou refusée) change pendant qu'un fil est tiré, sans que le node soit refait.
+    private string? State => _lastState = Flow?.HandleState(Node?.Id ?? "", Info);
+
+    protected override void OnInitialized()
+    {
+        if (Flow != null) Flow.Rendered += CheckState;
+    }
+
+    private void CheckState()
+    {
+        if (Flow?.HandleState(Node?.Id ?? "", Info) != _lastState) _ = InvokeAsync(StateHasChanged);
+    }
+
+    [CascadingParameter] private FlowView? Flow { get; set; }
+    [CascadingParameter(Name = "WfNode")] private Node? Node { get; set; }
+
+    /// <summary><c>Source</c> (départ) ou <c>Target</c> (arrivée).</summary>
+    [Parameter] public HandleType Type { get; set; } = HandleType.Source;
+
+    /// <summary>Côté du node.</summary>
+    [Parameter] public Position Position { get; set; } = Position.Top;
+
+    /// <summary>Identifiant (<c>Edge.SourceHandle</c> / <c>TargetHandle</c>).</summary>
+    [Parameter] public string? HandleId { get; set; }
+
+    /// <summary>Décalage le long du côté, en pixels depuis le haut (gauche/droite) ou la gauche (haut/bas) ; <c>null</c> = centré.</summary>
+    [Parameter] public double? Offset { get; set; }
+
+    [Parameter] public bool IsConnectable { get; set; } = true;
+    [Parameter] public bool IsConnectableStart { get; set; } = true;
+    [Parameter] public bool IsConnectableEnd { get; set; } = true;
+
+    /// <summary>Validateur propre au handle, en plus de celui de la vue.</summary>
+    [Parameter] public Func<Connection, bool>? IsValidConnection { get; set; }
+
+    /// <summary>Une connexion vient d'aboutir à ce handle ou d'en partir.</summary>
+    [Parameter] public EventCallback<Connection> OnConnected { get; set; }
+
+    /// <summary>Contenu du handle (icône, libellé…).</summary>
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+
+    private string PositionName => Position.ToString().ToLowerInvariant();
+
+    private string? HandleStyle => Offset is { } o
+        ? Position is Position.Left or Position.Right ? $"top:{FlowView.F(o)}px;" : $"left:{FlowView.F(o)}px;"
+        : null;
+
+    private HandleInfo? Info => Node == null ? null : Flow?.FindHandle(Node.Id, HandleId, Type);
+
+    protected override void OnParametersSet()
+    {
+        if (Flow == null || Node == null) return;
+        if (_key is { } old) Flow.UnregisterHandle(old);
+        _key = (Node.Id, HandleId, Type);
+        Flow.RegisterHandle(_key.Value, new HandleExtras(IsValidConnection, OnConnected, IsConnectableStart, IsConnectableEnd, IsConnectable));
+    }
+
+    public void Dispose()
+    {
+        if (Flow != null) Flow.Rendered -= CheckState;
+        if (_key is { } k) Flow?.UnregisterHandle(k);
+    }
+
+    private async Task OnDown(PointerEventArgs e)
+    {
+        if (Flow == null || Node == null || !IsConnectable) return;
+        var info = Info ?? new HandleInfo(HandleId, Type, Position, 0, 0, 8, 8);
+        await Flow.StartConnect(Node.Id, info, e);
+    }
+}

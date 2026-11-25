@@ -200,8 +200,8 @@ Si l'application a **son propre** historique, implémentez `IFlowHistory` (`Chec
 
 ## Exemples
 
-L'onglet **MVVM** de la fenêtre d'exemples (`demo/MvvmExample.xaml`, `MvvmViewModel.cs`) n'a **aucun code-behind** : collections de `TaskVm` et de `LinkVm`, template de node avec `TextBox` et `CheckBox` liés, commandes de connexion (avec règle métier), de suppression, de clic et de fin de déplacement, boutons Annuler / Rétablir / Supprimer en commandes routées (grisés selon l'état), zoom lié à un curseur, `IFlowController` pour Cadrer et Centrer, et un indicateur `IsConnecting`.
+L'onglet **MVVM** de la fenêtre d'exemples (`demo/wpf/MvvmExample.xaml`, `MvvmViewModel.cs`) n'a **aucun code-behind** : collections de `TaskVm` et de `LinkVm`, template de node avec `TextBox` et `CheckBox` liés, commandes de connexion (avec règle métier), de suppression, de clic et de fin de déplacement, boutons Annuler / Rétablir / Supprimer en commandes routées (grisés selon l'état), zoom lié à un curseur, `IFlowController` pour Cadrer et Centrer, et un indicateur `IsConnecting`.
 
-La **page d'accueil** (les cubes) est aussi pilotée par un ViewModel (`demo/HomeViewModel.cs`) : nodes et liens sont des collections, le viewport est lié en `TwoWay`, et c'est le ViewModel qui décide que couleur, forme et zoom n'agissent que si leur lien existe.
+La **page d'accueil** (les cubes) est aussi pilotée par un ViewModel (`demo/wpf/HomeViewModel.cs`) : nodes et liens sont des collections, le viewport est lié en `TwoWay`, et c'est le ViewModel qui décide que couleur, forme et zoom n'agissent que si leur lien existe.
 
 Suivant : [Personnaliser](14-customization.md).

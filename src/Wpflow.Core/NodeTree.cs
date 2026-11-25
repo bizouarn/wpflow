@@ -62,6 +62,22 @@ public static class NodeTree
         return result;
     }
 
+    /// <summary>Ancêtres d'un node (parent, grand-parent…), du plus proche au plus lointain ; un cycle est coupé.</summary>
+    public static List<string> Ancestors(string id, IEnumerable<Node> nodes)
+    {
+        var byId = new Dictionary<string, Node>();
+        foreach (var n in nodes) byId[n.Id] = n;
+        var result = new List<string>();
+        var seen = new HashSet<string> { id };
+        while (byId.TryGetValue(id, out var node) && node.ParentId is { } parent && seen.Add(parent))
+        {
+            result.Add(parent);
+            id = parent;
+        }
+
+        return result;
+    }
+
     /// <summary>Descendants d'un ensemble de nodes en un seul parcours (l'index parent → enfants n'est construit qu'une fois).</summary>
     public static HashSet<string> DescendantsOf(IEnumerable<string> ids, IEnumerable<Node> nodes)
     {

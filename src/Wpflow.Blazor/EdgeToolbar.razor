@@ -1,0 +1,33 @@
+@namespace Wpflow.Blazor
+
+@* Barre d'outils d'un edge : visible quand l'edge est sélectionné. À placer dans EdgeLabelTemplate ; elle se pose au point du label. *@
+@if (IsToolbarVisible ?? Edge?.Selected ?? false)
+{
+    <div class="wf-toolbar wf-toolbar-@(ToolbarPosition.ToString().ToLowerInvariant()) wf-toolbar-center nodrag nopan @Class"
+         style="@OffsetStyle" @onpointerdown:stopPropagation>@ChildContent</div>
+}
+
+@code {
+    [CascadingParameter(Name = "WfEdge")] private Edge? Edge { get; set; }
+
+    [Parameter] public Position ToolbarPosition { get; set; } = Position.Top;
+    [Parameter] public double Offset { get; set; } = 10;
+    [Parameter] public bool? IsToolbarVisible { get; set; }
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+    [Parameter] public string? Class { get; set; }
+
+    private string OffsetStyle
+    {
+        get
+        {
+            var o = FlowView.F(Offset);
+            return ToolbarPosition switch
+            {
+                Position.Top => $"bottom:calc(100% + {o}px);",
+                Position.Bottom => $"top:calc(100% + {o}px);",
+                Position.Left => $"right:calc(100% + {o}px);",
+                _ => $"left:calc(100% + {o}px);"
+            };
+        }
+    }
+}

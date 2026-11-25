@@ -36,10 +36,14 @@ jobs:
       - name: Tests WPF
         run: dotnet test tests/Wpflow.Wpf.Tests -c Release --no-build
 
+      - name: Tests Blazor
+        run: dotnet test tests/Wpflow.Blazor.Tests -c Release --no-build
+
       - name: Pack
         run: |
           dotnet pack src/Wpflow.Core -c Release --no-build -p:Version=${{ steps.version.outputs.value }} -o artifacts
           dotnet pack src/Wpflow.Wpf -c Release --no-build -p:Version=${{ steps.version.outputs.value }} -o artifacts
+          dotnet pack src/Wpflow.Blazor -c Release --no-build -p:Version=${{ steps.version.outputs.value }} -o artifacts
 
       # Échange le jeton OIDC contre une clé d'API NuGet valable une heure (politique « trusted publishing » du compte).
       - name: Connexion à nuget.org

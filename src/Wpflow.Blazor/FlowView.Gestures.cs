@@ -1,0 +1,665 @@
+using Microsoft.AspNetCore.Components;
+using Microsoft.AspNetCore.Components.Web;
+using Microsoft.JSInterop;
+
+namespace Wpflow.Blazor;
+
+/// <summary>Gestes de pointeur : pan, glisser, connexion, reconnexion, redimensionnement, rotation, rectangle de sélection.</summary>
+public partial class FlowView
+{
+    private enum Mode
+    {
+        None,
+        Pan,
+        DragNodes,
+        Connect,
+        Box,
+        Resize,
+        Rotate,
+        Reconnect
+    }
+
+    private Mode _mode;
+    private XYPosition _startPointer; // pixels, relatif au conteneur
+    private XYPosition _pointer;
+    private XYPosition _startFlow;
+    private Viewport _startViewport;
+    private double _threshold = 3;
+    private bool _moved;
+    private string? _pressedNode;
+    private string? _pressedEdge;
+    private bool _pressedMulti;
+    private bool _pressedWasSelected;
+    private Dictionary<string, XYPosition> _dragStart = new();
+    private (string NodeId, HandleInfo Handle)? _from;
+    private (string NodeId, HandleInfo Handle)? _candidate;
+    private bool _candidateValid;
+    private bool _clickMode;
+    private XYPosition _cursorFlow;
+    private XYPosition _boxEnd;
+    private ConnectStartEventArgs? _connectArgs;
+
+    private (string NodeId, ResizeDirection Direction, Rect Start, ResizeOptions Options)? _resize;
+    private (string NodeId, XYPosition Center, double Snap)? _rotate;
+    private (Edge Edge, HandleType Moving)? _reconnect;
+
+    // Drapeaux de l'appui en cours, posés par le pont JS (élément `nodrag`, `nopan`, contrôle HTML).
+    private bool _pressNoDrag, _pressNoPan, _pressUntracked;
+
+    private bool CanDrag => NodesDraggable && !IsLocked;
+    private bool CanConnect => NodesConnectable && !IsLocked;
+    private bool CanSelect => ElementsSelectable && !IsLocked;
+
+    private bool Held(string key, bool shift, bool ctrl, bool alt, bool meta) => key switch
+    {
+        "Shift" => shift,
+        "Control" or "Ctrl" => ctrl || meta,
+        "Meta" => meta,
+        "Alt" => alt,
+        "Space" => _space,
+        _ => false
+    };
+
+    [JSInvokable]
+    public Task OnPressInfo(int flags)
+    {
+        _pressNoDrag = (flags & 1) != 0;
+        _pressNoPan = (flags & 2) != 0;
+        _pressUntracked = (flags & 4) != 0;
+        return Task.CompletedTask;
+    }
+
+    private (bool NoDrag, bool NoPan, bool Untracked) BeginGesture(PointerEventArgs e)
+    {
+        var flags = (_pressNoDrag, _pressNoPan, _pressUntracked);
+        _pressNoDrag = _pressNoPan = _pressUntracked = false;
+        _startPointer = _pointer = Rel(e.ClientX, e.ClientY);
+        _startFlow = ScreenToFlow(_startPointer);
+        _startViewport = Viewport;
+        _moved = false;
+        _mode = Mode.None;
+        _pressedNode = _pressedEdge = null;
+        _pressedMulti = e.ShiftKey || Held(MultiSelectionKey, e.ShiftKey, e.CtrlKey, e.AltKey, e.MetaKey);
+        _pressedWasSelected = false;
+        _dragStart = new();
+        _resize = null;
+        _rotate = null;
+        _reconnect = null;
+        _threshold = 3;
+        if (!_clickMode)
+        {
+            _from = null;
+            _candidate = null;
+        }
+
+        return flags;
+    }
+
+    // ---------- Appuis (évènements Blazor) ----------
+
+    private async Task OnPanePointerDown(PointerEventArgs e)
+    {
+        var flags = BeginGesture(e);
+        if (_clickMode) await CancelClickConnect(e);
+        if (flags.Untracked) return;
+        var button = (int)e.Button;
+        var panKey = _space && PanActivationKey == "Space" || Held(PanActivationKey, e.ShiftKey, e.CtrlKey, e.AltKey, e.MetaKey);
+        var selKey = Held(SelectionKey, e.ShiftKey, e.CtrlKey, e.AltKey, e.MetaKey);
+        _threshold = PaneDragThreshold;
+        if (button == 0 && CanSelect && !panKey && !flags.NoPan && (SelectionOnDrag || selKey))
+        {
+            _mode = Mode.Box;
+            _boxEnd = _startPointer;
+            _boxBase = _pressedMulti ? Nodes.Where(x => x.Selected).Select(x => x.Id).ToHashSet() : new HashSet<string>();
+            if (AutoPanOnSelection) StartAutoPan();
+        }
+        else if (!flags.NoPan && (PanOnDrag && PanOnDragButtons.Contains(button) || panKey && button == 0))
+        {
+            _mode = Mode.Pan;
+        }
+    }
+
+    internal async Task OnNodePointerDown(Node n, PointerEventArgs e)
+    {
+        var flags = BeginGesture(e);
+        if (_clickMode) await CancelClickConnect(e);
+        var button = (int)e.Button;
+        var panKey = _space && PanActivationKey == "Space" || Held(PanActivationKey, e.ShiftKey, e.CtrlKey, e.AltKey, e.MetaKey);
+        if (!flags.Untracked && !flags.NoPan && (button == 1 || panKey && button == 0))
+        {
+            _threshold = PaneDragThreshold;
+            _mode = Mode.Pan;
+            return;
+        }
+
+        if (button != 0) return;
+        _pressedNode = n.Id;
+        _pressedWasSelected = n.Selected;
+
+        if (CanSelect && n.Selectable)
+        {
+            if (_pressedMulti)
+            {
+                await ApplyNodeChanges([new NodeSelectChange(n.Id, !n.Selected)]);
+                if (n.Selected) return; // désélectionné : pas de glissement
+            }
+            else if (!n.Selected && SelectNodesOnDrag)
+            {
+                await SelectOnly(n.Id, null);
+            }
+        }
+
+        if (flags.Untracked || flags.NoDrag || !CanDrag || !n.Draggable) return;
+        _dragStart = DragSelection.CollectStart(Nodes, CanDrag, CanSelect, SelectNodesOnDrag, n.Id);
+        // Mode contrôlé : la sélection demandée n'est pas encore appliquée, seul le node saisi suit le pointeur.
+        if (_dragStart.Count == 0) _dragStart[n.Id] = n.Position;
+        _mode = Mode.DragNodes;
+        _threshold = NodeDragThreshold;
+        if (AutoPanOnNodeDrag) StartAutoPan();
+    }
+
+    private async Task OnEdgePointerDown(Edge edge, PointerEventArgs e)
+    {
+        var flags = BeginGesture(e);
+        if (_clickMode) await CancelClickConnect(e);
+        if ((int)e.Button != 0) return;
+        _pressedEdge = edge.Id;
+
+        // Un appui près d'une extrémité d'un edge sélectionnable la déplace (reconnexion).
+        if (!flags.Untracked && EdgesReconnectable && CanConnect && edge.Reconnectable && _edgeContexts.TryGetValue(edge.Id, out var ctx))
+        {
+            var radius = ReconnectRadius / Viewport.Zoom;
+            var g = ctx.Geometry;
+            var moving = Distance(_startFlow, g.Source) <= radius ? HandleType.Source
+                : Distance(_startFlow, g.Target) <= radius ? HandleType.Target
+                : (HandleType?)null;
+            if (moving is { } m)
+            {
+                var fixedHandle = m == HandleType.Source
+                    ? FindHandle(edge.Target, edge.TargetHandle, HandleType.Target)
+                    : FindHandle(edge.Source, edge.SourceHandle, HandleType.Source);
+                if (fixedHandle != null)
+                {
+                    _reconnect = (edge, m);
+                    _from = (m == HandleType.Source ? edge.Target : edge.Source, fixedHandle);
+                    _cursorFlow = _startFlow;
+                    _mode = Mode.Reconnect;
+                    _threshold = ConnectionDragThreshold;
+                    if (AutoPanOnConnect) StartAutoPan();
+                    await OnReconnectStart.InvokeAsync(edge);
+                    return;
+                }
+            }
+        }
+
+        if (!CanSelect || !edge.Selectable) return;
+        if (_pressedMulti) await ApplyEdgeChanges([new EdgeSelectChange(edge.Id, !edge.Selected)]);
+        else await SelectOnly(null, edge.Id);
+    }
+
+    private static double Distance(XYPosition a, XYPosition b) => Math.Sqrt((a.X - b.X) * (a.X - b.X) + (a.Y - b.Y) * (a.Y - b.Y));
+
+    internal async Task StartConnect(string nodeId, HandleInfo handle, PointerEventArgs e)
+    {
+        var wasClick = _clickMode;
+        var previous = _from;
+        BeginGesture(e);
+        if ((int)e.Button != 0 || !CanConnect || !handle.Connectable) return;
+        if (_nodeIndex.TryGetValue(nodeId, out var n) && !n.Connectable) return;
+
+        // Deuxième clic de la connexion par clics : le handle cliqué est la cible.
+        if (wasClick && previous is { } from)
+        {
+            _from = from;
+            _cursorFlow = _startFlow;
+            _candidate = FindCandidate(_startFlow);
+            await FinishConnect(e, true);
+            return;
+        }
+
+        if (!handle.ConnectableStart || Extras(nodeId, handle.Id, handle.Type) is { ConnectableStart: false }) return;
+        _from = (nodeId, handle);
+        _cursorFlow = _startFlow;
+        _mode = Mode.Connect;
+        _threshold = ConnectionDragThreshold;
+        _connectArgs = new ConnectStartEventArgs(nodeId, handle.Id, handle.Type);
+        if (AutoPanOnConnect) StartAutoPan();
+        await OnConnectStart.InvokeAsync(_connectArgs);
+    }
+
+    internal void StartResize(string nodeId, ResizeDirection direction, ResizeOptions options, PointerEventArgs e)
+    {
+        BeginGesture(e);
+        if ((int)e.Button != 0 || IsLocked || !_nodeIndex.TryGetValue(nodeId, out var n) || n.Width is not { } w || n.Height is not { } h) return;
+        _resize = (nodeId, direction, new Rect(n.Position.X, n.Position.Y, n.FixedWidth ?? w, n.FixedHeight ?? h), options);
+        _mode = Mode.Resize;
+        _threshold = 0;
+        PushHistory();
+        _ = ApplyNodeChanges([new NodeInteractionChange(nodeId, Resizing: true)]);
+        options.Started?.Invoke(new ResizeInfo(nodeId, direction, _resize.Value.Start, _resize.Value.Start));
+    }
+
+    internal void StartRotate(string nodeId, double snap, PointerEventArgs e)
+    {
+        BeginGesture(e);
+        if ((int)e.Button != 0 || IsLocked || !_nodeIndex.TryGetValue(nodeId, out var n) || n.Width is not { } w || n.Height is not { } h) return;
+        var p = _abs[nodeId];
+        var center = new XYPosition(p.X + w / 2, p.Y + h / 2);
+        _rotate = (nodeId, center, snap);
+        _mode = Mode.Rotate;
+        _threshold = 0;
+        PushHistory();
+    }
+
+    // ---------- Suivi du pointeur (appelé par le pont JS) ----------
+
+    [JSInvokable]
+    public Task OnPointerMove(double clientX, double clientY, bool shift, bool ctrl) => InvokeAsync(async () =>
+    {
+        _pointer = Rel(clientX, clientY);
+        if (_mode == Mode.None) return;
+        var dx = _pointer.X - _startPointer.X;
+        var dy = _pointer.Y - _startPointer.Y;
+        var first = false;
+        if (!_moved)
+        {
+            if (Math.Sqrt(dx * dx + dy * dy) <= _threshold) return;
+            _moved = true;
+            first = true;
+        }
+
+        await ApplyGesture(first, shift);
+    });
+
+    private async Task ApplyGesture(bool first, bool shift = false)
+    {
+        var flow = ScreenToFlow(_pointer);
+        switch (_mode)
+        {
+            case Mode.Pan:
+                if (first) await OnMoveStart.InvokeAsync(Viewport);
+                await SetViewport(new Viewport(_startViewport.X + _pointer.X - _startPointer.X,
+                    _startViewport.Y + _pointer.Y - _startPointer.Y, _startViewport.Zoom));
+                break;
+            case Mode.DragNodes:
+                await DragTo(flow.X - _startFlow.X, flow.Y - _startFlow.Y, first);
+                break;
+            case Mode.Connect:
+            case Mode.Reconnect:
+                _cursorFlow = flow;
+                _candidate = FindCandidate(flow);
+                StateHasChanged();
+                break;
+            case Mode.Box:
+                if (first) await OnSelectionStart.InvokeAsync();
+                _boxEnd = _pointer;
+                UpdateBoxSelection();
+                StateHasChanged();
+                break;
+            case Mode.Resize:
+                await ResizeTo(flow.X - _startFlow.X, flow.Y - _startFlow.Y);
+                break;
+            case Mode.Rotate:
+                await RotateTo(flow, shift);
+                break;
+        }
+    }
+
+    [JSInvokable]
+    public Task OnPointerUp(double clientX, double clientY, bool shift, bool cancelled) => InvokeAsync(async () =>
+    {
+        _pointer = Rel(clientX, clientY);
+        var mode = _mode;
+        _mode = Mode.None;
+        StopAutoPan();
+        var pointer = MakePointer(_pointer, shift);
+        switch (mode)
+        {
+            case Mode.Pan when _moved:
+                await OnMoveEnd.InvokeAsync(Viewport);
+                break;
+            case Mode.DragNodes when _moved:
+                await FinishDrag(pointer);
+                break;
+            case Mode.Connect when !cancelled:
+                if (_moved || !ConnectOnClick) await FinishConnect(null, false);
+                else await BeginClickConnect();
+                break;
+            case Mode.Reconnect when !cancelled:
+                await FinishReconnect();
+                break;
+            case Mode.Box when _moved:
+                await OnSelectionEnd.InvokeAsync();
+                break;
+            case Mode.Resize:
+                await FinishResize();
+                break;
+            case Mode.Rotate:
+                await ApplyNodeChanges(_rotate is { } r ? [new NodeInteractionChange(r.NodeId, Resizing: false)] : []);
+                break;
+        }
+
+        if (!_moved && !cancelled && mode != Mode.Resize && mode != Mode.Rotate) await HandleClick(mode, pointer, shift);
+
+        if (!_clickMode)
+        {
+            _from = null;
+            _candidate = null;
+        }
+
+        _dragStart = new();
+        _pressedNode = _pressedEdge = null;
+        _resize = null;
+        _rotate = null;
+        _reconnect = null;
+        _moved = false;
+        StateHasChanged();
+    });
+
+    private async Task HandleClick(Mode mode, FlowPointer pointer, bool shift)
+    {
+        if (_pressedNode != null && _nodeIndex.TryGetValue(_pressedNode, out var n))
+        {
+            if (CanSelect && n.Selectable && !_pressedMulti)
+            {
+                // Clic simple : ne garde que ce node (aussi dans une sélection multiple).
+                if (!n.Selected || Nodes.Count(x => x.Selected) > 1 || Edges.Any(x => x.Selected)) await SelectOnly(n.Id, null);
+            }
+
+            await OnNodeClick.InvokeAsync(new NodeEventArgs(_nodeIndex[n.Id], pointer));
+        }
+        else if (_pressedEdge != null)
+        {
+            var edge = Edges.FirstOrDefault(x => x.Id == _pressedEdge);
+            if (edge != null) await OnEdgeClick.InvokeAsync(new EdgeEventArgs(edge, pointer));
+        }
+        else if (mode is Mode.Pan or Mode.None or Mode.Box)
+        {
+            if (!_pressedMulti && !(_clickMode && mode == Mode.None)) await ClearSelection();
+            await OnPaneClick.InvokeAsync(new PaneEventArgs(pointer));
+        }
+    }
+
+    // ---------- Glisser ----------
+
+    private IReadOnlyList<Node> DraggedNodes() => _dragStart.Keys.Select(id => _nodeIndex[id]).ToList();
+
+    private async Task DragTo(double dx, double dy, bool first)
+    {
+        if (first)
+        {
+            PushHistory();
+            var start = DraggedNodes();
+            var args = new NodeDragEventArgs(_nodeIndex[_pressedNode ?? start[0].Id], start, MakePointer(_pointer));
+            await OnNodeDragStart.InvokeAsync(args);
+            if (start.Count > 1) await OnSelectionDragStart.InvokeAsync(args);
+            // Un node glissé sans sélection préalable (SelectNodesOnDrag faux) reste non sélectionné.
+        }
+
+        var changes = new List<NodeChange>();
+        foreach (var (id, start) in _dragStart)
+        {
+            if (first) changes.Add(new NodeInteractionChange(id, true));
+            var pos = new XYPosition(start.X + dx, start.Y + dy);
+            if (SnapGrid is { } g and > 0) pos = ViewportMath.SnapPosition(pos, g, g);
+            pos = ConstrainPosition(_nodeIndex[id], pos);
+            changes.Add(new NodePositionChange(id, pos));
+        }
+
+        await ApplyNodeChanges(changes);
+        var moved = DraggedNodes();
+        var drag = new NodeDragEventArgs(_nodeIndex[_pressedNode ?? moved[0].Id], moved, MakePointer(_pointer));
+        await OnNodeDrag.InvokeAsync(drag);
+        if (moved.Count > 1) await OnSelectionDrag.InvokeAsync(drag);
+    }
+
+    /// <summary>Applique <c>Node.Extent</c>, <c>ExtentParent</c> et <see cref="NodeExtent" /> à une position stockée.</summary>
+    private XYPosition ConstrainPosition(Node n, XYPosition pos) =>
+        NodeConstraints.Constrain(n, pos, n.ParentId != null ? _absNodes.GetValueOrDefault(n.ParentId) : null, NodeExtent, NodeOrigin);
+
+    private async Task FinishDrag(FlowPointer pointer)
+    {
+        var nodes = DraggedNodes();
+        await ApplyNodeChanges(_dragStart.Keys.Select(id => (NodeChange)new NodeInteractionChange(id, false)).ToList());
+        var final = _dragStart.Keys.Select(id => _nodeIndex[id]).ToList();
+        var args = new NodeDragEventArgs(_nodeIndex[_pressedNode ?? nodes[0].Id], final, pointer);
+        await OnNodeDragStop.InvokeAsync(args);
+        if (final.Count > 1) await OnSelectionDragStop.InvokeAsync(args);
+        // Sans sélection au départ (SelectNodesOnDrag faux), le node glissé n'est pas sélectionné : rien à faire.
+    }
+
+    // ---------- Redimensionner, pivoter ----------
+
+    private async Task ResizeTo(double dx, double dy)
+    {
+        if (_resize is not { } r) return;
+        var o = r.Options;
+        var rect = NodeResize.Resize(r.Direction, r.Start, dx, dy, o.MinWidth, o.MinHeight, o.MaxWidth, o.MaxHeight, o.KeepAspectRatio);
+        if (o.ShouldResize?.Invoke(r.Direction, rect) == false) return;
+        var movesOrigin = Math.Abs(rect.X - r.Start.X) > 0.001 || Math.Abs(rect.Y - r.Start.Y) > 0.001;
+        await ApplyNodeChanges([new NodeResizeChange(r.NodeId, rect.Width, rect.Height, movesOrigin ? new XYPosition(rect.X, rect.Y) : null)]);
+        o.Resizing?.Invoke(new ResizeInfo(r.NodeId, r.Direction, r.Start, rect));
+    }
+
+    private async Task FinishResize()
+    {
+        if (_resize is not { } r) return;
+        await ApplyNodeChanges([new NodeInteractionChange(r.NodeId, Resizing: false)]);
+        var n = _nodeIndex[r.NodeId];
+        var current = new Rect(n.Position.X, n.Position.Y, n.FixedWidth ?? n.Width ?? r.Start.Width, n.FixedHeight ?? n.Height ?? r.Start.Height);
+        r.Options.Ended?.Invoke(new ResizeInfo(r.NodeId, r.Direction, r.Start, current));
+    }
+
+    private async Task RotateTo(XYPosition flow, bool shift)
+    {
+        if (_rotate is not { } r || !_nodeIndex.TryGetValue(r.NodeId, out var n)) return;
+        var angle = NodeRotation.Resolve(NodeRotation.AngleTo(r.Center, flow), shift, r.Snap);
+        await ApplyNodeChanges([new NodeReplaceChange(n.Id, n with { Rotation = Math.Round(angle, 2) })]);
+    }
+
+    // ---------- Connexion ----------
+
+    private (string NodeId, HandleInfo Handle)? FindCandidate(XYPosition flow)
+    {
+        _candidateValid = false;
+        if (_from is not { } from) return null;
+        var hit = ConnectionSearch.FindCandidate(new HandleRef(from.NodeId, from.Handle), flow, ConnectionRadius / Viewport.Zoom, ConnectionMode,
+            _handles, id => _absNodes.GetValueOrDefault(id));
+        if (hit == null) return null;
+        var target = (hit.NodeId, hit.Info);
+        _candidateValid = TryBuild(from, target) != null;
+        return target;
+    }
+
+    /// <summary>La connexion de <paramref name="from" /> vers <paramref name="to" />, ou <c>null</c> si elle est refusée (doublon, validateurs).</summary>
+    private Connection? TryBuild((string NodeId, HandleInfo Handle) from, (string NodeId, HandleInfo Handle) to) =>
+        ConnectionSearch.Validate(new HandleRef(from.NodeId, from.Handle), new HandleRef(to.NodeId, to.Handle), Edges, _reconnect?.Edge.Id,
+            IsValidConnection, out var c)
+            ? c
+            : null;
+
+    private Edge NewEdge(Connection c)
+    {
+        var id = GraphQueries.ConnectionId(c.Source, c.SourceHandle, c.Target, c.TargetHandle);
+        var edge = new Edge(id, c.Source, c.Target, c.SourceHandle, c.TargetHandle, DefaultEdgeType);
+        return DefaultEdgeOptions?.Invoke(edge) ?? edge;
+    }
+
+    private async Task FinishConnect(PointerEventArgs? e, bool clickMode)
+    {
+        var from = _from;
+        var candidate = _candidate;
+        var args = _connectArgs ?? (from is { } f ? new ConnectStartEventArgs(f.NodeId, f.Handle.Id, f.Handle.Type) : null);
+        Connection? connection = null;
+        if (from is { } fr && candidate is { } to) connection = TryBuild(fr, to);
+
+        var wasClick = _clickMode;
+        _clickMode = false;
+        _from = null;
+        _candidate = null;
+        if (connection != null)
+        {
+            await OnConnect.InvokeAsync(connection);
+            if (from is { } cf) await (Extras(cf.NodeId, cf.Handle.Id, cf.Handle.Type)?.Connected.InvokeAsync(connection) ?? Task.CompletedTask);
+            if (candidate is { } ct) await (Extras(ct.NodeId, ct.Handle.Id, ct.Handle.Type)?.Connected.InvokeAsync(connection) ?? Task.CompletedTask);
+            if (AutoConnect)
+            {
+                PushHistory();
+                await ApplyEdgeChanges([new EdgeAddChange(NewEdge(connection))]);
+            }
+        }
+
+        if (args != null)
+        {
+            var end = new ConnectEndEventArgs(args, connection, connection != null, MakePointer(_pointer));
+            await (wasClick ? OnClickConnectEnd : OnConnectEnd).InvokeAsync(end);
+        }
+
+        _connectArgs = null;
+    }
+
+    private async Task BeginClickConnect()
+    {
+        if (_from is not { } f) return;
+        _clickMode = true;
+        await OnClickConnectStart.InvokeAsync(new ConnectStartEventArgs(f.NodeId, f.Handle.Id, f.Handle.Type));
+    }
+
+    private async Task CancelClickConnect(PointerEventArgs? e = null)
+    {
+        if (!_clickMode) return;
+        var args = _from is { } f ? new ConnectStartEventArgs(f.NodeId, f.Handle.Id, f.Handle.Type) : null;
+        _clickMode = false;
+        _from = null;
+        _candidate = null;
+        _connectArgs = null;
+        if (args != null) await OnClickConnectEnd.InvokeAsync(new ConnectEndEventArgs(args, null, false, MakePointer(_pointer)));
+        StateHasChanged();
+    }
+
+    /// <summary>Mouvement sans bouton enfoncé : fait suivre le fil de la connexion par clics.</summary>
+    private Task OnHoverMove(PointerEventArgs e)
+    {
+        _pointer = Rel(e.ClientX, e.ClientY);
+        if (_clickMode)
+        {
+            _cursorFlow = ScreenToFlow(_pointer);
+            _candidate = FindCandidate(_cursorFlow);
+        }
+
+        return OnPaneMouseMove.InvokeAsync(new PaneEventArgs(MakePointer(e)));
+    }
+
+    private EventCallback<PointerEventArgs> HoverMoveHandler => _clickMode || OnPaneMouseMove.HasDelegate ? Cb(OnHoverMove) : default;
+
+    private async Task FinishReconnect()
+    {
+        if (_reconnect is not { } r || _from is not { } from)
+        {
+            return;
+        }
+
+        Connection? connection = null;
+        if (_candidate is { } to && TryBuild(from, to) is { } built)
+        {
+            connection = built;
+            var list = GraphQueries.ReconnectEdge(r.Edge, connection, Edges, shouldReplaceId: false);
+            if (!ReferenceEquals(list, Edges))
+            {
+                var updated = list.First(e => e.Id == r.Edge.Id);
+                PushHistory();
+                await ApplyEdgeChanges([new EdgeReplaceChange(r.Edge.Id, updated)]);
+                await OnReconnect.InvokeAsync(new ReconnectEventArgs(r.Edge, connection));
+            }
+            else connection = null;
+        }
+
+        _from = null;
+        _candidate = null;
+        await OnReconnectEnd.InvokeAsync(new ReconnectEndEventArgs(r.Edge, r.Moving, connection));
+    }
+
+    /// <summary>Chemin du fil de connexion en cours (coordonnées flow), ou <c>null</c> s'il n'y en a pas.</summary>
+    private string? ConnectionPath()
+    {
+        if (_from is not { } from || !(_mode is Mode.Connect or Mode.Reconnect && _moved || _clickMode)) return null;
+        if (!_nodeIndex.TryGetValue(from.NodeId, out var n)) return null;
+        var start = GraphUtils.GetHandlePosition(n with { Position = _abs[n.Id] }, from.Handle.Position, from.Handle);
+        var endPos = _candidate is { } c ? c.Handle.Position : Opposite(from.Handle.Position);
+        var end = _cursorFlow;
+        if (_candidate is { } cand && _nodeIndex.TryGetValue(cand.NodeId, out var cn))
+            end = GraphUtils.GetHandlePosition(cn with { Position = _abs[cn.Id] }, cand.Handle.Position, cand.Handle);
+        var type = ConnectionLineType switch
+        {
+            ConnectionLineType.Straight => "straight",
+            ConnectionLineType.Step => "step",
+            ConnectionLineType.SmoothStep => "smoothstep",
+            ConnectionLineType.SimpleBezier => "simplebezier",
+            _ => "default"
+        };
+        var geometry = new EdgeGeometry(start, from.Handle.Position, end, endPos);
+        return EdgePathProviders.ForType(type).GetPath(geometry).Path;
+    }
+
+    private ConnectionState CurrentConnectionState()
+    {
+        var inProgress = _from != null && (_mode is Mode.Connect or Mode.Reconnect && _moved || _clickMode);
+        return new ConnectionState(inProgress, _from?.NodeId, _from?.Handle.Id, _from?.Handle.Type,
+            _candidate?.NodeId, _candidate?.Handle.Id, _candidate != null && _candidateValid, _cursorFlow, inProgress ? ConnectionPath() : null);
+    }
+
+    private static Position Opposite(Position p) => p switch
+    {
+        Position.Left => Position.Right,
+        Position.Right => Position.Left,
+        Position.Top => Position.Bottom,
+        _ => Position.Top
+    };
+
+    // ---------- Rectangle de sélection ----------
+
+    private string BoxStyle()
+    {
+        var origin = FlowToScreen(_startFlow); // le point de départ suit le fond quand la vue défile
+        var x = Math.Min(origin.X, _boxEnd.X);
+        var y = Math.Min(origin.Y, _boxEnd.Y);
+        return $"left:{F(x)}px;top:{F(y)}px;width:{F(Math.Abs(_boxEnd.X - origin.X))}px;height:{F(Math.Abs(_boxEnd.Y - origin.Y))}px;";
+    }
+
+    private void UpdateBoxSelection()
+    {
+        var area = SelectionOps.Area(_startFlow, ScreenToFlow(_boxEnd));
+        var (picked, pickedEdges) = SelectionOps.Box(area, _absNodes.Values, Edges, SelectionMode);
+        if (_pressedMulti) picked.UnionWith(_boxBase);
+        var (nodeChanges, edgeChanges) = SelectionOps.Select(Nodes, Edges, picked, pickedEdges, false, CanSelect);
+        if (nodeChanges.Count > 0) _ = ApplyNodeChanges(nodeChanges);
+        if (edgeChanges.Count > 0) _ = ApplyEdgeChanges(edgeChanges);
+    }
+
+    private HashSet<string> _boxBase = new();
+
+    // ---------- Défilement automatique près des bords ----------
+
+    private Timer? _autoPanTimer;
+
+    private void StartAutoPan()
+    {
+        if (_autoPanTimer != null) return;
+        _autoPanTimer = new Timer(_ => _ = InvokeAsync(AutoPanTick), null, 30, 16);
+    }
+
+    private void StopAutoPan()
+    {
+        _autoPanTimer?.Dispose();
+        _autoPanTimer = null;
+    }
+
+    private async Task AutoPanTick()
+    {
+        if (_mode == Mode.None || !_moved || _width <= 0) return;
+        var (dx, dy) = AutoPan.Delta(_pointer.X, _pointer.Y, _width, _height, AutoPanSpeed);
+        if (dx == 0 && dy == 0) return;
+        await SetViewport(ViewportMath.PanBy(Viewport, dx, dy));
+        if (_mode == Mode.DragNodes || _mode == Mode.Connect || _mode == Mode.Reconnect || _mode == Mode.Box) await ApplyGesture(false);
+    }
+}

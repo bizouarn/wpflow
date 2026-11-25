@@ -294,13 +294,6 @@ public sealed class NodeResizer : Grid
     }
 }
 
-/// <summary>Apparence de <see cref="NodeResizer" />.</summary>
-public enum ResizerVariant
-{
-    Handle,
-    Line
-}
-
 /// <summary>Un redimensionnement : début, en cours ou terminé (<c>onResizeStart</c>, <c>onResize</c>, <c>onResizeEnd</c>).</summary>
 public sealed class NodeResizeEventArgs(string nodeId, ResizeDirection direction, Core.Rect startRect, Core.Rect rect) : EventArgs
 {    public string NodeId { get; } = nodeId;    public ResizeDirection Direction { get; } = direction;    public Core.Rect StartRect { get; } = startRect;    public Core.Rect Rect { get; } = rect;}

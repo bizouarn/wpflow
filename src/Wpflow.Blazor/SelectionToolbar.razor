@@ -1,0 +1,49 @@
+@namespace Wpflow.Blazor
+@implements IDisposable
+
+@* Barre d'outils d'une sélection multiple : apparaît au-dessus du rectangle englobant les nodes sélectionnés. À placer dans le calque de FlowView. *@
+@if (Flow != null && Visible(out var bounds))
+{
+    <div class="wf-selection-toolbar nodrag nopan @Class"
+         style="left:@(FlowView.F(bounds.X + bounds.Width / 2))px;top:@(FlowView.F(bounds.Y - Offset))px" @onpointerdown:stopPropagation>@ChildContent</div>
+}
+
+@code {
+    [CascadingParameter] private FlowView? Flow { get; set; }
+
+    /// <summary>Nombre minimal de nodes sélectionnés pour l'afficher.</summary>
+    [Parameter] public int MinSelected { get; set; } = 2;
+
+    [Parameter] public double Offset { get; set; } = 10;
+
+    /// <summary>Avec une liste, la barre suit ces nodes et s'affiche dès que l'un d'eux est sélectionné.</summary>
+    [Parameter] public IReadOnlyList<string>? NodeIds { get; set; }
+
+    /// <summary>Force la visibilité.</summary>
+    [Parameter] public bool? IsToolbarVisible { get; set; }
+
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+    [Parameter] public string? Class { get; set; }
+
+    protected override void OnInitialized()
+    {
+        if (Flow != null) Flow.Rendered += Refresh;
+    }
+
+    private void Refresh() => _ = InvokeAsync(StateHasChanged);
+
+    public void Dispose()
+    {
+        if (Flow != null) Flow.Rendered -= Refresh;
+    }
+
+    private bool Visible(out Rect bounds)
+    {
+        bounds = default;
+        if (Flow!.SelectionScreenBounds(NodeIds) is not { } b) return false;
+        bounds = b;
+        if (IsToolbarVisible is { } forced) return forced;
+        var count = Flow.SelectedNodes.Count(n => NodeIds == null || NodeIds.Contains(n.Id));
+        return NodeIds != null ? count > 0 : count >= MinSelected;
+    }
+}

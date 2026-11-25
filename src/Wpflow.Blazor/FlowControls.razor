@@ -1,0 +1,91 @@
+@namespace Wpflow.Blazor
+@implements IDisposable
+
+@* Boutons zoom +, zoom −, cadrage et verrou. Placé en bas à gauche par défaut. *@
+<div class="wf-panel wf-controls wf-panel-@(PanelPosition.ToString().ToLowerInvariant()) @(Horizontal ? "wf-controls-horizontal" : "") nopan nodrag @Class">
+    @if (ShowZoom)
+    {
+        <button type="button" title="Zoom avant" aria-label="Zoom avant" @onclick="ZoomIn">+</button>
+        <button type="button" title="Zoom arrière" aria-label="Zoom arrière" @onclick="ZoomOut">−</button>
+    }
+    @if (ShowFitView)
+    {
+        <button type="button" title="Cadrer" aria-label="Cadrer la vue" @onclick="Fit">⤢</button>
+    }
+    @if (ShowInteractive)
+    {
+        <button type="button" title="@(Locked ? "Déverrouiller" : "Verrouiller")" aria-label="@(Locked ? "Déverrouiller" : "Verrouiller")"
+                aria-pressed="@(Locked ? "true" : "false")" class="@(Locked ? "wf-active" : "")" @onclick="ToggleLock">@(Locked ? "🔒" : "🔓")</button>
+    }
+    @ExtraContent
+</div>
+
+@code {
+    [CascadingParameter] private FlowView? Flow { get; set; }
+
+    [Parameter] public bool ShowZoom { get; set; } = true;
+    [Parameter] public bool ShowFitView { get; set; } = true;
+
+    /// <summary>Affiche le bouton de verrou (<c>showInteractive</c>).</summary>
+    [Parameter] public bool ShowInteractive { get; set; } = true;
+
+    [Parameter] public bool Horizontal { get; set; }
+    [Parameter] public PanelPosition PanelPosition { get; set; } = PanelPosition.BottomLeft;
+
+    /// <summary>Boutons supplémentaires (<c>&lt;ControlButton&gt;</c>), après le verrou.</summary>
+    [Parameter] public RenderFragment? ExtraContent { get; set; }
+
+    /// <summary>Durée des transitions de zoom et de cadrage.</summary>
+    [Parameter] public TimeSpan AnimationDuration { get; set; }
+
+    /// <summary>Options du bouton de cadrage (sinon celles de la vue).</summary>
+    [Parameter] public FitViewOptions? FitViewOptions { get; set; }
+
+    [Parameter] public EventCallback OnZoomIn { get; set; }
+    [Parameter] public EventCallback OnZoomOut { get; set; }
+    [Parameter] public EventCallback OnFitView { get; set; }
+
+    /// <summary>Le verrou a changé : vrai = déverrouillé (<c>onInteractiveChange</c>).</summary>
+    [Parameter] public EventCallback<bool> OnInteractiveChange { get; set; }
+
+    [Parameter] public string? Class { get; set; }
+
+    private bool Locked => Flow?.IsLocked ?? false;
+
+    protected override void OnInitialized()
+    {
+        if (Flow != null) Flow.Rendered += Refresh;
+    }
+
+    private void Refresh() => _ = InvokeAsync(StateHasChanged);
+
+    public void Dispose()
+    {
+        if (Flow != null) Flow.Rendered -= Refresh;
+    }
+
+    private async Task ZoomIn()
+    {
+        if (Flow != null) await Flow.ZoomIn(AnimationDuration);
+        await OnZoomIn.InvokeAsync();
+    }
+
+    private async Task ZoomOut()
+    {
+        if (Flow != null) await Flow.ZoomOut(AnimationDuration);
+        await OnZoomOut.InvokeAsync();
+    }
+
+    private async Task Fit()
+    {
+        if (Flow != null) await Flow.FitView((FitViewOptions ?? Flow.FitViewOptions ?? new FitViewOptions(Flow.FitViewPadding)) with { Duration = AnimationDuration });
+        await OnFitView.InvokeAsync();
+    }
+
+    private async Task ToggleLock()
+    {
+        if (Flow == null) return;
+        await Flow.SetLocked(!Flow.IsLocked);
+        await OnInteractiveChange.InvokeAsync(!Flow.IsLocked);
+    }
+}

@@ -1,0 +1,19 @@
+@namespace Wpflow.Blazor
+
+@* Rend son contenu seulement quand la révision change : un pas de pan ne modifie que la transformation du calque. *@
+@ChildContent
+
+@code {
+    private int _rendered = -1;
+
+    [Parameter] public int Revision { get; set; }
+
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+
+    protected override bool ShouldRender()
+    {
+        if (_rendered == Revision) return false;
+        _rendered = Revision;
+        return true;
+    }
+}

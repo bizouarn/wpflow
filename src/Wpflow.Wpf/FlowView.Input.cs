@@ -336,7 +336,7 @@ public partial class FlowView
             foreach (var id in moved)
             {
                 if (RawNode(id) is not { ExpandParent: true } child || child.ParentId != parentId) continue;
-                var shift = OriginOffset(child);
+                var shift = NodeConstraints.OriginOffset(child, NodeOrigin);
                 var (x, y) = (child.Position.X - shift.X, child.Position.Y - shift.Y);
                 minX = Math.Min(minX, x);
                 minY = Math.Min(minY, y);
@@ -458,24 +458,21 @@ public partial class FlowView
         if (host == null && edgeId == null) PaneScroll?.Invoke(this, e);
 
         var p = e.GetPosition(this);
-        if (PanOnScroll && !Has(ZoomActivationKey))
+        var wheel = WheelInput.Resolve(0, -e.Delta, Has(ZoomActivationKey), Keyboard.Modifiers.HasFlag(ModifierKeys.Shift), ZoomOnScroll,
+            PanOnScroll, PanOnScrollSpeed, PanOnScrollMode, PreventScrolling);
+        switch (wheel.Kind)
         {
-            var step = e.Delta * PanOnScrollSpeed;
-            // Maj + molette : défilement horizontal, comme dans la plupart des applications.
-            var horizontal = PanOnScrollMode == PanOnScrollMode.Horizontal || (PanOnScrollMode == PanOnScrollMode.Free && Keyboard.Modifiers.HasFlag(ModifierKeys.Shift));
-            var (dx, dy) = horizontal ? (step, 0.0) : (0.0, step);
-            if (PanOnScrollMode == PanOnScrollMode.Vertical) dx = 0;
-            MarkWheelMove();
-            Viewport = ViewportMath.PanBy(Viewport, dx, dy);
-            e.Handled = PreventScrolling;
+            case WheelKind.Pan:
+                MarkWheelMove();
+                Viewport = ViewportMath.PanBy(Viewport, wheel.PanX, wheel.PanY);
+                break;
+            case WheelKind.Zoom:
+                MarkWheelMove();
+                Viewport = ViewportMath.ZoomAt(Viewport, new XYPosition(p.X, p.Y), Viewport.Zoom * wheel.ZoomFactor, MinZoom, MaxZoom);
+                break;
         }
-        else if (ZoomOnScroll || Has(ZoomActivationKey))
-        {
-            MarkWheelMove();
-            var factor = ViewportMath.WheelZoomFactor(-e.Delta);
-            Viewport = ViewportMath.ZoomAt(Viewport, new XYPosition(p.X, p.Y), Viewport.Zoom * factor, MinZoom, MaxZoom);
-            e.Handled = PreventScrolling;
-        }
+
+        e.Handled = wheel.Handled;
     }
 
     // Une rafale de crans de molette forme un seul mouvement : début au premier, fin 150 ms après le dernier.
@@ -581,14 +578,13 @@ public partial class FlowView
     private void MoveSelectionByKeyboard(Key key, bool shift)
     {
         if (IsLocked) return;
-        var step = shift ? 20.0 : 5.0;
-        var (dx, dy) = key switch
+        var (dx, dy) = KeyboardMove.Delta(key switch
         {
-            Key.Left => (-step, 0.0),
-            Key.Right => (step, 0.0),
-            Key.Up => (0.0, -step),
-            _ => (0.0, step)
-        };
+            Key.Left => KeyboardMove.Arrow.Left,
+            Key.Right => KeyboardMove.Arrow.Right,
+            Key.Up => KeyboardMove.Arrow.Up,
+            _ => KeyboardMove.Arrow.Down
+        }, shift);
 
         var start = CollectDragStart();
         if (start.Count == 0) return;

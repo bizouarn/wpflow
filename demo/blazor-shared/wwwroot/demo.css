@@ -1,0 +1,13 @@
+html, body { margin: 0; height: 100%; font-family: system-ui, sans-serif; }
+.demo { position: fixed; inset: 0; }
+.demo-card { padding: 8px 12px; text-align: center; }
+.demo-toolbar { position: absolute; z-index: 6; top: 0; left: 0; margin: 12px; display: flex; gap: 8px; }
+.demo-toolbar button { padding: 4px 10px; cursor: pointer; }
+.demo-toolbar span { align-self: center; font-size: 12px; color: var(--wf-node-text); }
+.demo-slider { width: 160px; }
+.demo-resizable { position: relative; width: 100%; height: 100%; min-width: 120px; min-height: 60px; box-sizing: border-box; padding: 8px; background: var(--wf-node-bg); color: var(--wf-node-text); border: 1px solid var(--wf-node-border); }
+.demo-toolbar { display: flex; flex-wrap: wrap; gap: 6px; max-width: 70vw; }
+.demo-toolbar span { flex-basis: 100%; }
+.demo-grip-node { width: 170px; background: var(--wf-node-bg); color: var(--wf-node-text); border: 1px solid var(--wf-node-border); font-size: 12px; }
+.demo-grip-node .grip { padding: 4px 8px; background: var(--wf-node-border); color: var(--wf-node-bg); cursor: grab; }
+.demo-grip-node .body { padding: 8px; }

@@ -130,31 +130,13 @@ public partial class FlowView
     }
 
     /// <summary>Handle accepté le plus proche de la souris (dans <see cref="ConnectionRadius" />), ou <c>null</c>.</summary>
-    private HandleRef? FindCandidate(HandleRef from, XYPosition mouseFlow)
-    {
-        var candidates = _handleMap
-            .Where(kv => kv.Key != from.NodeId && _nodeIndex.TryGetValue(kv.Key, out var n) && n.Connectable && !n.Hidden)
-            .SelectMany(kv => kv.Value
-                .Where(h => h is { Connectable: true, ConnectableEnd: true }
-                            && Connections.AreTypesCompatible(from.Info.Type, h.Type, ConnectionMode))
-                .Select(h => (Handle: new HandleRef(kv.Key, h), Position: GraphUtils.GetHandleCenter(_nodeIndex[kv.Key], h))))
-            // À distance égale on préfère le handle de type opposé (comme xyflow).
-            .OrderBy(c => c.Handle.Info.Type == from.Info.Type ? 1 : 0)
-            .ToList();
-        return GraphUtils.GetClosestHandle(mouseFlow, ConnectionRadius, candidates);
-    }
+    private HandleRef? FindCandidate(HandleRef from, XYPosition mouseFlow) =>
+        ConnectionSearch.FindCandidate(from, mouseFlow, ConnectionRadius, ConnectionMode,
+            _handleMap, id => _nodeIndex.GetValueOrDefault(id));
 
     /// <summary>La connexion est-elle permise (doublon, validateurs de la vue et des handles) ?</summary>
-    private bool Validate(HandleRef from, HandleRef target, out Connection connection)
-    {
-        connection = Connections.Create(from.NodeId, from.Info.Id, from.Info.Type, target.NodeId, target.Info.Id);
-        var c = connection;
-        if (_reconnecting == null && GraphUtils.ConnectionExists(c, Edges)) return false;
-        if (_reconnecting != null && GraphUtils.ConnectionExists(c, Edges.Where(e => e.Id != _reconnecting.Id))) return false;
-        return Connections.IsValid(c, IsValidConnection)
-               && from.Info.IsValidConnection?.Invoke(c) != false
-               && target.Info.IsValidConnection?.Invoke(c) != false;
-    }
+    private bool Validate(HandleRef from, HandleRef target, out Connection connection) =>
+        ConnectionSearch.Validate(from, target, Edges, _reconnecting?.Id, IsValidConnection, out connection);
 
     private Connection? TryConnect(HandleRef from, XYPosition mouseFlow, out HandleRef? target)
     {
@@ -252,13 +234,7 @@ public partial class FlowView
     }
 
     /// <summary>Zone du rectangle de sélection en cours, en coordonnées flow.</summary>
-    private Core.Rect SelectionArea(Point pos)
-    {
-        var end = ScreenToFlow(pos);
-        var x = Math.Min(_mouseStartFlow.X, end.X);
-        var y = Math.Min(_mouseStartFlow.Y, end.Y);
-        return new Core.Rect(x, y, Math.Abs(end.X - _mouseStartFlow.X), Math.Abs(end.Y - _mouseStartFlow.Y));
-    }
+    private Core.Rect SelectionArea(Point pos) => SelectionOps.Area(_mouseStartFlow, ScreenToFlow(pos));
 
     private void UpdateSelectionBox(Point pos)
     {
@@ -280,11 +256,7 @@ public partial class FlowView
             SelectionStarted?.Invoke(this, new SelectionBoxEventArgs(rect));
         }
 
-        var full = SelectionMode == FlowSelectionMode.Full;
-        var picked = _nodeIndex.Values.Where(n => !n.Hidden && n.Rect is { } r && (full ? rect.Contains(r) : r.Overlaps(rect)))
-            .Select(n => n.Id).ToHashSet();
-        // Comme xyflow, un edge est sélectionné quand ses deux extrémités le sont.
-        var pickedEdges = Edges.Where(e => picked.Contains(e.Source) && picked.Contains(e.Target)).Select(e => e.Id);
+        var (picked, pickedEdges) = SelectionOps.Box(rect, _nodeIndex.Values, Edges, SelectionMode);
         Select(picked, pickedEdges, false);
     }
 

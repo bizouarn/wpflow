@@ -3,6 +3,9 @@ namespace Wpflow.Core;
 /// <summary>Calculs de viewport (pan / zoom / fit), portés de <c>@xyflow/system</c>.</summary>
 public static class ViewportMath
 {
+    /// <summary>Facteur d'un clic sur « zoom + » (« zoom − » divise par la même valeur).</summary>
+    public const double ZoomStep = 1.2;
+
     public const double DefaultMinZoom = 0.5;
     public const double DefaultMaxZoom = 2;
 

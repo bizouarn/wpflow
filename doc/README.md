@@ -21,6 +21,12 @@ Wpflow porte [xyflow / React Flow](https://reactflow.dev/) vers WPF. Cette docum
 | [13. MVVM](learn/13-mvvm.md) | State Management (ViewModels, binding, sélection) |
 | [14. Personnaliser](learn/14-customization.md) | Custom Nodes, Custom Edges, Custom Markers (`nodeTypes`, `edgeTypes`) |
 
+## Blazor
+
+| Page | Contenu |
+|---|---|
+| [Wpflow.Blazor](blazor.md) | La version Blazor : installation, premier graphe, paramètres, évènements, méthodes, composants, thème, différences avec WPF |
+
 ## API Reference
 
 | Page | Contenu |

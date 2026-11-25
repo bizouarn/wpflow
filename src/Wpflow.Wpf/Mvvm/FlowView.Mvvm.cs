@@ -98,8 +98,7 @@ public partial class FlowView
 
     private void ClearHistory()
     {
-        _undo.Clear();
-        _redo.Clear();
+        _history.Clear();
         UpdateHistoryState();
     }
 

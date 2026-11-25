@@ -5,14 +5,6 @@ using Rect = System.Windows.Rect;
 
 namespace Wpflow.Wpf;
 
-public enum BackgroundVariant
-{
-    None,
-    Dots,
-    Lines,
-    Cross
-}
-
 /// <summary>
 ///     Un motif de fond (<c>&lt;Background id="…" variant gap size lineWidth offset color /&gt;</c>). On en superpose plusieurs
 ///     avec <see cref="FlowView.AdditionalBackgrounds" />, par exemple une grille fine et une grille large.

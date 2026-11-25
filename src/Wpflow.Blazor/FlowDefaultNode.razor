@@ -1,0 +1,25 @@
+@namespace Wpflow.Blazor
+
+@* Nodes intégrés comme React Flow : input = source seule, output = cible seule, default = les deux, group = zone sans handles. *@
+@if (Node.Type == "group")
+{
+    <div class="wf-node-group">@Node.Data</div>
+}
+else
+{
+    <div class="wf-node-default">
+        @(Node.Data?.ToString() ?? Node.Id)
+        @if (Node.Type != "input")
+        {
+            <FlowHandle Type="HandleType.Target" Position="@(Node.TargetPosition ?? Position.Top)" />
+        }
+        @if (Node.Type != "output")
+        {
+            <FlowHandle Type="HandleType.Source" Position="@(Node.SourcePosition ?? Position.Bottom)" />
+        }
+    </div>
+}
+
+@code {
+    [Parameter, EditorRequired] public Node Node { get; set; } = default!;
+}

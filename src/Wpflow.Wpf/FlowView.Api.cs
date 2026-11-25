@@ -89,8 +89,8 @@ public partial class FlowView
         SetViewport(ViewportMath.ZoomAt(Viewport, center, zoom, MinZoom, MaxZoom), duration);
     }
 
-    public void ZoomIn(TimeSpan duration) => ZoomTo(Viewport.Zoom * 1.2, duration);
-    public void ZoomOut(TimeSpan duration) => ZoomTo(Viewport.Zoom / 1.2, duration);
+    public void ZoomIn(TimeSpan duration) => ZoomTo(Viewport.Zoom * ViewportMath.ZoomStep, duration);
+    public void ZoomOut(TimeSpan duration) => ZoomTo(Viewport.Zoom / ViewportMath.ZoomStep, duration);
 
     /// <summary>Rend visible un rectangle flow en faisant défiler le minimum nécessaire.</summary>
     internal void EnsureVisible(Core.Rect rect, double margin = 30)
@@ -115,13 +115,8 @@ public partial class FlowView
     public bool FitView(FitViewOptions? options)
     {
         options ??= FitViewOptions;
-        if (ActualWidth <= 0 || ActualHeight <= 0) return false;
-        var ids = options?.NodeIds?.ToHashSet();
-        var nodes = _nodeIndex.Values.Where(n => (options?.IncludeHiddenNodes == true || !n.Hidden) && n.Rect != null
-                                                  && (ids == null || ids.Contains(n.Id)));
-        if (GraphUtils.GetNodesBounds(nodes) is not { } bounds) return false;
-        SetViewport(ViewportMath.GetViewportForBounds(bounds, ActualWidth, ActualHeight, options?.MinZoom ?? MinZoom,
-            options?.MaxZoom ?? MaxZoom, options?.Padding ?? FitViewPadding), options?.Duration ?? default);
+        if (ViewFitting.Compute(_nodeIndex.Values, ActualWidth, ActualHeight, MinZoom, MaxZoom, FitViewPadding, options) is not { } viewport) return false;
+        SetViewport(viewport, options?.Duration ?? default);
         return true;
     }
 
@@ -216,19 +211,11 @@ public partial class FlowView
 
     private DeletePlan? PlanDelete(IEnumerable<string>? nodeIds, IEnumerable<string>? edgeIds)
     {
-        var wantNodes = nodeIds?.ToHashSet() ?? [];
-        var wantEdges = edgeIds?.ToHashSet() ?? [];
-        var nodeSet = Nodes.Where(n => wantNodes.Contains(n.Id) && n.Deletable).Select(n => n.Id).ToHashSet();
-        var edgeSet = Edges.Where(e => wantEdges.Contains(e.Id) && e.Deletable).Select(e => e.Id).ToHashSet();
-        if (nodeSet.Count == 0 && edgeSet.Count == 0) return null;
-
-        // Supprimer un parent supprime ses descendants ; les edges de ces nodes partent avec eux.
-        nodeSet.UnionWith(NodeTree.DescendantsOf(nodeSet.ToList(), Nodes));
-        var byNode = Edges.Where(e => nodeSet.Contains(e.Source) || nodeSet.Contains(e.Target)).Select(e => e.Id).ToHashSet();
-        var all = new HashSet<string>(edgeSet);
-        all.UnionWith(byNode);
-        var args = new BeforeDeleteEventArgs(Nodes.Where(n => nodeSet.Contains(n.Id)).ToList(), Edges.Where(e => all.Contains(e.Id)).ToList());
-        return new DeletePlan(nodeSet, edgeSet, byNode, args);
+        if (GraphDeletion.Plan(Nodes, Edges, nodeIds, edgeIds) is not { } plan) return null;
+        var all = new HashSet<string>(plan.Edges);
+        all.UnionWith(plan.EdgesOfNodes);
+        var args = new BeforeDeleteEventArgs(Nodes.Where(n => plan.Nodes.Contains(n.Id)).ToList(), Edges.Where(e => all.Contains(e.Id)).ToList());
+        return new DeletePlan(plan.Nodes, plan.Edges, plan.EdgesOfNodes, args);
     }
 
     /// <summary>
@@ -312,7 +299,7 @@ public partial class FlowView
     {
         if (_clipboard is not { } data || IsLocked) return false;
         _pasteCount++;
-        var pasted = GraphClipboard.Paste(data, Nodes, Edges, new XYPosition(20 * _pasteCount, 20 * _pasteCount));
+        var pasted = GraphClipboard.Paste(data, Nodes, Edges, GraphClipboard.PasteOffset(_pasteCount));
         PushHistory();
         Select([], [], false);
         ApplyNodeChanges(pasted.Nodes.Select(n => (NodeChange)new NodeAddChange(n)).ToList());

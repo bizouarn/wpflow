@@ -1,0 +1,181 @@
+/* Wpflow.Blazor : styles par défaut. Tout se redéfinit via les variables --wf-* sur .wf-flow (ou un parent). */
+.wf-flow {
+    --wf-bg: #f8f8f8;
+    --wf-dot: #91919a;
+    --wf-node-bg: #fff;
+    --wf-node-border: #1a192b;
+    --wf-node-text: #222;
+    --wf-node-selected: #0041d0;
+    --wf-edge: #b1b1b7;
+    --wf-edge-selected: #555;
+    --wf-handle: #1a192b;
+    --wf-handle-bg: #fff;
+    --wf-connect: #ff0072;
+    --wf-panel-bg: #fefefe;
+    --wf-panel-border: #eee;
+    --wf-minimap-mask: rgba(240, 240, 240, .6);
+    position: relative;
+    overflow: hidden;
+    width: 100%;
+    height: 100%;
+    min-height: 200px;
+    background: var(--wf-bg);
+    touch-action: none;
+    user-select: none;
+    outline: none;
+    font-family: system-ui, sans-serif;
+}
+.wf-flow.wf-dark {
+    --wf-bg: #141414;
+    --wf-dot: #777;
+    --wf-node-bg: #1e1e1e;
+    --wf-node-border: #888;
+    --wf-node-text: #f2f2f2;
+    --wf-node-selected: #5b8cff;
+    --wf-edge: #666;
+    --wf-edge-selected: #bbb;
+    --wf-handle: #888;
+    --wf-handle-bg: #1e1e1e;
+    --wf-panel-bg: #2b2b2b;
+    --wf-panel-border: #444;
+    --wf-minimap-mask: rgba(20, 20, 20, .6);
+}
+.wf-flow.wf-panning { cursor: grabbing; }
+.wf-flow.wf-pannable { cursor: grab; }
+
+.wf-background { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+.wf-viewport { position: absolute; left: 0; top: 0; width: 0; height: 0; transform-origin: 0 0; }
+.wf-edges { position: absolute; left: 0; top: 0; width: 1px; height: 1px; overflow: visible; pointer-events: none; }
+
+.wf-edge-path { fill: none; stroke: var(--wf-edge); stroke-width: 1; }
+.wf-edge-hit { fill: none; stroke: transparent; stroke-width: 20; pointer-events: stroke; cursor: pointer; }
+.wf-edge.wf-selected .wf-edge-path { stroke: var(--wf-edge-selected); }
+.wf-edge-animated .wf-edge-path { stroke-dasharray: 5; animation: wf-dash .5s linear infinite; }
+@keyframes wf-dash { to { stroke-dashoffset: -10; } }
+.wf-connection-line { fill: none; stroke: var(--wf-connect); stroke-width: 1.5; pointer-events: none; }
+.wf-connection-line.wf-invalid { stroke: #b1b1b7; stroke-dasharray: 4; }
+
+.wf-edge-label {
+    position: absolute; transform: translate(-50%, -50%);
+    background: var(--wf-bg); color: var(--wf-node-text);
+    font-size: 10px; padding: 2px 4px; border-radius: 2px; pointer-events: all; cursor: pointer; white-space: nowrap;
+}
+
+.wf-node { position: absolute; left: 0; top: 0; box-sizing: border-box; cursor: grab; }
+.wf-node.wf-selected { z-index: 1000; }
+.wf-node.wf-selected::after {
+    content: ""; position: absolute; inset: -3px; border: 1px solid var(--wf-node-selected); pointer-events: none;
+}
+.wf-node-default {
+    position: relative; width: 150px; box-sizing: border-box; padding: 10px; text-align: center;
+    font-size: 12px; background: var(--wf-node-bg); color: var(--wf-node-text);
+    border: 1px solid var(--wf-node-border);
+}
+.wf-node.wf-selected .wf-node-default { border-color: var(--wf-node-selected); }
+.wf-node-group {
+    min-width: 120px; min-height: 80px; box-sizing: border-box; font-size: 11px; padding: 4px 8px;
+    background: rgba(240, 240, 240, .25); border: 1px solid var(--wf-node-border); color: var(--wf-node-text);
+}
+
+.wf-handle {
+    position: absolute; width: 8px; height: 8px; box-sizing: border-box; border-radius: 100%;
+    background: var(--wf-handle-bg); border: 1px solid var(--wf-handle); cursor: crosshair; z-index: 2;
+}
+.wf-handle::before { content: ""; position: absolute; inset: -6px; } /* zone de clic élargie */
+.wf-handle-top { left: 50%; top: 0; transform: translate(-50%, -50%); }
+.wf-handle-bottom { left: 50%; bottom: 0; transform: translate(-50%, 50%); }
+.wf-handle-left { top: 50%; left: 0; transform: translate(-50%, -50%); }
+.wf-handle-right { top: 50%; right: 0; transform: translate(50%, -50%); }
+.wf-handle.wf-connecting { background: var(--wf-connect); }
+.wf-handle.wf-valid { background: #55dd99; }
+
+.wf-selection-box {
+    position: absolute; pointer-events: none; z-index: 5;
+    background: rgba(0, 89, 220, .08); border: 1px dotted rgba(0, 89, 220, .8);
+}
+
+.wf-panel { position: absolute; z-index: 5; margin: 15px; }
+.wf-controls {
+    left: 0; bottom: 0; display: flex; flex-direction: column;
+    background: var(--wf-panel-bg); box-shadow: 0 0 2px 1px rgba(0, 0, 0, .08);
+}
+.wf-controls button {
+    width: 26px; height: 26px; padding: 0; border: 0; border-bottom: 1px solid var(--wf-panel-border);
+    background: var(--wf-panel-bg); color: var(--wf-node-text); font-size: 14px; cursor: pointer;
+}
+.wf-controls button:last-child { border-bottom: 0; }
+.wf-controls button:hover { filter: brightness(.94); }
+.wf-minimap { right: 0; bottom: 0; background: var(--wf-panel-bg); box-shadow: 0 0 2px 1px rgba(0, 0, 0, .08); }
+.wf-minimap svg { display: block; cursor: pointer; }
+
+/* ---- Accessibilité ---- */
+.wf-sr-only { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+.wf-node:focus-visible, .wf-flow:focus-visible { outline: 2px solid var(--wf-node-selected); outline-offset: 2px; }
+.wf-edge:focus-visible .wf-edge-path { stroke: var(--wf-edge-selected); }
+.wf-edge:focus { outline: none; }
+
+/* ---- Verrou, état des nodes et des edges ---- */
+.wf-locked .wf-node { cursor: default; }
+.wf-flow { --wf-minimap-node: var(--wf-node-bg); --wf-resize-accent: #3367d9; }
+.wf-node.wf-dragging { cursor: grabbing; }
+.wf-edge-anchor { fill: var(--wf-handle-bg); stroke: var(--wf-edge-selected); stroke-width: 1; pointer-events: none; }
+.wf-connection-line.wf-valid-line { stroke: #55dd99; }
+.wf-edge-label-custom { background: transparent; padding: 0; font-size: inherit; }
+
+/* ---- Panneaux (FlowPanel, contrôles, minimap) ---- */
+.wf-panel-topleft { left: 0; top: 0; right: auto; bottom: auto; }
+.wf-panel-topcenter { left: 50%; top: 0; transform: translateX(-50%); right: auto; bottom: auto; }
+.wf-panel-topright { right: 0; top: 0; left: auto; bottom: auto; }
+.wf-panel-centerleft { left: 0; top: 50%; transform: translateY(-50%); right: auto; bottom: auto; }
+.wf-panel-centerright { right: 0; top: 50%; transform: translateY(-50%); left: auto; bottom: auto; }
+.wf-panel-bottomleft { left: 0; bottom: 0; right: auto; top: auto; }
+.wf-panel-bottomcenter { left: 50%; bottom: 0; transform: translateX(-50%); right: auto; top: auto; }
+.wf-panel-bottomright { right: 0; bottom: 0; left: auto; top: auto; }
+.wf-controls-horizontal { flex-direction: row; }
+.wf-controls-horizontal button { border-bottom: 0; border-right: 1px solid var(--wf-panel-border); }
+.wf-controls-horizontal button:last-child { border-right: 0; }
+.wf-controls button.wf-active { background: var(--wf-node-selected); color: #fff; }
+
+/* ---- Redimensionnement ---- */
+.wf-resizer { position: absolute; inset: 0; pointer-events: none; }
+.wf-resize { position: absolute; pointer-events: auto; z-index: 3; }
+.wf-resize-corner { width: 8px; height: 8px; background: var(--wf-resize-accent); border: 1px solid #fff; box-sizing: border-box; }
+.wf-resize-line.wf-resize-corner { background: transparent; border: 0; width: 12px; height: 12px; }
+.wf-resize-topleft { left: 0; top: 0; transform: translate(-50%, -50%); cursor: nwse-resize; }
+.wf-resize-topright { right: 0; top: 0; transform: translate(50%, -50%); cursor: nesw-resize; }
+.wf-resize-bottomleft { left: 0; bottom: 0; transform: translate(-50%, 50%); cursor: nesw-resize; }
+.wf-resize-bottomright { right: 0; bottom: 0; transform: translate(50%, 50%); cursor: nwse-resize; }
+.wf-resize-side { background: transparent; }
+.wf-resize-line.wf-resize-side { background: var(--wf-resize-accent); opacity: .6; }
+.wf-resize-top { left: 0; right: 0; top: 0; height: 6px; transform: translateY(-50%); cursor: ns-resize; }
+.wf-resize-bottom { left: 0; right: 0; bottom: 0; height: 6px; transform: translateY(50%); cursor: ns-resize; }
+.wf-resize-left { top: 0; bottom: 0; left: 0; width: 6px; transform: translateX(-50%); cursor: ew-resize; }
+.wf-resize-right { top: 0; bottom: 0; right: 0; width: 6px; transform: translateX(50%); cursor: ew-resize; }
+.wf-resize-line.wf-resize-top, .wf-resize-line.wf-resize-bottom { height: 2px; }
+.wf-resize-line.wf-resize-left, .wf-resize-line.wf-resize-right { width: 2px; }
+.wf-resize-control { position: absolute; z-index: 3; cursor: nwse-resize; }
+.wf-resize-control.wf-resize-bottomright { right: 0; bottom: 0; }
+
+/* ---- Rotation ---- */
+.wf-rotator {
+    position: absolute; left: 50%; width: 12px; height: 12px; margin-left: -6px; box-sizing: border-box;
+    border-radius: 50%; background: var(--wf-handle-bg); border: 2px solid var(--wf-resize-accent); cursor: grab; z-index: 3;
+}
+.wf-rotator::after { content: ""; position: absolute; left: 3px; top: 100%; width: 1px; height: 16px; background: var(--wf-resize-accent); }
+
+/* ---- Barres d'outils ---- */
+.wf-toolbar {
+    position: absolute; z-index: 4; display: flex; gap: 4px; padding: 4px; box-sizing: border-box; cursor: default;
+    background: var(--wf-panel-bg); color: var(--wf-node-text); box-shadow: 0 0 4px 1px rgba(0, 0, 0, .15); white-space: nowrap;
+}
+.wf-toolbar-top.wf-toolbar-center, .wf-toolbar-bottom.wf-toolbar-center { left: 50%; transform: translateX(-50%); }
+.wf-toolbar-top.wf-toolbar-start, .wf-toolbar-bottom.wf-toolbar-start { left: 0; }
+.wf-toolbar-top.wf-toolbar-end, .wf-toolbar-bottom.wf-toolbar-end { right: 0; }
+.wf-toolbar-left.wf-toolbar-center, .wf-toolbar-right.wf-toolbar-center { top: 50%; transform: translateY(-50%); }
+.wf-toolbar-left.wf-toolbar-start, .wf-toolbar-right.wf-toolbar-start { top: 0; }
+.wf-toolbar-left.wf-toolbar-end, .wf-toolbar-right.wf-toolbar-end { bottom: 0; }
+.wf-selection-toolbar {
+    position: absolute; z-index: 6; transform: translate(-50%, -100%); display: flex; gap: 4px; padding: 4px;
+    background: var(--wf-panel-bg); color: var(--wf-node-text); box-shadow: 0 0 4px 1px rgba(0, 0, 0, .15);
+}
+.wf-handle.wf-invalid { background: #ff6b6b; }

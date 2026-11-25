@@ -189,7 +189,7 @@ public partial class FlowView
     /// <summary>Recalcule <see cref="CanUndo" /> / <see cref="CanRedo" /> (historique propre ou celui du ViewModel).</summary>
     private void UpdateHistoryState()
     {
-        var (undo, redo) = History is { } h ? (h.CanUndo, h.CanRedo) : (_undo.Count > 0, _redo.Count > 0);
+        var (undo, redo) = History is { } h ? (h.CanUndo, h.CanRedo) : (_history.CanUndo, _history.CanRedo);
         if (CanUndo != undo) SetValue(CanUndoKey, undo);
         if (CanRedo != redo) SetValue(CanRedoKey, redo);
         CommandManager.InvalidateRequerySuggested();

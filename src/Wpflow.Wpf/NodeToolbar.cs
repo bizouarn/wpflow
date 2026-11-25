@@ -6,18 +6,6 @@ using Wpflow.Core;
 
 namespace Wpflow.Wpf;
 
-/// <summary>
-///     Barre d'outils attachée à un node (équivalent de <c>&lt;NodeToolbar&gt;</c>) : apparaît à côté du node quand
-///     il est sélectionné. À placer dans le template du node (dans le <c>Grid</c> racine).
-/// </summary>
-/// <summary>Alignement de la barre le long du côté du node (<c>align</c>).</summary>
-public enum ToolbarAlign
-{
-    Start,
-    Center,
-    End
-}
-
 public sealed class NodeToolbar : ContentControl
 {
     public static readonly DependencyProperty ToolbarPositionProperty = DependencyProperty.Register(
@@ -128,18 +116,6 @@ public sealed class NodeToolbar : ContentControl
                 break;
         }
     }
-}
-
-public enum PanelPosition
-{
-    TopLeft,
-    TopCenter,
-    TopRight,
-    CenterLeft,
-    CenterRight,
-    BottomLeft,
-    BottomCenter,
-    BottomRight
 }
 
 /// <summary>Ancre son contenu à un coin ou un bord de la surface (équivalent de <c>&lt;Panel position="…"&gt;</c>), dans l'overlay d'un <see cref="FlowView" />.</summary>

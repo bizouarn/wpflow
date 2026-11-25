@@ -5,32 +5,6 @@ using Wpflow.Core;
 
 namespace Wpflow.Wpf;
 
-public enum FlowSelectionMode
-{
-    /// <summary>Un node est sélectionné dès que le rectangle le touche (<c>SelectionMode.Partial</c>).</summary>
-    Partial,
-
-    /// <summary>Le rectangle doit contenir le node entier (<c>SelectionMode.Full</c>).</summary>
-    Full
-}
-
-public enum PanOnScrollMode
-{
-    Free,
-    Vertical,
-    Horizontal
-}
-
-/// <summary>Forme de l'aperçu d'une connexion en cours (<c>connectionLineType</c>).</summary>
-public enum ConnectionLineType
-{
-    Bezier,
-    Straight,
-    Step,
-    SmoothStep,
-    SimpleBezier
-}
-
 /// <summary>État visuel d'un <see cref="Handle" /> pendant qu'un fil est tiré.</summary>
 public enum HandleConnectionStatus
 {
@@ -46,13 +20,6 @@ public enum HandleConnectionStatus
     Invalid
 }
 
-/// <summary>
-///     Options de cadrage (<c>fitViewOptions</c>) : marge, bornes de zoom, sous-ensemble de nodes et durée de la transition
-///     (zéro = immédiat).
-/// </summary>
-public sealed record FitViewOptions(double? Padding = null, double? MinZoom = null, double? MaxZoom = null,
-    TimeSpan Duration = default, IReadOnlyList<string>? NodeIds = null, bool IncludeHiddenNodes = false);
-
 /// <summary>Empilement des nodes (<c>zIndexMode</c>).</summary>
 /// <summary>Boutons de souris (combinables) qui déplacent la vue (<c>panOnDrag</c> accepte une liste de boutons).</summary>
 [Flags]
@@ -62,18 +29,6 @@ public enum FlowMouseButtons
     Left = 1,
     Middle = 2,
     Right = 4
-}
-
-public enum FlowZIndexMode
-{
-    /// <summary>Profondeur, plus le premier plan pour les nodes sélectionnés (selon <c>ElevateNodesOnSelect</c>).</summary>
-    Basic,
-
-    /// <summary>Comme <c>Basic</c>, et un parent dont un descendant est sélectionné passe aussi devant ses voisins.</summary>
-    Auto,
-
-    /// <summary>Seul <c>Node.ZIndex</c> compte : ni profondeur ni élévation à la sélection.</summary>
-    Manual
 }
 
 public sealed class ViewportMoveEventArgs(Viewport viewport) : EventArgs

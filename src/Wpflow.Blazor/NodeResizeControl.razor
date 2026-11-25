@@ -1,0 +1,37 @@
+@namespace Wpflow.Blazor
+
+@* Poignée de redimensionnement libre : placez-la où vous voulez dans le modèle du node, avec la direction qu'elle pilote. *@
+<div class="wf-resize-control wf-resize-@(Direction.ToString().ToLowerInvariant()) nodrag @Class" style="@Style"
+     @onpointerdown="Down" @onpointerdown:stopPropagation>@ChildContent</div>
+
+@code {
+    [CascadingParameter] private FlowView? Flow { get; set; }
+    [CascadingParameter(Name = "WfNode")] private Node? Node { get; set; }
+
+    [Parameter] public ResizeDirection Direction { get; set; } = ResizeDirection.BottomRight;
+    [Parameter] public double NodeMinWidth { get; set; } = 60;
+    [Parameter] public double NodeMinHeight { get; set; } = 40;
+    [Parameter] public double NodeMaxWidth { get; set; } = double.PositiveInfinity;
+    [Parameter] public double NodeMaxHeight { get; set; } = double.PositiveInfinity;
+    [Parameter] public bool KeepAspectRatio { get; set; }
+    [Parameter] public Func<ResizeDirection, Rect, bool>? ShouldResize { get; set; }
+    [Parameter] public EventCallback<ResizeInfo> OnResizeStart { get; set; }
+    [Parameter] public EventCallback<ResizeInfo> OnResize { get; set; }
+    [Parameter] public EventCallback<ResizeInfo> OnResizeEnd { get; set; }
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+    [Parameter] public string? Class { get; set; }
+    [Parameter] public string? Style { get; set; }
+
+    private void Down(PointerEventArgs e)
+    {
+        if (Flow == null || Node == null) return;
+        Flow.StartResize(Node.Id, Direction, new ResizeOptions
+        {
+            MinWidth = NodeMinWidth, MinHeight = NodeMinHeight, MaxWidth = NodeMaxWidth, MaxHeight = NodeMaxHeight,
+            KeepAspectRatio = KeepAspectRatio, ShouldResize = ShouldResize,
+            Started = a => _ = OnResizeStart.InvokeAsync(a),
+            Resizing = a => _ = OnResize.InvokeAsync(a),
+            Ended = a => _ = OnResizeEnd.InvokeAsync(a)
+        }, e);
+    }
+}

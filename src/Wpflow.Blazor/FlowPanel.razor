@@ -1,0 +1,11 @@
+@namespace Wpflow.Blazor
+
+@* Ancre son contenu à une position du calque (<Panel position="…">). *@
+<div class="wf-panel wf-panel-@(PanelPosition.ToString().ToLowerInvariant()) @Class" style="@Style">@ChildContent</div>
+
+@code {
+    [Parameter] public PanelPosition PanelPosition { get; set; } = PanelPosition.TopLeft;
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+    [Parameter] public string? Class { get; set; }
+    [Parameter] public string? Style { get; set; }
+}

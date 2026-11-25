@@ -180,18 +180,10 @@ public sealed class MiniMap : FrameworkElement
         if (_flow == null || w <= 0 || h <= 0) return;
 
         var visible = ViewportMath.GetVisibleRect(_flow.Viewport, _flow.ActualWidth, _flow.ActualHeight);
-        var bounds = GraphUtils.GetNodesBounds(_flow.AbsoluteNodes) is { } nb ? Core.Rect.Union(nb, visible) : visible;
-
-        // Cadre le contenu en conservant le ratio de la minimap (même logique que xyflow).
-        var viewScale = Math.Max(bounds.Width / w, bounds.Height / h);
-        var viewW = viewScale * w;
-        var viewH = viewScale * h;
-        var padding = 5 * viewScale;
-        var vbX = bounds.X - (viewW - bounds.Width) / 2 - padding;
-        var vbY = bounds.Y - (viewH - bounds.Height) / 2 - padding;
-        _scale = w / (viewW + 2 * padding);
-        _originX = vbX;
-        _originY = vbY;
+        var layout = MiniMapMath.Compute(GraphUtils.GetNodesBounds(_flow.AbsoluteNodes), visible, w, h);
+        _scale = layout.Scale;
+        _originX = layout.X;
+        _originY = layout.Y;
 
         // Les brosses sont lues une fois : une recherche de ressource par node et par image coûterait très cher.
         var nodeBrush = _flow.ThemeBrush("Flow.MiniMapNode");
@@ -204,7 +196,7 @@ public sealed class MiniMap : FrameworkElement
         foreach (var node in _flow.AbsoluteNodes)
         {
             if (node.Rect is not { } r) continue;
-            var rect = new Rect((r.X - vbX) * _scale, (r.Y - vbY) * _scale, r.Width * _scale, r.Height * _scale);
+            var rect = new Rect((r.X - layout.X) * _scale, (r.Y - layout.Y) * _scale, r.Width * _scale, r.Height * _scale);
             if (renderer != null)
             {
                 renderer(dc, node, rect);
@@ -216,7 +208,7 @@ public sealed class MiniMap : FrameworkElement
             dc.DrawRoundedRectangle(fill, pen, rect, radius, radius);
         }
 
-        var view = new Rect((visible.X - vbX) * _scale, (visible.Y - vbY) * _scale, visible.Width * _scale,
+        var view = new Rect((visible.X - layout.X) * _scale, (visible.Y - layout.Y) * _scale, visible.Width * _scale,
             visible.Height * _scale);
         var mask = new CombinedGeometry(GeometryCombineMode.Exclude,
             new RectangleGeometry(new Rect(0, 0, w, h)), new RectangleGeometry(view));
