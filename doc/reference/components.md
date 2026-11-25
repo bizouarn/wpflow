@@ -104,7 +104,7 @@ Un motif de fond : `new BackgroundLayer(Variant, Gap, Color, Size, LineWidth, Of
 
 ## NodeHost
 
-Conteneur interne d'un node (public pour l'automatisation et les tests). Propriétés utiles : `Node`, `IsSelected` (utilisable dans un `Trigger` du style), `ShowOutline`, `OutlineCornerRadius` (8 par défaut).
+Conteneur interne d'un node (public pour l'automatisation et les tests). Propriétés utiles : `Node`, `IsSelected` (utilisable dans un `Trigger` du style), `ShowOutline`, `OutlineCornerRadius` (0 par défaut : contour à angles droits ; une valeur positive arrondit le contour).
 
 ## BackgroundVariant, ColorMode, PanelPosition
 

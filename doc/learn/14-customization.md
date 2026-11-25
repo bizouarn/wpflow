@@ -24,7 +24,7 @@ Le démonstrateur de cette page est l'onglet **Personnalisation** des exemples (
     <flow:FlowView.Resources>
         <DataTemplate x:Key="wpflow-node-default">
             <Grid>
-                <Border Background="{DynamicResource Flow.NodeBackground}" CornerRadius="10" Padding="12">
+                <Border Background="{DynamicResource Flow.NodeBackground}" CornerRadius="0" Padding="12">
                     <TextBlock Text="{Binding Data}" />
                 </Border>
                 <flow:Handle Type="Target" Position="Left" />

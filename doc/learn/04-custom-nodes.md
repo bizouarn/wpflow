@@ -12,7 +12,7 @@ Un node de type `"carte"` est rendu avec le `DataTemplate` de clé `wpflow-node-
         <Grid>
             <Border Background="{DynamicResource Flow.NodeBackground}"
                     BorderBrush="{DynamicResource Flow.NodeBorder}" BorderThickness="1"
-                    CornerRadius="6" Padding="12">
+                    CornerRadius="0" Padding="12">
                 <StackPanel>
                     <TextBlock Text="{Binding Data.Titre}" FontWeight="SemiBold"
                                Foreground="{DynamicResource Flow.NodeText}" />

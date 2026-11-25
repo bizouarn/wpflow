@@ -25,7 +25,7 @@ public sealed class NodeHost : ContentControl
 
     public static readonly DependencyProperty OutlineCornerRadiusProperty = DependencyProperty.Register(
         nameof(OutlineCornerRadius), typeof(CornerRadius), typeof(NodeHost),
-        new FrameworkPropertyMetadata(new CornerRadius(8), FrameworkPropertyMetadataOptions.AffectsRender));
+        new FrameworkPropertyMetadata(new CornerRadius(0), FrameworkPropertyMetadataOptions.AffectsRender));
 
     /// <summary>Marque l'élément du template qui sert de poignée de déplacement ; la valeur doit égaler <see cref="Node.DragHandle" />.</summary>
     public static readonly DependencyProperty DragHandleProperty = DependencyProperty.RegisterAttached(
@@ -48,8 +48,9 @@ public sealed class NodeHost : ContentControl
         double gap = _flow.SelectionOutlineGap, thickness = _flow.SelectionOutlineThickness;
         var pen = new Pen(_flow.ThemeBrush("Flow.Outline"), thickness);
         var inset = gap - thickness / 2;
+        var radius = OutlineCornerRadius.TopLeft > 0 ? OutlineCornerRadius.TopLeft + gap : 0; // angles droits par défaut
         dc.DrawRoundedRectangle(null, pen, new Rect(-inset, -inset, ActualWidth + 2 * inset, ActualHeight + 2 * inset),
-            OutlineCornerRadius.TopLeft + gap, OutlineCornerRadius.TopLeft + gap);
+            radius, radius);
     }
 
     public bool IsSelected
@@ -162,7 +163,7 @@ public sealed class NodeHost : ContentControl
         _defaultBorder = new Border
         {
             BorderThickness = new Thickness(1),
-            CornerRadius = new CornerRadius(3),
+            CornerRadius = new CornerRadius(0),
             Padding = new Thickness(10),
             Child = _defaultText
         };
@@ -191,7 +192,7 @@ public sealed class NodeHost : ContentControl
         _defaultBorder = new Border
         {
             BorderThickness = new Thickness(1),
-            CornerRadius = new CornerRadius(3),
+            CornerRadius = new CornerRadius(0),
             MinWidth = 120,
             MinHeight = 80,
             Child = _defaultText

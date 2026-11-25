@@ -9,10 +9,10 @@
             <!-- Un node « default » entièrement redéfini : une bande de couleur et le texte du node. -->
             <DataTemplate x:Key="wpflow-node-default">
                 <Grid>
-                    <Border Tag="custom-default" Background="{DynamicResource Flow.NodeBackground}" CornerRadius="10"
+                    <Border Tag="custom-default" Background="{DynamicResource Flow.NodeBackground}" CornerRadius="0"
                             BorderBrush="#FF0071" BorderThickness="1" Padding="0" MinWidth="130">
                         <StackPanel Orientation="Horizontal">
-                            <Border Width="8" Background="#FF0071" CornerRadius="9,0,0,9" />
+                            <Border Width="8" Background="#FF0071" CornerRadius="0" />
                             <TextBlock Text="{Binding Data}" Margin="12,10" FontWeight="SemiBold"
                                        Foreground="{DynamicResource Flow.NodeText}" />
                         </StackPanel>

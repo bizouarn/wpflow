@@ -11,7 +11,7 @@
         <DataTemplate x:Key="wpflow-node-task">
             <Grid>
                 <Border Background="{DynamicResource Flow.NodeBackground}" BorderBrush="{DynamicResource Flow.NodeBorder}"
-                        BorderThickness="1" CornerRadius="6" Padding="10" MinWidth="170">
+                        BorderThickness="1" CornerRadius="0" Padding="10" MinWidth="170">
                     <StackPanel>
                         <TextBox x:Name="TitleBox" Text="{Binding Data.Title, UpdateSourceTrigger=PropertyChanged}" />
                         <CheckBox Content="Terminé" IsChecked="{Binding Data.Done}" Margin="0,6,0,0" />

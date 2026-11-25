@@ -21,7 +21,7 @@
         <DataTemplate x:Key="wpflow-node-tool">
             <Grid>
                 <Border Background="{DynamicResource Flow.NodeBackground}" BorderBrush="{DynamicResource Flow.NodeBorder}"
-                        BorderThickness="1" CornerRadius="6" Padding="12">
+                        BorderThickness="1" CornerRadius="0" Padding="12">
                     <StackPanel>
                         <TextBlock Text="{Binding Data.Title}" FontWeight="SemiBold"
                                    Foreground="{DynamicResource Flow.NodeText}" />
