@@ -8,7 +8,7 @@ public sealed class ServerHostileTests(ScenarioServerFixture app) : HostileTests
 public sealed class WasmHostileTests(ScenarioWasmFixture app) : HostileTests(app), IClassFixture<ScenarioWasmFixture>;
 
 /// <summary>Conditions d'intégration hostiles (ROADMAP-TESTS, lot 4), avec de vraies entrées.</summary>
-public abstract class HostileTests(DemoFixture app)
+public abstract class HostileTests(DemoFixture app) : PagesTest(app)
 {
     private const string Left = "#left";
 
@@ -19,7 +19,7 @@ public abstract class HostileTests(DemoFixture app)
         var ready = css == null
             ? $"document.querySelectorAll('.wf-edge-path').length >= {edges}"
             : "document.querySelectorAll('.wf-node').length >= 3";
-        var page = await app.OpenAsync(query: $"?hostile={mode}{extra}", configure: configure, url: url, ready: ready,
+        var page = await App.OpenAsync(query: $"?hostile={mode}{extra}", configure: configure, url: url, ready: ready,
             beforeLoad: css == null ? null : Inject(css));
         var errors = page.CollectErrors();
         return (page, errors);
@@ -118,6 +118,22 @@ public abstract class HostileTests(DemoFixture app)
         return (box!.X + box.Width * 0.12, box.Y + box.Height * 0.15);
     }
 
+    /// <summary>Ce qui se trouve sous les deux bouts d'un fil, et le viewport : pour comprendre une connexion manquée.</summary>
+    private static async Task<string> StateAsync(IPage page, string view, (double X, double Y) from, (double X, double Y) to) =>
+        await page.EvaluateAsync<string>("""
+            ([view, points]) => {
+                const root = document.querySelector(view + ' .wf-flow');
+                const r = root.getBoundingClientRect();
+                const under = ([x, y]) => {
+                    const e = document.elementFromPoint(x, y);
+                    return `(${x.toFixed(0)},${y.toFixed(0)}) ${e?.closest('[data-node-id]')?.dataset.nodeId ?? ''} ${e?.getAttribute('class')}`;
+                };
+                return [root.querySelector('.wf-viewport').getAttribute('style'),
+                    `vue ${r.left.toFixed(0)},${r.top.toFixed(0)} ${r.width.toFixed(0)}×${r.height.toFixed(0)}`, ...points.map(under),
+                    `fil ${root.querySelector('.wf-connection-line')?.getAttribute('d') ?? 'aucun'}`].join(' | ');
+            }
+            """, new object[] { view, new[] { new[] { from.X, from.Y }, new[] { to.X, to.Y } } });
+
     /// <summary>Tous les gestes d'une vue visent juste : dépôt, clic, glisser, pan, molette, connexion.</summary>
     private static async Task AssertGesturesAimRightAsync(IPage page, string view = Left)
     {
@@ -166,8 +182,17 @@ public abstract class HostileTests(DemoFixture app)
         Near(under, (await FrameAsync(page, view)).ToFlow(anchor.X, anchor.Y), 2, "le point sous la souris reste en place");
 
         var count = await page.CountAsync(view + " .wf-edge");
-        await page.DragAsync(await page.CenterAsync(Handle("a", "source", view)), await page.CenterAsync(Handle("c", "target", view)));
-        await page.UntilAsync(async () => await page.CountAsync(view + " .wf-edge") == count + 1, "connexion de a à c");
+        var source = await page.CenterAsync(Handle("a", "source", view));
+        var target = await page.CenterAsync(Handle("c", "target", view));
+        var seen = await StateAsync(page, view, source, target);
+        await page.DragAsync(source, target);
+        for (var i = 0; i < 100 && await page.CountAsync(view + " .wf-edge") != count + 1; i++) await page.WaitForTimeoutAsync(50);
+        var edges = await page.CountAsync(view + " .wf-edge");
+        if (edges != count + 1)
+        {
+            var now = await StateAsync(page, view, source, target);
+            Assert.Fail($"Pas de connexion de a à c ({edges} edges) ; avant le geste : {seen} ; après : {now}");
+        }
     }
 
     /// <summary>La page change après la mesure et le cadrage, sans que la taille du graphe change.</summary>
@@ -190,7 +215,7 @@ public abstract class HostileTests(DemoFixture app)
         () => { const g = document.querySelector('.graph'); g.style.transformOrigin = '0 0'; g.style.transform = 'scale(0.6)'; }
         """)]
     [InlineData("parent agrandi (scale 1,3)", """
-        () => { const g = document.querySelector('.graph'); g.style.width = '900px'; g.style.height = '560px';
+        () => { const g = document.querySelector('.graph'); g.style.height = '560px'; // pas plus étroit : « c » resterait au bord, où la vue défile seule
                 g.style.transformOrigin = '0 0'; g.style.transform = 'scale(1.3)'; }
         """)]
     public async Task Gestures_aim_right_after_the_page_changes(string condition, string script)
@@ -507,6 +532,46 @@ public abstract class HostileTests(DemoFixture app)
         Assert.Equal(0, await page.CountAsync(".wf-node.wf-dragging"));
 
         await AssertGesturesAimRightAsync(page);
+    }
+
+    /// <summary>
+    ///     Sur une page chargée, l'image suivante tarde : le relâchement arrive avant que le dernier mouvement ait été transmis.
+    ///     Le geste doit finir là où la souris a été relâchée.
+    /// </summary>
+    [Theory]
+    [InlineData("node")]
+    [InlineData("connexion")]
+    [InlineData("fond")]
+    public async Task A_release_before_the_next_frame_ends_where_the_mouse_is(string gesture)
+    {
+        var (page, errors) = await OpenAsync();
+        await page.EvaluateAsync("() => { window.requestAnimationFrame = callback => setTimeout(() => callback(performance.now()), 2000); }");
+        var frame = await FrameAsync(page);
+        var position = await PosAsync(page, "b");
+        var edges = await page.CountAsync("#left .wf-edge");
+
+        switch (gesture)
+        {
+            case "node":
+                var b = await page.CenterAsync(Node("b"));
+                await page.DragAsync(b, (b.X + 80, b.Y + 40));
+                await page.UntilAsync(async () => (await TextAsync(page, "log")).Contains("glissé b"), "fin du glisser");
+                Near((position.X + 80 / frame.Zoom, position.Y + 40 / frame.Zoom), await PosAsync(page, "b"), 2, "le node finit sous la souris");
+                break;
+            case "connexion":
+                await page.DragAsync(await page.CenterAsync(Handle("b", "source")), await page.CenterAsync(Handle("c", "target")));
+                await page.UntilAsync(async () => await page.CountAsync("#left .wf-edge") == edges + 1, "la connexion est faite");
+                break;
+            default:
+                var pane = await PanePointAsync(page);
+                await page.DragAsync(pane, (pane.X + 40, pane.Y + 24));
+                await page.WaitForTimeoutAsync(600);
+                var panned = await FrameAsync(page);
+                Near((frame.X + 40, frame.Y + 24), (panned.X, panned.Y), 2, "la vue finit sous la souris");
+                break;
+        }
+
+        Assert.Empty(errors);
     }
 
     /// <summary>La virgule décimale ne passe ni dans les styles, ni dans les tracés, ni dans les attributs SVG.</summary>

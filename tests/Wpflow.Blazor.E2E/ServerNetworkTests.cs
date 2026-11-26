@@ -6,13 +6,14 @@ namespace Wpflow.Blazor.E2E;
 ///     Blazor Server loin de son serveur (ROADMAP-TESTS, lot 4) : latence, coupure puis reprise du circuit, page fermée
 ///     pendant un geste. WebAssembly n'est pas concerné.
 /// </summary>
-public sealed class ServerNetworkTests(ScenarioServerFixture app) : IClassFixture<ScenarioServerFixture>
+[Collection(Isolated.Name)]
+public sealed class ServerNetworkTests(ScenarioServerFixture app) : PagesTest(app), IClassFixture<ScenarioServerFixture>
 {
     private const string Orders = "[data-node-id='orders']";
 
     private async Task<(IPage Page, List<string> Errors)> OpenAsync(DelayProxy proxy)
     {
-        var page = await app.OpenAsync(url: proxy.Url);
+        var page = await App.OpenAsync(url: proxy.Url);
         var errors = page.CollectErrors();
         await page.WaitForTimeoutAsync(1500); // second cadrage, après le chargement asynchrone
         return (page, errors);

@@ -4,9 +4,34 @@ using Scenarios;
 
 namespace Wpflow.Blazor.E2E;
 
-public sealed class ServerMatrixTests(ScenarioServerFixture app) : MatrixTests(app), IClassFixture<ScenarioServerFixture>;
+// La matrice est de loin la suite la plus longue : chaque hôte la joue en deux moitiés, qui passent en parallèle.
+public sealed class ServerMatrixTests1(ScenarioServerFixture app) : MatrixTests(app), IClassFixture<ScenarioServerFixture>
+{
+    [Theory]
+    [MemberData(nameof(Gestures), 0)]
+    public Task A_gesture_raises_exactly_its_events(string name) => PlayAsync(name);
+}
 
-public sealed class WasmMatrixTests(ScenarioWasmFixture app) : MatrixTests(app), IClassFixture<ScenarioWasmFixture>;
+public sealed class ServerMatrixTests2(ScenarioServerFixture app) : MatrixTests(app), IClassFixture<ScenarioServerFixture>
+{
+    [Theory]
+    [MemberData(nameof(Gestures), 1)]
+    public Task A_gesture_raises_exactly_its_events(string name) => PlayAsync(name);
+}
+
+public sealed class WasmMatrixTests1(ScenarioWasmFixture app) : MatrixTests(app), IClassFixture<ScenarioWasmFixture>
+{
+    [Theory]
+    [MemberData(nameof(Gestures), 0)]
+    public Task A_gesture_raises_exactly_its_events(string name) => PlayAsync(name);
+}
+
+public sealed class WasmMatrixTests2(ScenarioWasmFixture app) : MatrixTests(app), IClassFixture<ScenarioWasmFixture>
+{
+    [Theory]
+    [MemberData(nameof(Gestures), 1)]
+    public Task A_gesture_raises_exactly_its_events(string name) => PlayAsync(name);
+}
 
 /// <summary>
 ///     La matrice des évènements et des gestes (<see cref="GestureMatrix" />) avec de vraies entrées du navigateur : chaque
@@ -14,16 +39,17 @@ public sealed class WasmMatrixTests(ScenarioWasmFixture app) : MatrixTests(app),
 /// </summary>
 public abstract class MatrixTests(DemoFixture app)
 {
-    public static TheoryData<string> Gestures()
+    private const int Shards = 2;
+
+    /// <summary>La part <paramref name="shard" /> des gestes : un sur <see cref="Shards" />, aucun n'est oublié.</summary>
+    public static TheoryData<string> Gestures(int shard)
     {
         var data = new TheoryData<string>();
-        foreach (var gesture in GestureMatrix.All) data.Add(gesture.Name);
+        foreach (var gesture in GestureMatrix.All.Where((_, i) => i % Shards == shard)) data.Add(gesture.Name);
         return data;
     }
 
-    [Theory]
-    [MemberData(nameof(Gestures))]
-    public async Task A_gesture_raises_exactly_its_events(string name)
+    protected async Task PlayAsync(string name)
     {
         var gesture = GestureMatrix.Named(name);
         var page = await app.OpenAsync(query: "?matrix=" + name);
@@ -35,9 +61,12 @@ public abstract class MatrixTests(DemoFixture app)
             var play = player.Plays(name);
             await play.Prepare();
             await page.WaitForTimeoutAsync(650); // pas de double-clic avec la préparation
+            // Sur une machine chargée, les évènements de la préparation peuvent arriver en retard : ils ne doivent pas être
+            // comptés dans le geste.
+            var settled = await player.QuietJournalAsync();
 
             var whole = name.StartsWith("lifecycle."); // ces gestes contrôlent le journal depuis l'ouverture
-            var before = whole ? 0 : (await player.JournalAsync()).Count;
+            var before = whole ? 0 : settled;
             await play.Act();
             await page.WaitForTimeoutAsync(700);
             var got = gesture.Reduce((await player.JournalAsync()).Skip(before).ToList());
@@ -66,6 +95,21 @@ public abstract class MatrixTests(DemoFixture app)
 
         public async Task<IReadOnlyList<string>> JournalAsync() =>
             ((await page.Locator("#journal").TextContentAsync()) ?? "").Split('\n', StringSplitOptions.RemoveEmptyEntries);
+
+        /// <summary>La longueur du journal, une fois qu'il n'a plus changé pendant 400 ms (5 s au plus).</summary>
+        public async Task<int> QuietJournalAsync()
+        {
+            var count = (await JournalAsync()).Count;
+            for (var i = 0; i < 12; i++)
+            {
+                await page.WaitForTimeoutAsync(400);
+                var next = (await JournalAsync()).Count;
+                if (next == count) break;
+                count = next;
+            }
+
+            return count;
+        }
 
         /// <summary>
         ///     Le <c>deltaY</c> d'un cran de molette vers le haut : mesuré dans Chrome sous Windows avec un vrai

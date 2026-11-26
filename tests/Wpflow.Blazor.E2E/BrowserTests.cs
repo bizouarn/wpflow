@@ -3,7 +3,7 @@ using Microsoft.Playwright;
 namespace Wpflow.Blazor.E2E;
 
 /// <summary>Gestes de bout en bout dans un vrai navigateur : pont JS, mesure, pointeur, molette, clavier, tactile, export.</summary>
-public abstract class BrowserTests(DemoFixture demo)
+public abstract class BrowserTests(DemoFixture demo) : PagesTest(demo)
 {
     private static async Task<(double X, double Y)> HandleAsync(IPage page, string node, string kind) =>
         await page.CenterAsync($"[data-node-id='{node}'] .wf-handle[data-type='{kind}']");
@@ -11,7 +11,7 @@ public abstract class BrowserTests(DemoFixture demo)
     [Fact]
     public async Task The_demo_measures_its_nodes_and_draws_the_edges()
     {
-        var page = await demo.OpenAsync();
+        var page = await App.OpenAsync();
 
         Assert.Equal(7, await page.CountAsync(".wf-node"));
         Assert.Equal(5, await page.CountAsync(".wf-edge-path"));
@@ -24,7 +24,7 @@ public abstract class BrowserTests(DemoFixture demo)
     [Fact]
     public async Task Double_clicking_a_node_reaches_the_node_and_does_not_zoom()
     {
-        var page = await demo.OpenAsync();
+        var page = await App.OpenAsync();
         var zoom = (await page.ViewportAsync()).Zoom;
         var centre = await page.CenterAsync("[data-node-id='2']");
 
@@ -38,7 +38,7 @@ public abstract class BrowserTests(DemoFixture demo)
     [Fact]
     public async Task The_data_attributes_of_the_clicked_element_reach_the_node_event()
     {
-        var page = await demo.OpenAsync();
+        var page = await App.OpenAsync();
         // une « colonne » avec un enfant : l'attribut est lu sur un parent de l'élément réellement cliqué
         await page.EvaluateAsync("""
             () => {
@@ -58,7 +58,7 @@ public abstract class BrowserTests(DemoFixture demo)
     [Fact]
     public async Task Double_clicking_an_edge_does_not_zoom()
     {
-        var page = await demo.OpenAsync();
+        var page = await App.OpenAsync();
         var zoom = (await page.ViewportAsync()).Zoom;
         // un point du tracé lui-même (le centre du rectangle d'une courbe peut être à côté)
         var point = await page.EvaluateAsync<double[]>("""
@@ -78,7 +78,7 @@ public abstract class BrowserTests(DemoFixture demo)
     [Fact]
     public async Task A_drag_released_outside_the_view_still_ends_the_gesture()
     {
-        var page = await demo.OpenAsync();
+        var page = await App.OpenAsync();
         var before = await page.NodePosAsync("2");
         var from = await page.CenterAsync("[data-node-id='2']");
 
@@ -98,7 +98,7 @@ public abstract class BrowserTests(DemoFixture demo)
     [Fact]
     public async Task Dragging_a_node_moves_it_and_undo_brings_it_back()
     {
-        var page = await demo.OpenAsync();
+        var page = await App.OpenAsync();
         var before = await page.NodePosAsync("2");
         var from = await page.CenterAsync("[data-node-id='2']");
 
@@ -116,7 +116,7 @@ public abstract class BrowserTests(DemoFixture demo)
     [Fact]
     public async Task Dragging_from_a_handle_to_another_handle_creates_an_edge()
     {
-        var page = await demo.OpenAsync();
+        var page = await App.OpenAsync();
         var edges = await page.CountAsync(".wf-edge-path");
 
         await page.DragAsync(await HandleAsync(page, "1", "source"), await HandleAsync(page, "4", "target"), steps: 25);
@@ -127,7 +127,7 @@ public abstract class BrowserTests(DemoFixture demo)
     [Fact]
     public async Task The_wheel_zooms_around_the_cursor_and_the_pane_pans()
     {
-        var page = await demo.OpenAsync();
+        var page = await App.OpenAsync();
         var start = await page.ViewportAsync();
 
         await page.Mouse.MoveAsync(640, 400);
@@ -145,7 +145,7 @@ public abstract class BrowserTests(DemoFixture demo)
     [Fact]
     public async Task A_slider_inside_a_node_keeps_its_behaviour_and_does_not_drag_the_node()
     {
-        var page = await demo.OpenAsync();
+        var page = await App.OpenAsync();
         var node = await page.NodePosAsync("s");
         var slider = page.Locator("[data-node-id='s'] input[type=range]");
         var value = await slider.InputValueAsync();
@@ -160,7 +160,7 @@ public abstract class BrowserTests(DemoFixture demo)
     [Fact]
     public async Task A_drag_handle_restricts_dragging_to_the_handle()
     {
-        var page = await demo.OpenAsync();
+        var page = await App.OpenAsync();
         var before = await page.NodePosAsync("g");
 
         var body = await page.CenterAsync("[data-node-id='g'] .body");
@@ -176,7 +176,7 @@ public abstract class BrowserTests(DemoFixture demo)
     [Fact]
     public async Task Selecting_resizing_and_rotating_work_with_the_pointer()
     {
-        var page = await demo.OpenAsync();
+        var page = await App.OpenAsync();
         var node = page.Locator("[data-node-id='r']");
 
         var centre = await page.CenterAsync("[data-node-id='r']");
@@ -197,7 +197,7 @@ public abstract class BrowserTests(DemoFixture demo)
     [Fact]
     public async Task Keyboard_select_all_arrows_and_delete()
     {
-        var page = await demo.OpenAsync();
+        var page = await App.OpenAsync();
         await page.Mouse.ClickAsync(60, 700); // fond : donne le focus au graphe
 
         await page.Keyboard.PressAsync("Control+a");
@@ -215,7 +215,7 @@ public abstract class BrowserTests(DemoFixture demo)
     [Fact]
     public async Task Shift_drag_draws_a_selection_box()
     {
-        var page = await demo.OpenAsync();
+        var page = await App.OpenAsync();
         var a = await page.CenterAsync("[data-node-id='2']");
         var b = await page.CenterAsync("[data-node-id='3']");
 
@@ -231,7 +231,7 @@ public abstract class BrowserTests(DemoFixture demo)
     [Fact]
     public async Task Dragging_near_the_edge_scrolls_the_view_automatically()
     {
-        var page = await demo.OpenAsync();
+        var page = await App.OpenAsync();
         var start = await page.ViewportAsync();
         var from = await page.CenterAsync("[data-node-id='3']");
 
@@ -244,7 +244,7 @@ public abstract class BrowserTests(DemoFixture demo)
     [Fact]
     public async Task A_two_finger_pinch_zooms()
     {
-        var page = await demo.OpenAsync(touch: true);
+        var page = await App.OpenAsync(touch: true);
         var start = (await page.ViewportAsync()).Zoom;
         var cdp = await page.Context.NewCDPSessionAsync(page);
 
@@ -272,7 +272,7 @@ public abstract class BrowserTests(DemoFixture demo)
     [Fact]
     public async Task The_dark_theme_and_the_controls_work()
     {
-        var page = await demo.OpenAsync();
+        var page = await App.OpenAsync();
 
         await page.GetByRole(AriaRole.Button, new PageGetByRoleOptions { Name = "Sombre" }).ClickAsync();
         await page.UntilAsync(async () => (await page.Locator(".wf-flow").GetAttributeAsync("class"))!.Contains("wf-dark"), "thème sombre");
@@ -292,7 +292,7 @@ public abstract class BrowserTests(DemoFixture demo)
     [Fact]
     public async Task The_png_export_downloads_a_real_image()
     {
-        var page = await demo.OpenAsync();
+        var page = await App.OpenAsync();
 
         var download = await page.RunAndWaitForDownloadAsync(() => page.GetByRole(AriaRole.Button, new PageGetByRoleOptions { Name = "PNG" }).ClickAsync());
 
@@ -307,7 +307,7 @@ public abstract class BrowserTests(DemoFixture demo)
     [Fact]
     public async Task Minimap_click_recentres_the_view()
     {
-        var page = await demo.OpenAsync();
+        var page = await App.OpenAsync();
         var start = await page.ViewportAsync();
         var box = (await page.Locator(".wf-minimap svg").BoundingBoxAsync())!;
 

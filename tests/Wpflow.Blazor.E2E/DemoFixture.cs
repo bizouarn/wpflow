@@ -15,6 +15,7 @@ public abstract class DemoFixture : IAsyncLifetime
     private Process? _server;
     private IPlaywright? _playwright;
     private readonly List<string> _log = [];
+    private readonly System.Collections.Concurrent.ConcurrentBag<IBrowserContext> _contexts = [];
 
     /// <summary>La commande qui lance la démo sur <paramref name="url" />.</summary>
     protected abstract ProcessStartInfo CreateStartInfo(string root, string config, string url);
@@ -50,6 +51,12 @@ public abstract class DemoFixture : IAsyncLifetime
         Browser = await _playwright.Chromium.LaunchAsync(new BrowserTypeLaunchOptions { Channel = channel, Headless = true });
     }
 
+    /// <summary>Ferme les pages ouvertes jusqu'ici (voir <see cref="PagesTest" />).</summary>
+    public async Task CloseContextsAsync()
+    {
+        while (_contexts.TryTake(out var context)) await context.CloseAsync(); // déjà fermé par le test : sans effet
+    }
+
     public async Task DisposeAsync()
     {
         if (Browser != null) await Browser.CloseAsync();
@@ -61,7 +68,9 @@ public abstract class DemoFixture : IAsyncLifetime
         }
 
         // La sortie du serveur : une exception de circuit Blazor Server n'apparaît que là.
-        lock (_log) File.WriteAllLines(Path.Combine(AppContext.BaseDirectory, GetType().Name + ".server.log"), _log);
+        // Un fichier par instance : plusieurs classes en parallèle ont chacune leur application.
+        var name = $"{GetType().Name}-{new Uri(Url).Port}.server.log";
+        lock (_log) File.WriteAllLines(Path.Combine(AppContext.BaseDirectory, name), _log);
     }
 
     private async Task WaitForServer()
@@ -116,6 +125,7 @@ public abstract class DemoFixture : IAsyncLifetime
         };
         configure?.Invoke(options);
         var context = await Browser.NewContextAsync(options);
+        _contexts.Add(context);
         var page = await context.NewPageAsync();
         if (beforeLoad != null) await page.AddInitScriptAsync(beforeLoad);
         await page.GotoAsync((url ?? Url) + query);
@@ -190,7 +200,11 @@ public static class PageExtensions
     public static List<string> CollectErrors(this IPage page)
     {
         var errors = new List<string>();
-        page.Console += (_, m) => { if (m.Type == "error") errors.Add(m.Text); };
+        page.Console += (_, m) =>
+        {
+            // Le serveur de développement WebAssembly réclame parfois un fichier des outils du SDK .NET qu'il ne sert pas.
+            if (m.Type == "error" && !m.Location.Contains("/_framework/dotnet-browser-tools/")) errors.Add($"{m.Text} @ {m.Location}");
+        };
         page.PageError += (_, e) => errors.Add(e);
         return errors;
     }

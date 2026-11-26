@@ -54,7 +54,7 @@ Les 6 tests bUnit ajoutés échouent avec l'ancien comportement Blazor.
 
 Le geste `minimap.wheel` a trouvé un autre défaut Blazor, corrigé : `@onwheel:preventDefault` restait sans effet (écouteur passif), la page pouvait défiler pendant le zoom. `wpflow.js` s'en charge.
 
-Vérification de ces corrections : build sans avertissement, noyau 169 tests, WPF 128, bUnit 151, les cinq auto-tests WPF dans le Bac à sable. Blazor de bout en bout : passe complète à 313 sur 316 ; les deux échecs de `minimap.wheel` (le défaut ci-dessus) passent après la correction, relancés avec les autres gestes de molette et de minimap (la passe complète n'a pas été refaite ensuite). Reste `WasmMvvmScenarioTests.Controls_inside_a_node_keep_their_behaviour`, en échec à chacune de ses trois passes : le navigateur reçoit un 404 sur `/_framework/dotnet-browser-tools/hot-reload-settings.json`, un fichier des outils du SDK .NET demandé en développement, et le test refuse toute erreur de console. Non corrigé.
+Vérification de ces corrections : build sans avertissement, noyau 169 tests, WPF 128, bUnit 151, les cinq auto-tests WPF dans le Bac à sable. Blazor de bout en bout : passe complète à 313 sur 316 ; les deux échecs de `minimap.wheel` (le défaut ci-dessus) passent après la correction, relancés avec les autres gestes de molette et de minimap (la passe complète n'a pas été refaite ensuite). Reste `WasmMvvmScenarioTests.Controls_inside_a_node_keep_their_behaviour`, en échec à chacune de ses trois passes : le navigateur reçoit un 404 sur `/_framework/dotnet-browser-tools/hot-reload-settings.json`, un fichier des outils du SDK .NET demandé en développement, et le test refuse toute erreur de console. Corrigé depuis : les erreurs de ce seul dossier sont ignorées.
 
 ## Laissé de côté
 

@@ -179,9 +179,13 @@ export function attach(root, dotnet) {
         if (s.moveRaf) return;
         s.moveRaf = requestAnimationFrame(() => {
             s.moveRaf = 0;
-            const m = s.lastMove;
-            if (m && s.pointerId !== null) dotnet.invokeMethodAsync('OnPointerMove', m.clientX, m.clientY, m.shiftKey, m.ctrlKey || m.metaKey);
+            if (s.pointerId !== null) sendMove();
         });
+    };
+    // Un seul mouvement par image est transmis : le dernier.
+    const sendMove = () => {
+        const m = s.lastMove;
+        if (m) dotnet.invokeMethodAsync('OnPointerMove', m.clientX, m.clientY, m.shiftKey, m.ctrlKey || m.metaKey);
     };
     const onUp = (e) => {
         s.pointers.delete(e.pointerId);
@@ -212,7 +216,9 @@ export function attach(root, dotnet) {
     };
     const finish = (e, cancelled) => {
         s.pointerId = null;
-        if (s.moveRaf) { cancelAnimationFrame(s.moveRaf); s.moveRaf = 0; }
+        // Le mouvement encore en attente d'une image part avant le relâchement : sur une page chargée, le geste s'arrêterait
+        // sinon avant la souris (node ou vue en retrait, connexion perdue).
+        if (s.moveRaf) { cancelAnimationFrame(s.moveRaf); s.moveRaf = 0; sendMove(); }
         try { root.releasePointerCapture(e.pointerId); } catch { /* ignoré */ }
         awaitRelease(dotnet.invokeMethodAsync('OnPointerUp', e.clientX, e.clientY, e.shiftKey, cancelled));
     };

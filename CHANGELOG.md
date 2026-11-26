@@ -10,6 +10,7 @@ Les trois paquets (`Wpflow.Core`, `Wpflow.Wpf`, `Wpflow.Blazor`) partagent le m�
 - Blazor : après un contenu inséré au-dessus du graphe (sans changement de taille ni défilement), un dépôt ou un survol tombait à côté. La position est relue à l'entrée du pointeur et pendant un glisser-déposer.
 - Blazor : un CSS global sur `svg` (`max-width: 100%`, taille d'icône) effaçait les edges ou réduisait la minimap ; un `min-width` sur `button` élargissait les contrôles.
 - Blazor : après la suppression du node qui avait le focus, le clavier (Ctrl+Z) ne parvenait plus à la vue.
+- Blazor : sur une page chargée, ou pour un geste très bref, le dernier mouvement avant le relâchement était perdu : node ou vue arrêtés en retrait de la souris, connexion non faite.
 - Blazor Server : un bouton relâché pendant une coupure du circuit n'arrivait jamais ; le node restait en cours de glisser après la reprise. Le pont JS redemande la fin du geste jusqu'à la réponse du serveur (`OnGestureLost`).
 - WPF : une exception levée par un gestionnaire pendant une connexion laissait la souris capturée par la vue, qui ne répondait plus au clic suivant.
 - WPF : une vue fermée restait en mémoire tant que vivaient ses ViewModels (`NodesSource`, `EdgesSource`), sa collection `SelectedNodes` / `SelectedEdges` ou son `History`. Ces abonnements sont désormais faibles.
