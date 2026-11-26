@@ -5,7 +5,7 @@
     <!-- Validation de paquet : au « dotnet pack », une API retirée par rapport à la version de référence (publiée sur
          nuget.org) fait échouer la construction. À avancer après chaque publication. -->
     <EnablePackageValidation>true</EnablePackageValidation>
-    <PackageValidationBaselineVersion>1.0.1</PackageValidationBaselineVersion>
+    <PackageValidationBaselineVersion>1.1.0</PackageValidationBaselineVersion>
     <Authors>bizouarn</Authors>
     <Copyright>Copyright (c) bizouarn</Copyright>
     <Product>Wpflow</Product>

@@ -27,7 +27,7 @@ Légende : ➖ sans objet en WPF · 🟡 autre forme ou partiel.
 | `ConnectStarted` / `ConnectEnded` en connexion par clics | 🟡 `ConnectStarted` à l'appui ; la fin passe par `ClickConnectEnded` |
 | `RenderToBitmap` avec `OnlyRenderVisibleElements` | 🟡 ne rend que les éléments déjà créés |
 | `EdgeMarkerOptions.Orient` | 🟡 angle fixe en degrés (pas de `auto-start-reverse`) ; `Width` / `Height` relatifs à 12,5 |
-| Pincement tactile, lecteurs d'écran, CI GitHub Actions, publication NuGet | non vérifiables ici (voir [ROADMAP.md](ROADMAP.md)) |
+| Pincement tactile, lecteurs d'écran | non vérifiables ici (voir [ROADMAP.md](ROADMAP.md)) |
 
 ## Vérifications faites
 

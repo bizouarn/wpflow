@@ -1,35 +1,10 @@
 # Roadmap : tests complémentaires et usage réel
 
-Objectif : trouver les défauts **avant** qu'une application qui utilise la bibliothèque ne les trouve.
+Objectif : trouver les défauts **avant** qu'une application qui utilise la bibliothèque ne les trouve. Cette page ne garde que ce qui reste.
 
 **WPF et Blazor sont concernés à égalité.** Chaque lot a un résultat attendu pour les deux ; un lot n'est fini que lorsque les deux le sont.
 
-## Pourquoi
-
-Trois défauts corrigés dans `26b32b3` sont apparus alors que les tests passaient.
-
-| Défaut | Blazor | WPF | Pourquoi les tests ne l'ont pas vu |
-|---|---|---|---|
-| Double-clic sur un node jamais reçu, zoom du fond à la place (capture du pointeur) | corrigé | non reproduit à ce jour : un auto-test à la vraie souris couvre `NodeDoubleClick`, mais il ne tourne pas en CI | bUnit envoie l'évènement directement à l'élément ; aucun scénario de bout en bout ne double-cliquait. |
-| Impossible de savoir quel élément d'un node a été cliqué (une colonne d'une table) | corrigé (`TargetData`) | **à corriger** : `ElementEventArgs` ne donne que le node, pas l'élément cliqué | Les démos n'ont aucun node à plusieurs zones cliquables. |
-| Un fournisseur de tracé ne recevait pas l'edge | corrigé | corrigé (noyau commun), avec la même rupture d'API | Les démos et les tests donnaient le même tracé à tous les edges d'un type. |
-
-Il manque deux choses des deux côtés : des **entrées réelles** pour chaque évènement, et une **application qui ressemble à un vrai usage**.
-
-## État de départ (2026-11-25)
-
-| | Blazor | WPF |
-|---|---|---|
-| Tests sans entrée réelle | bUnit | xUnit sur un thread STA |
-| Tests avec entrées réelles | 18 scénarios, Server et WebAssembly, Chrome seul, 1280 × 800 | auto-tests à la vraie souris de la démo (`WPFLOW_SELFTEST`, `WPFLOW_EXAMPLES`) |
-| Entrées réelles en CI | oui (`ci.yml`) | **non** : lancées à la main seulement |
-| Entrées réelles avant publication | non | non |
-| Évènements publics | 41 `EventCallback` `On…` | 45 déclarations `public event`, plus les commandes MVVM |
-| Consommation des paquets | jamais testée en CI | vérifiée à la main avec une source locale |
-
-La correction `26b32b3` est sur `main` mais dans aucune version publiée. Elle retire `EdgeGeometry.Options` : les fournisseurs de tracé personnalisés qui le lisent, WPF comme Blazor, doivent être modifiés.
-
-Depuis la version 1.1.0 (26 novembre 2026), `ci.yml` et `release.yml` ne lancent plus que les tests de base (noyau, WPF, bUnit), en une minute au plus. Le bout en bout Blazor, les auto-tests WPF et la consommation des paquets se lancent à la main avant de poser le tag : plus rien ne bloque automatiquement la publication sur leur résultat. Les cases « en CI » des lots ci-dessous décrivent l'état antérieur.
+`ci.yml` et `release.yml` ne lancent que les tests de base (noyau, WPF, bUnit), en une minute au plus. Le bout en bout Blazor, les auto-tests WPF et la consommation des paquets se lancent à la main avant de poser le tag : rien ne bloque automatiquement la publication sur leur résultat.
 
 ## Règles
 
@@ -41,154 +16,19 @@ Depuis la version 1.1.0 (26 novembre 2026), `ci.yml` et `release.yml` ne lancent
 
 ## Lots
 
-Ordre conseillé : 0, 1, 2, puis le reste. Les tailles sont relatives (S, M, L).
+Les tailles sont relatives (S, M, L).
 
 ### Lot 0 — Barrière avant publication (M)
 
-- [x] Blazor : `release.yml` lance les tests de bout en bout avant `Pack`. *(workflow écrit, pas encore exécuté sur GitHub)*
-- [x] WPF : les auto-tests à la vraie souris rendent un **code de sortie** en échec sur toute ligne `ECHEC`, une exception ou un délai dépassé, et un script unique les enchaîne. *(`tests/run-wpf-selftests.ps1`, quatre runs ; 2026-11-25 en local : démo 24/24, exemples 86/86, performances, éditeur de schéma 195/195)*
-- [ ] WPF : les exécuter automatiquement demande un bureau interactif. Essayer le runner `windows-latest`, sinon une machine auto-hébergée avec session ouverte, sinon une exécution locale obligatoire avant le tag. *(jobs écrits dans `ci.yml` et `release.yml`, à valider au premier push)*
-- [x] WPF : donner l'équivalent de `TargetData` (élément d'origine du clic, du double-clic et du menu contextuel, dans les évènements et les commandes), avec un test à la vraie souris qui échoue d'abord. *(`FlowView.TargetData`, `ElementEventArgs.TargetData`/`OriginalSource`, `CommandsReceiveEventArgs`, vérifiés à la vraie souris le 2026-11-25. L'API n'existant pas, le test ne pouvait pas d'abord échouer à l'exécution)*
-- [x] Activer la validation de paquet (`EnablePackageValidation` et `PackageValidationBaselineVersion`) pour les trois paquets : une rupture d'API fait échouer le pack. *(vérifié : le pack du noyau échouait sur les quatre membres retirés avant leur déclaration)*
-- [x] Décider du numéro de la version qui contient `26b32b3` : **1.1.0**, avec la rupture assumée (`EdgeGeometry.Options` retiré, sans `[Obsolete]`), déclarée dans `CompatibilitySuppressions.xml` et le `CHANGELOG.md`.
-- [x] Tenir un `CHANGELOG.md` avec les ruptures.
-
-**Fini quand** : un test à entrée réelle cassé, WPF ou Blazor, ou une API retirée bloque la publication.
+- [ ] Exécuter automatiquement les auto-tests WPF à la vraie souris : cela demande un bureau interactif. Ils sont sortis de la CI ; en attendant, exécution locale avant le tag.
 
 ### Lot 1 — Consommer les paquets comme un utilisateur (M)
 
-Un script (`tests/consumers/run.ps1`) fabrique les paquets dans une source locale, crée des projets **neufs hors de la solution** avec `dotnet new`, installe les paquets, copie le code du « Démarrage rapide » du README, publie et teste. Utiliser un cache NuGet isolé (`NUGET_PACKAGES`) et une version unique à chaque essai, pour ne pas tester un ancien paquet.
-
-| Application WPF | À vérifier |
-|---|---|
-| `dotnet new wpf`, .NET 8 et .NET 10 | styles par défaut chargés sans rien déclarer, compilation sans avertissement, exécution |
-| Thèmes et personnalisation | clair, sombre, ressources `wpflow-node-*`, `wpflow-edge-*` et marqueurs définies dans la fenêtre puis dans `App.xaml` |
-| MVVM avec CommunityToolkit.Mvvm et ReactiveUI | liaisons, commandes, aucune erreur de liaison dans la sortie de débogage |
-| `FlowView` dans un `UserControl` d'une bibliothèque tierce | résolution des ressources et des templates |
-| Publication autonome en un seul fichier | démarrage, thèmes, export d'image |
-| Concepteur XAML de Visual Studio (manuel) | la fenêtre s'ouvre sans erreur |
-
-| Application Blazor | À vérifier |
-|---|---|
-| Web App, `InteractiveServer`, avec et sans pré-rendu | premier rendu, aucune erreur console |
-| Web App, interactivité par page (pas globale) | arrivée et départ de la page du graphe par navigation améliorée |
-| Web App, `InteractiveAuto` | premier chargement (Server) puis suivant (WebAssembly) |
-| WebAssembly autonome, `dotnet publish` avec trimming | JSON, export, réflexion après élagage |
-| Application sous un sous-chemin (`<base href="/outil/">`) | chargement de `wpflow.js` et `wpflow.css` |
-| Server publié, `ASPNETCORE_ENVIRONMENT=Production` | ressources `_content/Wpflow.Blazor/` servies |
-| .NET 8 et .NET 10 | compilation sans avertissement, exécution |
-
-- [x] Script et applications témoins WPF. *(2026-11-25 : 8/8 en local)*
-- [x] Script et applications témoins Blazor. *(2026-11-25 : 7/7 en local avec Edge)*
-- [ ] Test qui compile les extraits de code, C#, XAML et Razor, du README et de `doc/`. *(seuls les deux « Démarrage rapide » du README le sont, par le script)*
-- [ ] Après publication : relancer le script avec les paquets de nuget.org (`-FromNuget -Version …`).
-
-**Fini quand** : le script passe en CI sur les paquets du build, sans aucune référence de projet. *(job `consumers` écrit dans `ci.yml`, pas encore exécuté sur GitHub)*
-
-Restent hors du script : le concepteur XAML de Visual Studio (manuel) et l'**exécution en .NET 8**, faute de runtime sur le poste (WPF net8.0 exécuté par roll-forward sur le runtime 10 ; Blazor net8.0 seulement compilé).
-
-Défauts trouvés (2026-11-25), tous deux WPF, corrigés avec un test d'abord en échec :
-
-1. `RenderToBitmap` / `SaveImage` : image prise avec le viewport courant (décalée, tronquée ou blanche). Le test existant ne contrôlait que la taille du bitmap. Côté Blazor, l'export SVG est produit depuis le modèle et n'est pas concerné par cette cause ; `SaveImage` Blazor (capture dans le navigateur) n'est pas vérifié par le script.
-2. MVVM : `UpdateNode` n'écrivait rien dans le ViewModel, `UpdateEdge` seulement les extrémités. Blazor n'a pas d'adaptateur MVVM.
-
-Ticket d'API, **résolu** : `FlowView.ApplyNodeChanges` / `ApplyEdgeChanges`, publics en Blazor et internes en WPF, le sont désormais des deux côtés.
-
-### Lot 2 — Application témoin réaliste : éditeur de schéma de base (L)
-
-Le même scénario dans deux applications de test, plus exigeantes que les démos : `tests/Scenarios.Wpf/` (pilotée à la vraie souris et au clavier) et `tests/Scenarios.Blazor/` (pilotée par Playwright, Server et WebAssembly). Les modèles et les règles métier sont communs.
-
-Commun :
-
-- [x] Tables : nodes à lignes, un handle source et un handle cible **par colonne**.
-- [x] Savoir quelle colonne est cliquée, double-cliquée ou visée par le menu contextuel.
-- [x] Colonnes ajoutées, retirées, réordonnées, node replié : les handles sont remesurés et les edges suivent.
-- [x] Double-clic sur une colonne pour renommer dans un champ : saisie, Suppr, flèches, Ctrl+A, Ctrl+Z et Espace restent dans le champ.
-- [x] Menu contextuel par table, par colonne, par relation, sur le fond et sur une sélection.
-- [x] Types d'edges qui varient selon `Edge.Data` (cardinalités, marqueurs, labels cliquables).
-- [x] `IsValidConnection` selon le type des colonnes.
-- [x] Mode contrôlé : l'état vit dans un service, avec refus de certains changes.
-- [x] Chargement asynchrone après le premier affichage, puis rechargement d'un autre schéma (cadrage, historique, sélection).
-- [x] Enregistrement et relecture JSON avec un `Data` typé (il revient en `JsonElement`).
-- [x] Mise à jour par minuterie ou tâche de fond **pendant** un glisser ou une connexion.
-- [x] 200 tables et 400 relations, avec et sans virtualisation.
-
-Propre à WPF :
-
-- [x] `ListBox`, `DataGrid`, `ComboBox`, `TextBox`, `ScrollViewer` et boutons dans un node : molette, menu déroulant, saisie et focus restent au contrôle.
-- [x] Le même scénario en MVVM (`NodesSource`, commandes) : colonnes en `ObservableCollection`, modifications venant d'un autre thread renvoyées sur le thread d'interface.
-- [x] `ContextMenu` et `ToolTip` WPF posés dans les templates ; glisser-déposer depuis une liste de tables.
-
-Propre à Blazor :
-
-- [x] Boutons, listes, cases à cocher, zone défilante (`nowheel`), lien et texte sélectionnable dans un node.
-
-**Fini quand** : chaque ligne a un scénario sur WPF, Blazor Server et Blazor WebAssembly. Tout besoin impossible sans contourner la bibliothèque devient un ticket d'API.
-
-**État (2026-11-25).** Modèles et règles : `tests/Scenarios.Shared`. Blazor : `tests/Scenarios.Blazor` (hôtes `.Server` et `.Wasm`), scénarios dans `tests/Wpflow.Blazor.E2E/ScenarioTests.cs` sur Server et WebAssembly (Edge) ; les classes de bout en bout passent une à une : à quatre en parallèle, la machine de 8 Go saturait et les circuits tombaient. WPF : `tests/Scenarios.Wpf` (scénarios dans `Runner.cs`, 195 vérifications à la vraie souris, en mode contrôlé puis en MVVM, lancés par `tests/run-wpf-selftests.ps1` ; `WPFLOW_SCENARIO=<nom>` n'en lance qu'un).
-
-**Toutes les lignes ont leur scénario** (2026-11-25).
-
-- **Types d'edges, WPF** : sur la vue réelle, forme du tracé dessiné, clic réel sur ce tracé (et plus rien à l'ancien emplacement), pixels des marqueurs, et cardinalité changée en cours de route. Côté Blazor, le scénario contrôle le tracé et le marqueur au chargement, pas leur changement en cours de route.
-- **MVVM** : les mêmes scénarios rejoués avec `NodesSource`, des commandes et des ViewModels (sauf « autre thread », qui a sa propre vue). Après chacun, la vue et les ViewModels doivent dire la même chose. `WPFLOW_MVVM=1` ouvre l'application dans ce mode.
-
-Trouvés en écrivant le scénario MVVM :
-
-1. **Défaut** : un ViewModel qui ajuste ou refuse une valeur écrite par la vue (setter qui borne, élément verrouillé) n'était pas relu ; la vue divergeait. Corrigé, avec un test xUnit d'abord en échec (`MvvmRefusalTests`, sans souris : le défaut est entre la vue et le ViewModel) ; le scénario à la souris n'a pas été rejoué sur l'ancien code. *Blazor : sans objet (pas d'adaptateur MVVM).*
-2. **Manques d'API**, comblés : `EdgeMapping.DataPath`, `MarkerStartPath`, `MarkerEndPath` (sans eux, un edge ne pouvait pas varier selon ses données) et `SelectionContextMenuCommand`.
-
-Limites des scénarios WPF : en mode contrôlé, `Undo()` ne fait rien en WPF, donc « Ctrl+Z reste dans le champ » n'y prouve que le comportement du champ ; la `ListBox`, le `ScrollViewer` et le `DataGrid` portent `FlowView.NoWheel` (équivalent de `nowheel`), la molette sans cette marque n'est pas essayée ; la modification en mode contrôlé est appliquée de façon synchrone (le cas différé du défaut 4 n'est couvert que par le test du noyau) ; un seul DPI (100 %).
-
-**Parité entre les vues, comblée le 2026-11-26** (WPF fait référence). Les écarts ci-dessous, notés pendant ce lot, sont résolus : même suite d'évènements au clic droit sur une sélection et au double-clic (contrôlée dans les deux applications témoins), pas d'historique de la vue en mode contrôlé, `SelectAll` avec les edges, `ExportSvg` en WPF. `ViewParityTests` compare désormais par réflexion tous les évènements et réglages des deux vues. Le MVVM est complet en WPF (toutes les propriétés, annulation, une commande par évènement) et existe en Blazor ; les scénarios Blazor sont rejoués en MVVM (`?mvvm=1`), sur Server et WebAssembly. Restent propres à chaque plateforme : voir « Différences avec la version WPF » dans `doc/blazor.md`.
-
-Écarts tels qu'ils avaient été relevés :
-
-- Au clic droit sur une sélection, WPF lève le menu de sélection **et** celui du node, Blazor seulement celui de la sélection.
-- Au double-clic, WPF lève `NodeClick` **après** `NodeDoubleClick` (au second relâchement) ; Blazor lève les clics avant.
-- En mode contrôlé, l'historique de la vue Blazor reste actif, celui de WPF non.
-- `SelectAll()` (et Ctrl+A) : WPF sélectionne nodes et edges, Blazor les nodes seuls.
-- `DeleteSelected`, `ApplyNodeChanges`, `Undo`… : mêmes noms des deux côtés, synchrones en WPF et asynchrones en Blazor (`DeleteSelected` rend une `Task<bool>` des deux côtés).
-- Sans équivalent WPF : `ExportSvg` (fonction à écrire), `ClientToFlow` (coordonnées de page, propres au navigateur). Les autres méthodes publiques Blazor existent en WPF (`ClearHistory` compris) ; `ApiParityTests` le vérifie pour celles ajoutées.
-
-Défauts trouvés côté Blazor, corrigés, chacun avec un scénario d'abord en échec :
-
-1. **Server** : circuit coupé quand les mesures dépassent 32 Ko en un message. *WPF : sans objet.*
-2. Handles déplacés sans changement de taille du node : edges laissés à l'ancienne place. *WPF : **confirmé** à la vraie souris. Les colonnes ajoutées, retirées, réordonnées ou repliées sont suivies, mais pas un déplacement seul (marge changée) : `FlowView.UpdateNodeInternals(id)` ajouté, comme `useUpdateNodeInternals`.*
-3. `@onkeydown` sur un champ dans un node jamais reçu. *WPF : non concerné (renommage au clavier réussi).*
-4. Mode contrôlé : l'ancienne sélection déplacée à la place du node saisi. *Noyau commun, corrigé aussi en WPF.*
-5. Clic droit ou milieu : sélection vidée et `OnPaneClick` levé ; menu de sélection inaccessible. *WPF : non concerné pour le clic droit (sélection gardée, menu de sélection reçu) ; clic milieu non essayé.*
-
-Comportements voulus, ajoutés à `doc/blazor.md` : modèles de nodes mémorisés (l'état d'affichage va dans un composant enfant) ; `ClearHistory()` après le chargement d'un autre document.
-
-
-### Lot 3 — Matrice des évènements et des gestes (L)
-
-- [x] Un journal d'évènements dans chaque application témoin ; chaque évènement est déclenché par une entrée réelle, avec contrôle de son contenu, de son **nombre d'appels** et de son ordre (début, déplacement, fin).
-- [x] Un test de garde par réflexion échoue si un évènement public manque à la matrice : les `event` et les propriétés `…Command` côté WPF, les `EventCallback` côté Blazor.
-- [x] Combinaisons : simple et double-clic, clic droit, clic milieu, Ctrl/Maj + clic, glisser sous et au-delà du seuil, relâchement hors de la fenêtre, Échap pendant un geste, perte de focus (Alt+Tab).
-- [x] Les mêmes sur node, edge, label d'edge, handle, fond, minimap, toolbar et élément interactif dans un node. *(pas le produit complet : voir les limites)*
-- [x] Chaque option qui coupe une interaction (`IsLocked`, déplaçable, sélectionnable, connectable…) est vérifiée avec une entrée réelle.
-- [x] Un tableau de parité : un même geste lève les mêmes évènements, dans le même ordre, en WPF et en Blazor ; chaque écart voulu est documenté.
-- [x] WPF : perte de la capture souris (`LostMouseCapture`), par exemple quand un gestionnaire de clic ou de double-clic ouvre une boîte de dialogue.
-
-**État (2026-11-26).** La table « geste → suite exacte des évènements » est `tests/Scenarios.Shared/GestureMatrix.cs` : c'est le tableau de parité, un écart voulu y porte sa suite Blazor et sa raison (aussi dans `doc/blazor.md`). Le catalogue des évènements est `EventCatalog.cs` ; `EventMatrixGuardTests` le compare par réflexion aux deux bibliothèques et exige un geste par évènement (les commandes WPF restent gardées par `EventCommandTests`, qui en exige une par évènement de `FlowView`). WPF : `MatrixRunner.cs`, lancé par `run-wpf-selftests.ps1 -Only matrix` (`WPFLOW_GESTURE=préfixes` pour en jouer quelques-uns). Blazor : `MatrixTests.cs`, Server et WebAssembly.
-
-Derniers résultats en local : auto-tests WPF tous passants (matrice 97/97, scénarios 199/199, exemples 86/86, démo 24/24) ; bout en bout Blazor 310/310 puis les 28 gestes du fond après l'ajout d'un geste ; noyau 147, WPF 128, bUnit 145. La CI n'a pas été exécutée.
-
-Limites :
-
-- La matrice ne tourne qu'en **mode contrôlé** ; en MVVM, les évènements ne sont pas rejoués un à un, et les commandes ne sont pas déclenchées à la souris une à une.
-- Perte de focus : en WPF, une boîte de dialogue modale (pas un vrai Alt+Tab) ; dans le navigateur, un relâchement qui n'arrive jamais, envoyé par le protocole DevTools. `pointercancel` n'est pas essayé (lot 5, tactile).
-- Pas de produit complet des combinaisons et des cibles : Échap n'est essayé que pendant un glisser de node et une connexion par clics ; le label d'edge au clic et au double-clic ; la minimap au clic sur un node (pas au glisser) ; la barre d'outils au clic.
-- Options non couvertes : défilement (`PanOnScroll`), pincement, `SelectionOnDrag`, `PreventScrolling`.
-- `edge.right-click` a échoué une fois en WPF (menu du fond reçu), sans se reproduire aux deux passages suivants.
-
-Défauts trouvés, chacun avec un geste d'abord en échec puis corrigé (détail dans le `CHANGELOG.md`) :
-
-- **WPF** : capture perdue en plein geste, aucun évènement de fin ; après un double-clic ouvrant une boîte de dialogue, le node suivait la souris bouton relâché ; clic perdu avec un seuil de glisser supérieur à 4 px ; clic près d'une extrémité d'edge avalé par la reconnexion ; `NodeClick` en trop à la connexion par deux clics ; handle non connectable déplaçant le node ; `SelectNodesOnDrag` faux sélectionnant au glisser.
-- **Blazor** : `OnDrop` ne fonctionnait pas dans un navigateur ; `OnSelectionChange` jamais levé en mode contrôlé ; geste bloqué après un relâchement perdu ; `OnPaneClick` et sélection vidée par la minimap, une barre d'outils ou le second clic d'une connexion ; reconnexion sans `OnConnectStart` / `OnConnectEnd` ; menu contextuel après un glisser au bouton droit ; double-clic sur un panneau zoomant le graphe ; survol du fond sans tenir compte des nodes et des edges ; plus les écarts de comportement alignés sur WPF (seuils, rayon de reconnexion, sélection multiple, contrôles dans un node, node verrouillé).
-
-À décider : au glisser sur le fond, WPF efface la sélection dès l'appui, Blazor la garde (comme React Flow). L'écart est déclaré dans la matrice.
+- [ ] Test qui compile les extraits de code, C#, XAML et Razor, du README et de `doc/`. *(seuls les deux « Démarrage rapide » du README le sont, par `tests/consumers/run.ps1`)*
+- [ ] Relancer le script avec les paquets de nuget.org (`-FromNuget -Version …`).
+- [ ] Exécution en **.NET 8**, faute de runtime sur le poste (WPF net8.0 exécuté par roll-forward sur le runtime 10 ; Blazor net8.0 seulement compilé).
+- [ ] Concepteur XAML de Visual Studio (manuel) : la fenêtre s'ouvre sans erreur.
+- [ ] `SaveImage` Blazor (capture dans le navigateur), non vérifié par le script.
 
 ### Lot 4 — Conditions d'intégration hostiles (L)
 
@@ -229,7 +69,7 @@ WPF :
 
 Blazor :
 
-- [ ] Edge, Firefox et WebKit avec Playwright, en CI (Firefox et WebKit demandent de télécharger les moteurs).
+- [ ] Edge, Firefox et WebKit avec Playwright (Firefox et WebKit demandent de télécharger les moteurs).
 - [ ] Contexte tactile : tap, double tap, appui long, glisser, pincement ; la page ne défile pas.
 - [ ] Clavier macOS (touche Meta).
 
@@ -255,6 +95,27 @@ Commun :
 | Auto-tests WPF à la vraie souris, tant qu'ils ne sont pas automatisés (lot 0) | à noter |
 | Essai libre de 30 minutes de chaque application témoin | jamais |
 
+## Trous restants des lots 2 et 3
+
+Les applications témoins (`tests/Scenarios.*`, lot 2) et la matrice des évènements et des gestes (`GestureMatrix.cs`, lot 3) sont en place. Il leur manque :
+
+Scénarios :
+
+- [ ] Blazor : le tracé et le marqueur d'un type d'edge sont contrôlés au chargement, pas leur changement en cours de route.
+- [ ] WPF : la molette sur une `ListBox`, un `ScrollViewer` ou un `DataGrid` sans `FlowView.NoWheel` n'est pas essayée.
+- [ ] WPF : en mode contrôlé, la modification est appliquée de façon synchrone ; le cas différé (ancienne sélection déplacée à la place du node saisi) n'est couvert que par un test du noyau.
+- [ ] Blazor : le clic du milieu (sélection gardée, pas de `OnPaneClick`) a un équivalent WPF non essayé.
+
+Matrice :
+
+- [ ] Elle ne tourne qu'en **mode contrôlé** ; en MVVM, les évènements ne sont pas rejoués un à un, et les commandes ne sont pas déclenchées à la souris une à une.
+- [ ] Perte de focus : en WPF, une boîte de dialogue modale (pas un vrai Alt+Tab) ; dans le navigateur, un relâchement qui n'arrive jamais, envoyé par le protocole DevTools. `pointercancel` n'est pas essayé.
+- [ ] Pas de produit complet des combinaisons et des cibles : Échap n'est essayé que pendant un glisser de node et une connexion par clics ; le label d'edge au clic et au double-clic ; la minimap au clic sur un node (pas au glisser) ; la barre d'outils au clic.
+- [ ] Options non couvertes : défilement (`PanOnScroll`), pincement, `SelectionOnDrag`, `PreventScrolling`.
+- [ ] WPF : `edge.right-click` a échoué une fois (menu du fond reçu), sans se reproduire aux deux passages suivants.
+
+À décider : au glisser sur le fond, WPF efface la sélection dès l'appui, Blazor la garde (comme React Flow). L'écart est déclaré dans la matrice.
+
 ## Suivi
 
-Pour chaque lot terminé : cocher, noter la date et les défauts trouvés. Un lot qui ne trouve rien reste utile s'il tourne en CI.
+Ce qui est fini est retiré de cette page ; les défauts trouvés vont dans le `CHANGELOG.md`. Un lot qui ne trouve rien reste utile si ses tests sont relancés avant chaque version.
