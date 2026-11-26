@@ -24,8 +24,15 @@ public partial class FlowView
     private XYPosition _pointer;
     private XYPosition _startFlow;
     private Viewport _startViewport;
-    private double _threshold = 3;
+    private double _threshold = 1;
     private bool _moved;
+    private double _pressDistance; // le plus loin que le pointeur soit allé du point pressé : au-delà du seuil, plus de clic
+    private bool _noClick; // l'appui a déjà servi (second clic d'une connexion)
+    private string? _pendingSelect; // node pressé sans être sélectionné (SelectNodesOnDrag faux) : sélectionné au clic
+    private bool _rightDragged; // le bouton droit a déplacé la vue : le menu contextuel qui suit est ignoré
+
+    /// <summary>En deçà (en pixels), un tremblement reste un clic, quels que soient les seuils de glisser (comme en WPF).</summary>
+    private const double ClickTolerance = 4;
     private string? _pressedNode;
     private string? _pressedEdge;
     private bool _pressedMulti;
@@ -46,7 +53,10 @@ public partial class FlowView
     private (Edge Edge, HandleType Moving)? _reconnect;
 
     // Drapeaux de l'appui en cours, posés par le pont JS (élément `nodrag`, `nopan`, contrôle HTML).
-    private bool _pressNoDrag, _pressNoPan, _pressUntracked;
+    private bool _pressNoDrag, _pressNoPan, _pressUntracked, _pressOutsideHandle;
+
+    // L'appui courant est sur un contrôle, un panneau ou une barre d'outils : son double-clic ne concerne pas le graphe.
+    private bool _lastPressUntracked;
 
     private bool CanDrag => NodesDraggable && !IsLocked;
     private bool CanConnect => NodesConnectable && !IsLocked;
@@ -67,7 +77,9 @@ public partial class FlowView
     {
         _pressNoDrag = (flags & 1) != 0;
         _pressNoPan = (flags & 2) != 0;
-        _pressUntracked = (flags & 4) != 0;
+        _pressUntracked = _lastPressUntracked = (flags & 4) != 0;
+        _pressOutsideHandle = (flags & 8) != 0;
+        _rightDragged = false;
         return Task.CompletedTask;
     }
 
@@ -91,10 +103,14 @@ public partial class FlowView
     private NodeEventArgs NodeArgs(Node n, FlowPointer pointer) =>
         _pressData is { } p && p.NodeId == n.Id ? new NodeEventArgs(n, pointer) { TargetData = p.Data } : new NodeEventArgs(n, pointer);
 
-    private (bool NoDrag, bool NoPan, bool Untracked) BeginGesture(PointerEventArgs e)
+    private (bool NoDrag, bool NoPan, bool Untracked, bool OutsideHandle) BeginGesture(PointerEventArgs e)
     {
-        var flags = (_pressNoDrag, _pressNoPan, _pressUntracked);
-        _pressNoDrag = _pressNoPan = _pressUntracked = false;
+        var flags = (_pressNoDrag, _pressNoPan, _pressUntracked, _pressOutsideHandle);
+        _pressNoDrag = _pressNoPan = _pressUntracked = _pressOutsideHandle = false;
+        _pressDistance = 0;
+        _noClick = false;
+        _pendingSelect = null;
+        _rightDragged = false;
         _pressData = _pendingData;
         _pendingData = null;
         _startPointer = _pointer = Rel(e.ClientX, e.ClientY);
@@ -112,7 +128,7 @@ public partial class FlowView
         _resize = null;
         _rotate = null;
         _reconnect = null;
-        _threshold = 3;
+        _threshold = 1;
         if (!_clickMode)
         {
             _from = null;
@@ -159,24 +175,37 @@ public partial class FlowView
             return;
         }
 
-        if (button != 0) return;
+        // Un contrôle HTML du node garde l'appui, comme en WPF : ni sélection ni clic.
+        if (button != 0 || flags.Untracked) return;
         _pressedNode = n.Id;
         _pressedWasSelected = n.Selected;
 
-        if (CanSelect && n.Selectable)
+        // Verrouillé, non sélectionnable ou hors de la zone de saisie : le node reste en place, le glisser déplace la vue.
+        if (IsLocked || !n.Selectable || flags.OutsideHandle)
         {
-            if (_pressedMulti)
+            if (!IsLocked && n.Selectable && !n.Selected) await SelectElements([n.Id], [], _pressedMulti);
+            if (!flags.NoPan && PanOnDrag && PanOnDragButtons.Contains(0))
             {
-                await ApplyNodeChanges([new NodeSelectChange(n.Id, !n.Selected)]);
-                if (n.Selected) return; // désélectionné : pas de glissement
+                _threshold = PaneDragThreshold;
+                _mode = Mode.Pan;
             }
-            else if (!n.Selected && SelectNodesOnDrag)
-            {
-                await SelectOnly(n.Id, null);
-            }
+
+            return;
         }
 
-        if (flags.Untracked || flags.NoDrag || !CanDrag || !n.Draggable) return;
+        if (n.Selected && _pressedMulti) // désélectionné : pas de glissement
+        {
+            await ApplyNodeChanges([new NodeSelectChange(n.Id, false)]);
+            return;
+        }
+
+        if (!n.Selected)
+        {
+            if (SelectNodesOnDrag) await SelectElements([n.Id], [], _pressedMulti);
+            else _pendingSelect = n.Id;
+        }
+
+        if (flags.NoDrag || !CanDrag || !n.Draggable) return;
         _dragStart = DragSelection.CollectStart(Nodes, CanDrag, CanSelect, SelectNodesOnDrag, n.Id, _pressedMulti);
         // Mode contrôlé : la sélection demandée n'est pas encore appliquée, seul le node saisi suit le pointeur.
         if (_dragStart.Count == 0) _dragStart[n.Id] = n.Position;
@@ -189,11 +218,13 @@ public partial class FlowView
     {
         var flags = BeginGesture(e);
         if (_clickMode) await CancelClickConnect(e);
-        if ((int)e.Button != 0) return;
+        if ((int)e.Button != 0 || flags.Untracked) return;
         _pressedEdge = edge.Id;
 
-        // Un appui près d'une extrémité d'un edge sélectionnable la déplace (reconnexion).
-        if (!flags.Untracked && EdgesReconnectable && CanConnect && edge.Reconnectable && _edgeContexts.TryGetValue(edge.Id, out var ctx))
+        if (CanSelect && edge.Selectable) await SelectElements([], [edge.Id], _pressedMulti);
+
+        // Un appui près d'une extrémité, suivi d'un glisser, la déplace (reconnexion) ; sans glisser, c'est un clic.
+        if (EdgesReconnectable && !IsLocked && edge.Reconnectable && _edgeContexts.TryGetValue(edge.Id, out var ctx))
         {
             var radius = ReconnectRadius / Viewport.Zoom;
             var g = ctx.Geometry;
@@ -211,17 +242,18 @@ public partial class FlowView
                     _from = (m == HandleType.Source ? edge.Target : edge.Source, fixedHandle);
                     _cursorFlow = _startFlow;
                     _mode = Mode.Reconnect;
-                    _threshold = ConnectionDragThreshold;
-                    if (AutoPanOnConnect) StartAutoPan();
-                    await OnReconnectStart.InvokeAsync(edge);
-                    return;
+                    _threshold = Math.Max(ClickTolerance, ConnectionDragThreshold);
                 }
             }
         }
+    }
 
-        if (!CanSelect || !edge.Selectable) return;
-        if (_pressedMulti) await ApplyEdgeChanges([new EdgeSelectChange(edge.Id, !edge.Selected)]);
-        else await SelectOnly(null, edge.Id);
+    /// <summary>Sélectionne ces éléments ; <paramref name="additive" /> les ajoute à la sélection.</summary>
+    private async Task SelectElements(IEnumerable<string> nodeIds, IEnumerable<string> edgeIds, bool additive)
+    {
+        var (nodeChanges, edgeChanges) = SelectionOps.Select(Nodes, Edges, nodeIds, edgeIds, additive, ElementsSelectable);
+        await ApplyNodeChanges(nodeChanges);
+        await ApplyEdgeChanges(edgeChanges);
     }
 
     private static double Distance(XYPosition a, XYPosition b) => Math.Sqrt((a.X - b.X) * (a.X - b.X) + (a.Y - b.Y) * (a.Y - b.Y));
@@ -231,12 +263,12 @@ public partial class FlowView
         var wasClick = _clickMode;
         var previous = _from;
         BeginGesture(e);
-        if ((int)e.Button != 0 || !CanConnect || !handle.Connectable) return;
-        if (_nodeIndex.TryGetValue(nodeId, out var n) && !n.Connectable) return;
+        if ((int)e.Button != 0) return;
 
-        // Deuxième clic de la connexion par clics : le handle cliqué est la cible.
-        if (wasClick && previous is { } from)
+        // Deuxième clic de la connexion par clics : le handle cliqué est la cible, et ce n'est pas un autre clic.
+        if (wasClick && previous is { } from && CanConnect && handle.Connectable)
         {
+            _noClick = true;
             _from = from;
             _cursorFlow = _startFlow;
             _candidate = FindCandidate(_startFlow);
@@ -244,7 +276,14 @@ public partial class FlowView
             return;
         }
 
-        if (!handle.ConnectableStart || Extras(nodeId, handle.Id, handle.Type) is { ConnectableStart: false }) return;
+        // Un handle d'où aucune connexion ne peut partir : le tirer ne déplace rien ; un clic reste un clic sur le node.
+        if (!CanConnect || !handle.Connectable || !handle.ConnectableStart ||
+            Extras(nodeId, handle.Id, handle.Type) is { ConnectableStart: false } or { Connectable: false } ||
+            _nodeIndex.TryGetValue(nodeId, out var n) && !n.Connectable)
+        {
+            _pressedNode = nodeId;
+            return;
+        }
         _from = (nodeId, handle);
         _cursorFlow = _startFlow;
         _mode = Mode.Connect;
@@ -284,9 +323,10 @@ public partial class FlowView
     public Task OnPointerMove(double clientX, double clientY, bool shift, bool ctrl) => InvokeAsync(async () =>
     {
         _pointer = Rel(clientX, clientY);
-        if (_mode == Mode.None) return;
         var dx = _pointer.X - _startPointer.X;
         var dy = _pointer.Y - _startPointer.Y;
+        _pressDistance = Math.Max(_pressDistance, Math.Abs(dx) + Math.Abs(dy));
+        if (_mode == Mode.None) return;
         var first = false;
         if (!_moved)
         {
@@ -313,6 +353,15 @@ public partial class FlowView
                 break;
             case Mode.Connect:
             case Mode.Reconnect:
+                if (first && _mode == Mode.Reconnect && _reconnect is { } started && _from is { } anchor)
+                {
+                    // La reconnexion commence au premier mouvement, avec les mêmes évènements qu'en WPF.
+                    _connectArgs = new ConnectStartEventArgs(anchor.NodeId, anchor.Handle.Id, anchor.Handle.Type) { IsReconnection = true };
+                    if (AutoPanOnConnect) StartAutoPan();
+                    await OnConnectStart.InvokeAsync(_connectArgs);
+                    await OnReconnectStart.InvokeAsync(started.Edge);
+                }
+
                 _cursorFlow = flow;
                 _candidate = FindCandidate(flow);
                 StateHasChanged();
@@ -340,6 +389,16 @@ public partial class FlowView
         _mode = Mode.None;
         StopAutoPan();
         var pointer = MakePointer(_pointer, shift);
+        // La plus grande distance parcourue compte : un glisser revenu à son départ n'est pas un clic ; un seuil de
+        // glisser plus grand que la tolérance laisse le clic jusqu'à lui.
+        var distance = Math.Max(_pressDistance, Math.Abs(_pointer.X - _startPointer.X) + Math.Abs(_pointer.Y - _startPointer.Y));
+        var clicked = distance < Math.Max(ClickTolerance, mode switch
+        {
+            Mode.DragNodes => NodeDragThreshold,
+            Mode.Pan => PaneDragThreshold,
+            _ => 0
+        });
+        _rightDragged = _pressedButton == 2 && mode == Mode.Pan && _moved;
         switch (mode)
         {
             case Mode.Pan when _moved:
@@ -348,11 +407,18 @@ public partial class FlowView
             case Mode.DragNodes when _moved:
                 await FinishDrag(pointer);
                 break;
-            case Mode.Connect when !cancelled:
-                if (_moved || !ConnectOnClick) await FinishConnect(null, false);
+            case Mode.Connect:
+                if (cancelled)
+                {
+                    _candidate = null; // abandon : le geste se termine sans connexion
+                    await FinishConnect(null, false);
+                }
+                else if (!clicked || !ConnectOnClick) await FinishConnect(null, false);
                 else await BeginClickConnect();
+
                 break;
-            case Mode.Reconnect when !cancelled:
+            case Mode.Reconnect when _moved:
+                if (cancelled) _candidate = null;
                 await FinishReconnect();
                 break;
             case Mode.Box when _moved:
@@ -367,7 +433,8 @@ public partial class FlowView
         }
 
         // Seul le bouton gauche clique : un clic droit ou milieu ne désélectionne pas et ne lève pas OnPaneClick.
-        if (!_moved && !cancelled && _pressedButton == 0 && mode != Mode.Resize && mode != Mode.Rotate) await HandleClick(mode, pointer, shift);
+        if (clicked && !cancelled && !_noClick && _pressedButton == 0 && mode is not (Mode.Resize or Mode.Rotate or Mode.Connect))
+            await HandleClick(mode, pointer, shift);
 
         if (!_clickMode)
         {
@@ -388,11 +455,8 @@ public partial class FlowView
     {
         if (_pressedNode != null && _nodeIndex.TryGetValue(_pressedNode, out var n))
         {
-            if (CanSelect && n.Selectable && !_pressedMulti)
-            {
-                // Clic simple : ne garde que ce node (aussi dans une sélection multiple).
-                if (!n.Selected || Nodes.Count(x => x.Selected) > 1 || Edges.Any(x => x.Selected)) await SelectOnly(n.Id, null);
-            }
+            // La sélection est faite à l'appui ; un clic dans une sélection multiple la garde, comme en WPF.
+            if (_pendingSelect == n.Id && CanSelect) await SelectOnly(n.Id, null);
 
             var args = NodeArgs(_nodeIndex[n.Id], pointer);
             await RaiseClick(() => OnNodeClick.InvokeAsync(args), OnNodeDoubleClick.HasDelegate);
@@ -417,6 +481,7 @@ public partial class FlowView
     {
         if (first)
         {
+            _pendingSelect = null; // SelectNodesOnDrag faux : un node glissé reste non sélectionné
             PushHistory();
             var start = DraggedNodes();
             var args = new NodeDragEventArgs(_nodeIndex[_pressedNode ?? start[0].Id], start, MakePointer(_pointer));
@@ -576,7 +641,9 @@ public partial class FlowView
             _candidate = FindCandidate(_cursorFlow);
         }
 
-        return OnPaneMouseMove.InvokeAsync(new PaneEventArgs(MakePointer(e)));
+        // Un élément survolé a pu disparaître sans « pointerleave ».
+        if (_hoverElement is ['n', ':', .. var gone] && !_nodeIndex.ContainsKey(gone)) _hoverElement = null;
+        return _hoverElement == null ? OnPaneMouseMove.InvokeAsync(new PaneEventArgs(MakePointer(e))) : Task.CompletedTask;
     }
 
     private EventCallback<PointerEventArgs> HoverMoveHandler => _clickMode || OnPaneMouseMove.HasDelegate ? Cb(OnHoverMove) : default;
@@ -592,7 +659,9 @@ public partial class FlowView
         if (_candidate is { } to && TryBuild(from, to) is { } built)
         {
             connection = built;
-            var list = GraphQueries.ReconnectEdge(r.Edge, connection, Edges, shouldReplaceId: false);
+            // L'edge tel qu'il est maintenant : l'appui l'a sélectionné depuis que le geste l'a retenu.
+            var current = Edges.FirstOrDefault(x => x.Id == r.Edge.Id) ?? r.Edge;
+            var list = GraphQueries.ReconnectEdge(current, connection, Edges, shouldReplaceId: false);
             if (!ReferenceEquals(list, Edges))
             {
                 var updated = list.First(e => e.Id == r.Edge.Id);
@@ -606,6 +675,9 @@ public partial class FlowView
         _from = null;
         _candidate = null;
         await OnReconnectEnd.InvokeAsync(new ReconnectEndEventArgs(r.Edge, r.Moving, connection));
+        if (_connectArgs is { } args)
+            await OnConnectEnd.InvokeAsync(new ConnectEndEventArgs(args, connection, connection != null, MakePointer(_pointer)));
+        _connectArgs = null;
     }
 
     /// <summary>Chemin du fil de connexion en cours (coordonnées flow), ou <c>null</c> s'il n'y en a pas.</summary>

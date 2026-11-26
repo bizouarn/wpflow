@@ -61,9 +61,9 @@ public partial class FlowView
     [Parameter] public string ZoomActivationKey { get; set; } = "Control";
     [Parameter] public IReadOnlyList<string> DeleteKeys { get; set; } = ["Delete", "Backspace"];
     [Parameter] public bool DeleteKeyEnabled { get; set; } = true;
-    [Parameter] public double NodeDragThreshold { get; set; } = 3;
-    [Parameter] public double ConnectionDragThreshold { get; set; } = 3;
-    [Parameter] public double PaneDragThreshold { get; set; } = 3;
+    [Parameter] public double NodeDragThreshold { get; set; } = 1;
+    [Parameter] public double ConnectionDragThreshold { get; set; } = 1;
+    [Parameter] public double PaneDragThreshold { get; set; } = 1;
     [Parameter] public bool AutoPanOnNodeDrag { get; set; } = true;
     [Parameter] public bool AutoPanOnConnect { get; set; } = true;
     [Parameter] public bool AutoPanOnSelection { get; set; } = true;
@@ -80,7 +80,8 @@ public partial class FlowView
     /// <summary>Rayon (pixels écran) dans lequel un handle accroche le fil (<c>connectionRadius</c>).</summary>
     [Parameter] public double ConnectionRadius { get; set; } = 20;
 
-    [Parameter] public double ReconnectRadius { get; set; } = 10;
+    /// <summary>Portée (pixels écran) pour rattraper l'extrémité d'un edge.</summary>
+    [Parameter] public double ReconnectRadius { get; set; } = 24;
 
     /// <summary>Un clic sur un handle puis un clic sur un autre handle connecte (<c>connectOnClick</c>).</summary>
     [Parameter] public bool ConnectOnClick { get; set; } = true;

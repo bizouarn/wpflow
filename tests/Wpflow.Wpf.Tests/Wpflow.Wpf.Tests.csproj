@@ -25,6 +25,8 @@
     <ProjectReference Include="..\..\src\Wpflow.Wpf\Wpflow.Wpf.csproj" />
     <!-- Pour comparer les API des deux vues (ViewParityTests). -->
     <ProjectReference Include="..\..\src\Wpflow.Blazor\Wpflow.Blazor.csproj" />
+    <!-- La matrice des évènements et des gestes (EventMatrixGuardTests). -->
+    <ProjectReference Include="..\Scenarios.Shared\Scenarios.Shared.csproj" />
   </ItemGroup>
 
 </Project>

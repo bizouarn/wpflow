@@ -37,7 +37,7 @@ public partial class FlowView : ComponentBase, IAsyncDisposable
     private bool _forceLayer; // un changement autre que le viewport : la couche des nodes et des edges est refaite
     private bool _viewportOnly;// le prochain rendu ne change que le viewport (pan, zoom) : la couche des nodes est conservée
     private string? _announce;
-    private string? _selectionSignature;
+    private string _selectionSignature = "|"; // rien de sélectionné : un graphe sans sélection n'annonce rien
     private string? _jsOptions;
     private readonly HashSet<string> _reportedErrors = new();
 
@@ -74,13 +74,23 @@ public partial class FlowView : ComponentBase, IAsyncDisposable
             HashCode.Combine(DisableKeyboardA11y, NodeAriaLabelProvider, EdgeAriaLabelProvider, EdgesReconnectable, ReconnectRadius, ConnectionLineTemplate, ConnectionLineType),
             HashCode.Combine(OnlyRenderVisibleElements, OnNodeContextMenu.HasDelegate, OnSelectionContextMenu.HasDelegate, OnNodeMouseEnter.HasDelegate,
                 OnNodeMouseLeave.HasDelegate, OnEdgeMouseEnter.HasDelegate,
-                HashCode.Combine(OnEdgeContextMenu.HasDelegate, OnNodeMouseMove.HasDelegate, OnEdgeMouseMove.HasDelegate, EdgeHitWidth)));
+                HashCode.Combine(OnEdgeContextMenu.HasDelegate, OnNodeMouseMove.HasDelegate, OnEdgeMouseMove.HasDelegate, EdgeHitWidth,
+                    PaneHoverWanted)));
         if (signature != _layerSignature) _forceLayer = true;
         _layerSignature = signature;
         await ApplyBoundSelection();
+
+        // La sélection peut venir des paramètres : en mode contrôlé, c'est l'application qui applique les changes.
+        if (!ReferenceEquals(_selectionNodes, Nodes) || !ReferenceEquals(_selectionEdges, Edges))
+        {
+            (_selectionNodes, _selectionEdges) = (Nodes, Edges);
+            await AfterSelectionMaybeChanged();
+        }
     }
 
     private int _layerSignature;
+    private IReadOnlyList<Node>? _selectionNodes;
+    private IReadOnlyList<Edge>? _selectionEdges;
 
     /// <summary>Redessine aussi la couche des nodes et des edges (tout ce qui n'est pas un simple pas de pan).</summary>
     private void Refresh()

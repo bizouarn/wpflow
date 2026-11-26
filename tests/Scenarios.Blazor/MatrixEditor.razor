@@ -1,0 +1,204 @@
+@* La matrice des évènements et des gestes (ROADMAP-TESTS, lot 3) : l'éditeur de schéma en mode contrôlé, tous les
+   évènements publics abonnés et écrits dans #journal. Le geste de l'URL choisit le schéma et les réglages. *@
+@implements IDisposable
+@using System.Globalization
+
+<div class="bar">
+    <div id="palette" draggable="true">invoices</div>
+    <button id="clear-journal" @onclick="() => _journal.Clear()">vider le journal</button>
+    <span id="tool-clicks">@_toolClicks</span>
+</div>
+<pre id="journal">@string.Join("\n", _journal.Entries)</pre>
+
+<div class="graph">
+    <FlowView @ref="_flow" @attributes="Parameters()" Nodes="_store.Nodes" Edges="_store.Edges"
+              EdgeTypes="_edgeTypes" NodeTemplates="_nodeTemplates" EdgeLabelTemplate="Label" FitViewOnInit="false" MinZoom="0.05">
+        <FlowControls OnZoomIn='() => Note("ZoomIn")' OnZoomOut='() => Note("ZoomOut")' OnFitView='() => Note("FitView")'
+                      OnInteractiveChange='on => Note("InteractiveChange", on ? "true" : "false")' />
+        <FlowMiniMap OnNodeClick='n => Note("MiniMapNodeClick", n.Id)' />
+    </FlowView>
+</div>
+
+@code {
+    [Parameter, EditorRequired] public string GestureName { get; set; } = "";
+
+    private readonly EventJournal _journal = new();
+    private readonly SchemaStore _store = new();
+    private readonly IReadOnlyDictionary<string, IEdgePathProvider> _edgeTypes =
+        new Dictionary<string, IEdgePathProvider> { [Schemas.RelationType] = new RelationPath() };
+    private Dictionary<string, RenderFragment<Node>>? _nodeTemplates;
+    private Dictionary<string, object> _options = new();
+    private Gesture _gesture = default!;
+    private FlowView? _flow;
+    private int _toolClicks;
+
+    protected override void OnInitialized()
+    {
+        _gesture = GestureMatrix.Named(GestureName);
+        _nodeTemplates = new Dictionary<string, RenderFragment<Node>>
+        {
+            [Schemas.TableType] = TableTemplate, [Schemas.SizableType] = SizableTemplate, [Schemas.GripType] = GripTemplate
+        };
+        foreach (var (name, value) in GestureMatrix.ViewOptions(_gesture.Options)) _options[name] = Typed(name, value);
+        _store.Changed += Redraw;
+        _journal.Changed += Redraw;
+    }
+
+    // Un réglage de la table commune, converti vers le type du paramètre Blazor.
+    private static object Typed(string name, string value)
+    {
+        if (name == "DeleteKeys") return Array.Empty<string>();
+        if (name == "PanOnDragButtons") return (IReadOnlyList<int>)[value == "Right" ? 2 : value == "Middle" ? 1 : 0];
+        var type = typeof(FlowView).GetProperty(name)!.PropertyType;
+        return Convert.ChangeType(value, Nullable.GetUnderlyingType(type) ?? type, CultureInfo.InvariantCulture);
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+        await Task.Delay(300);
+        var schema = GestureMatrix.SchemaFor(_gesture.Options);
+        if (_gesture.Name == "lifecycle.error")
+            schema = schema with { Edges = [.. schema.Edges, new Edge("lost", "orders", "nowhere")] };
+        _store.Load(schema);
+        await _flow!.SetViewport(new Viewport(60, 60, 1));
+    }
+
+    private void Redraw() => _ = InvokeAsync(StateHasChanged);
+
+    private void Note(string name, string? subject = null) => _journal.Add(name, subject);
+
+    private static string Describe(NodeEventArgs a) =>
+        a.TargetData.TryGetValue("column", out var column) ? $"{a.Node.Id}.{column}" : a.Node.Id;
+
+    private static string Ids(IEnumerable<Node> nodes) => EventJournal.Ids(nodes.Select(n => n.Id));
+
+    private static string From(ConnectStartEventArgs a) => EventJournal.Handle(a.NodeId, a.HandleId);
+
+    private EventCallback<T> On<T>(Action<T> action) => EventCallback.Factory.Create(this, action);
+
+    private EventCallback On(Action action) => EventCallback.Factory.Create(this, action);
+
+    // Tous les évènements de la vue, en un seul endroit.
+    private Dictionary<string, object> Parameters() => new Dictionary<string, object>(_options)
+    {
+        ["AutoApplyChanges"] = false, ["AutoConnect"] = false, ["IsValidConnection"] = (Func<Connection, bool>)_store.CanConnect,
+        ["OnInit"] = On(() => Note("Init")),
+        ["OnNodesInitialized"] = On(() => Note("NodesReady")),
+        ["OnError"] = On<FlowError>(_ => Note("Error")),
+        ["OnStateChange"] = On(NoteStateChange),
+        ["OnNodesChange"] = On<IReadOnlyList<NodeChange>>(c =>
+        {
+            Note("NodesChange");
+            _store.Apply(c);
+        }),
+        ["OnEdgesChange"] = On<IReadOnlyList<EdgeChange>>(c =>
+        {
+            Note("EdgesChange");
+            _store.Apply(c);
+        }),
+        ["OnConnect"] = On<Connection>(c =>
+        {
+            Note("Connect", EventJournal.Link(c));
+            _store.Connect(c);
+        }),
+        ["OnDrop"] = On<FlowDropEventArgs>(_ => Note("Drop")),
+        ["OnBeforeDelete"] = (Func<DeleteRequest, Task<bool>>)(r =>
+        {
+            Note("BeforeDelete", EventJournal.Selection(r.Nodes, r.Edges));
+            return Task.FromResult(true);
+        }),
+        ["OnDelete"] = On<DeleteRequest>(r => Note("Delete", EventJournal.Selection(r.Nodes, r.Edges))),
+        ["OnSelectionChange"] = On<SelectionChangeArgs>(a => Note("SelectionChange", EventJournal.Selection(a.Nodes, a.Edges))),
+
+        ["OnNodeClick"] = On<NodeEventArgs>(a => Note("NodeClick", Describe(a))),
+        ["OnEdgeClick"] = On<EdgeEventArgs>(a => Note("EdgeClick", a.Edge.Id)),
+        ["OnPaneClick"] = On<PaneEventArgs>(_ => Note("PaneClick")),
+        ["OnNodeDoubleClick"] = On<NodeEventArgs>(a => Note("NodeDoubleClick", Describe(a))),
+        ["OnEdgeDoubleClick"] = On<EdgeEventArgs>(a => Note("EdgeDoubleClick", a.Edge.Id)),
+        ["OnNodeContextMenu"] = On<NodeEventArgs>(a => Note("NodeContextMenu", Describe(a))),
+        ["OnEdgeContextMenu"] = On<EdgeEventArgs>(a => Note("EdgeContextMenu", a.Edge.Id)),
+        ["OnPaneContextMenu"] = On<PaneEventArgs>(_ => Note("PaneContextMenu")),
+        ["OnSelectionContextMenu"] = On<PaneEventArgs>(_ => Note("SelectionContextMenu")),
+
+        // Le survol n'est branché que pour les gestes qui le contrôlent : sur Server, chaque mouvement serait un message.
+        ["OnPaneScroll"] = On<PaneScrollEventArgs>(_ => Note("PaneScroll")),
+
+        ["OnNodeDragStart"] = On<NodeDragEventArgs>(a => Note("NodeDragStart", Ids(a.Nodes))),
+        ["OnNodeDrag"] = On<NodeDragEventArgs>(a => Note("NodeDrag", Ids(a.Nodes))),
+        ["OnNodeDragStop"] = On<NodeDragEventArgs>(a => Note("NodeDragStop", Ids(a.Nodes))),
+        ["OnSelectionDragStart"] = On<NodeDragEventArgs>(a => Note("SelectionDragStart", Ids(a.Nodes))),
+        ["OnSelectionDrag"] = On<NodeDragEventArgs>(a => Note("SelectionDrag", Ids(a.Nodes))),
+        ["OnSelectionDragStop"] = On<NodeDragEventArgs>(a => Note("SelectionDragStop", Ids(a.Nodes))),
+        ["OnSelectionStart"] = On(() => Note("SelectionStart")),
+        ["OnSelectionEnd"] = On(() => Note("SelectionEnd")),
+
+        ["OnConnectStart"] = On<ConnectStartEventArgs>(a => Note("ConnectStart", From(a))),
+        ["OnConnectEnd"] = On<ConnectEndEventArgs>(a => Note("ConnectEnd", EventJournal.End(a.From.NodeId, a.From.HandleId, a.Connection))),
+        ["OnClickConnectStart"] = On<ConnectStartEventArgs>(a => Note("ClickConnectStart", From(a))),
+        ["OnClickConnectEnd"] = On<ConnectEndEventArgs>(a =>
+            Note("ClickConnectEnd", EventJournal.End(a.From.NodeId, a.From.HandleId, a.Connection))),
+        ["OnReconnectStart"] = On<Edge>(e => Note("ReconnectStart", e.Id)),
+        ["OnReconnect"] = On<ReconnectEventArgs>(a => Note("Reconnect", a.OldEdge.Id + " " + EventJournal.Link(a.NewConnection))),
+        ["OnReconnectEnd"] = On<ReconnectEndEventArgs>(a =>
+            Note("ReconnectEnd", a.Edge.Id + " " + (a.Connection == null ? "-" : EventJournal.Link(a.Connection)))),
+
+        ["OnMoveStart"] = On<Viewport>(_ => Note("MoveStart")),
+        ["OnMove"] = On<Viewport>(_ => Note("Move")),
+        ["OnMoveEnd"] = On<Viewport>(_ => Note("MoveEnd"))
+    }.With(_gesture.Name.StartsWith("hover."), HoverParameters);
+
+    private Dictionary<string, object> HoverParameters() => new()
+    {
+        ["OnNodeMouseEnter"] = On<NodeEventArgs>(a => Note("NodeMouseEnter", a.Node.Id)),
+        ["OnNodeMouseMove"] = On<NodeEventArgs>(a => Note("NodeMouseMove", a.Node.Id)),
+        ["OnNodeMouseLeave"] = On<NodeEventArgs>(a => Note("NodeMouseLeave", a.Node.Id)),
+        ["OnEdgeMouseEnter"] = On<EdgeEventArgs>(a => Note("EdgeMouseEnter", a.Edge.Id)),
+        ["OnEdgeMouseMove"] = On<EdgeEventArgs>(a => Note("EdgeMouseMove", a.Edge.Id)),
+        ["OnEdgeMouseLeave"] = On<EdgeEventArgs>(a => Note("EdgeMouseLeave", a.Edge.Id)),
+        ["OnPaneMouseEnter"] = On<PaneEventArgs>(_ => Note("PaneMouseEnter")),
+        ["OnPaneMouseMove"] = On<PaneEventArgs>(_ => Note("PaneMouseMove")),
+        ["OnPaneMouseLeave"] = On<PaneEventArgs>(_ => Note("PaneMouseLeave"))
+    };
+
+    // Écrire le journal redessine l'application, ce qui peut relever OnStateChange : il n'est noté que s'il est contrôlé,
+    // et une fois par rafale.
+    private void NoteStateChange()
+    {
+        if (_gesture.Only.Contains("StateChange") && (_journal.Entries.Count == 0 || _journal.Entries[^1] != "StateChange"))
+            Note("StateChange");
+    }
+
+    public void Dispose()
+    {
+        _store.Changed -= Redraw;
+        _journal.Changed -= Redraw;
+    }
+
+    private RenderFragment<EdgeRenderContext> Label => context =>
+        @<button class="relation-label nodrag nopan" data-relation="@context.Edge.Id" @onclick:stopPropagation
+                 @ondblclick:stopPropagation @onpointerdown:stopPropagation>@context.Edge.Label</button>;
+
+    private RenderFragment<Node> TableTemplate => node => @<TableNode Node="node" Store="_store" />;
+
+    private RenderFragment<Node> SizableTemplate => node =>
+        @<div class="sizable title" style="@Sized(node)">
+            <NodeResizer OnResizeStart='a => Note("ResizeStart", a.NodeId)' OnResize='a => Note("Resize", a.NodeId)'
+                         OnResizeEnd='a => Note("ResizeEnd", a.NodeId)' />
+            redimensionnable
+            <NodeToolbar><button class="tool" @onclick="() => _toolClicks++">outil</button></NodeToolbar>
+            <FlowHandle Type="HandleType.Source" Position="Position.Right" HandleId="out"
+                        OnConnected='c => Note("HandleConnected", EventJournal.Link(c))' />
+        </div>;
+
+    private RenderFragment<Node> GripTemplate => node =>
+        @<div class="grip title" style="@Sized(node)">
+            poignée libre
+            <NodeResizeControl Class="grip-control" OnResizeStart='a => Note("ControlResizeStart", a.NodeId)'
+                               OnResize='a => Note("ControlResize", a.NodeId)' OnResizeEnd='a => Note("ControlResizeEnd", a.NodeId)' />
+            <FlowHandle Type="HandleType.Target" Position="Position.Left" HandleId="in" />
+        </div>;
+
+    private static string Sized(Node node) => string.Create(CultureInfo.InvariantCulture,
+        $"width:{node.FixedWidth ?? 160}px;height:{node.FixedHeight ?? 80}px;");
+}

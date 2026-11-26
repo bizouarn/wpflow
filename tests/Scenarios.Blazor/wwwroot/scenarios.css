@@ -19,3 +19,9 @@ html, body, #app { height: 100%; margin: 0; font-family: sans-serif; font-size: 
 .w-scroll { height: 40px; overflow: auto; border: 1px solid #ddd; }
 
 .relation-label { font-size: 11px; cursor: pointer; }
+
+/* Matrice des évènements (?matrix=) : le journal ne prend pas de place, les deux nodes sans colonnes. */
+#journal { position: absolute; left: -10000px; top: 0; }
+#palette { border: 1px solid #999; padding: 2px 8px; cursor: grab; }
+.sizable, .grip { position: relative; box-sizing: border-box; background: #fff; border: 1px solid #999; display: flex; align-items: center; justify-content: center; height: auto; padding: 0; font-weight: normal; }
+.grip-control { position: absolute; right: -6px; bottom: -6px; width: 12px; height: 12px; background: #3367d9; }

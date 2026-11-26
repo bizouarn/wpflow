@@ -17,6 +17,8 @@ public static class Schemas
 {
     public const string TableType = "table";
     public const string RelationType = "relation";
+    public const string SizableType = "sizable";
+    public const string GripType = "grip";
 
     public static Node TableNode(string id, double x, double y, Table table) =>
         new(id, new XYPosition(x, y), TableType, table);
@@ -31,6 +33,8 @@ public static class Schemas
 
     /// <summary>Deux tables différentes, deux colonnes de même type, pas de doublon.</summary>
     public static bool CanConnect(IReadOnlyList<Node> nodes, IReadOnlyList<Edge> edges, Connection c) =>
+        // Les deux nodes sans colonnes de la matrice des gestes.
+        c is { Source: "box", Target: "grip" } && edges.All(e => e.Source != c.Source || e.Target != c.Target) ||
         c.Source != c.Target
         && ColumnOf(nodes, c.Source, c.SourceHandle) is { } from && ColumnOf(nodes, c.Target, c.TargetHandle) is { } to
         && from.Type == to.Type

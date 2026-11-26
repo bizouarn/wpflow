@@ -209,8 +209,8 @@ public partial class FlowView
                 .Select(h => new HandleRef(nodeId, h)).FirstOrDefault()
             : null;
 
-    /// <summary>Si le clic tombe près d'une extrémité de l'edge, démarre une reconnexion de cette extrémité.</summary>
-    private void TryBeginReconnect(string edgeId, XYPosition mouseFlow)
+    /// <summary>Si la pression tombe près d'une extrémité de l'edge, prépare la reconnexion de cette extrémité.</summary>
+    private void PrepareReconnect(string edgeId, XYPosition mouseFlow)
     {
         var edge = Edges.FirstOrDefault(e => e.Id == edgeId);
         if (edge == null || GetEdgeEnds(edge) is not { } ends) return;
@@ -226,11 +226,25 @@ public partial class FlowView
             return;
 
         if (fixedEnd == null) return;
+        _pendingReconnect = (edge, fixedEnd);
+        _mode = Mode.ReconnectPending;
+    }
+
+    /// <summary>La souris s'est éloignée du point pressé : la reconnexion préparée commence.</summary>
+    private void BeginReconnect()
+    {
+        if (_pendingReconnect is not var (edge, fixedEnd)) return;
+        _pendingReconnect = null;
         _reconnecting = edge;
         _connectFrom = fixedEnd;
         _mode = Mode.Connect;
+        _connectMoved = true;
+        SetConnecting(true);
+        StartAutoPanIfEnabled();
         RaiseConnectStarted(fixedEnd, true);
-        ReconnectStarted?.Invoke(this, new ElementEventArgs(FlowElementKind.Edge, edge.Id, EdgeElement(edge.Id), mouseFlow));
+        if (_mode == Mode.Connect) // un gestionnaire a pu interrompre le geste
+            ReconnectStarted?.Invoke(this,
+                new ElementEventArgs(FlowElementKind.Edge, edge.Id, EdgeElement(edge.Id), _mouseStartFlow));
     }
 
     /// <summary>Zone du rectangle de sélection en cours, en coordonnées flow.</summary>
@@ -254,6 +268,7 @@ public partial class FlowView
         {
             _selectionStarted = true;
             SelectionStarted?.Invoke(this, new SelectionBoxEventArgs(rect));
+            if (_mode != Mode.Select) return; // un gestionnaire a interrompu le geste
         }
 
         var (picked, pickedEdges) = SelectionOps.Box(rect, _nodeIndex.Values, Edges, SelectionMode);

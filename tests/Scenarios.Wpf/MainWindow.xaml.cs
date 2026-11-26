@@ -41,6 +41,9 @@ public partial class MainWindow : Window
         if (Environment.GetEnvironmentVariable("WPFLOW_SCENARIOS") is { Length: > 0 } path)
             ContentRendered += async (_, _) =>
                 await SelfTestReport.Run(this, path, TimeSpan.FromSeconds(540), log => Runner.Run(this, log));
+        else if (Environment.GetEnvironmentVariable("WPFLOW_MATRIX") is { Length: > 0 } matrix)
+            ContentRendered += async (_, _) =>
+                await SelfTestReport.Run(this, matrix, TimeSpan.FromSeconds(540), log => MatrixRunner.Run(this, log));
         else
             ContentRendered += (_, _) => Open(Schemas.Shop());
     }

@@ -136,7 +136,7 @@ Côté commandes, `CommandsReceiveEventArgs="True"` fait recevoir l'`ElementEven
 | `DeleteKeys` | `IReadOnlyList<Key>` | `Delete`, `Back` | Touches de suppression ; vide = pas de suppression au clavier. |
 | `SelectionKey` / `MultiSelectionKey` / `ZoomActivationKey` | `ModifierKeys` | `Shift` / `Control` / `Control` | Modificateurs : rectangle de sélection, ajout à la sélection, zoom forcé. |
 | `PanActivationKey` | `Key` | `Space` | Maintenue, le glisser déplace la vue même au-dessus d'un node. |
-| `NodeDragThreshold` / `ConnectionDragThreshold` / `PaneDragThreshold` | `double` | 1 | Pixels à franchir avant que le geste démarre. |
+| `NodeDragThreshold` / `ConnectionDragThreshold` / `PaneDragThreshold` | `double` | 1 | Pixels à franchir avant que le geste démarre. Un appui reste un clic tant que la souris ne s'éloigne pas de 4 px, ou du seuil s'il est plus grand ; un glisser revenu à son départ n'est pas un clic. Si la vue perd la capture en plein geste (boîte de dialogue), le geste se termine et ses évènements de fin sont levés. |
 | `NodeOrigin` | `XYPosition` | `(0, 0)` | Point d'ancrage des nodes (`(0,5 ; 0,5)` = centre) ; surchargé par `Node.Origin`. |
 | `ElevateNodesOnSelect` / `ElevateEdgesOnSelect` | `bool` | `true` / `false` | Un élément sélectionné passe devant. |
 | `NodesFocusable` / `EdgesFocusable` | `bool` | `true` / `true` | Éléments atteints par Tab. |
@@ -145,7 +145,7 @@ Côté commandes, `CommandsReceiveEventArgs="True"` fait recevoir l'`ElementEven
 | `ConnectOnClick` | `bool` | `true` | Connecte par deux clics (handle, puis handle) ; Échap annule. |
 | `ConnectionLineType` | `Bezier`, `Straight`, `Step`, `SmoothStep`, `SimpleBezier` | `Bezier` | Forme de l'aperçu de connexion. |
 | `ConnectionLineTemplate` | `DataTemplate?` | `null` | Rendu libre de l'aperçu ; `DataContext` = `ConnectionLineContext`. |
-| `ReconnectRadius` | `double` | 24 | Portée (pixels) pour rattraper l'extrémité d'un edge. |
+| `ReconnectRadius` | `double` | 24 | Portée (pixels) pour rattraper l'extrémité d'un edge, en la tirant ; un simple clic à cette distance reste un clic sur l'edge. |
 | `DefaultEdgeOptions` | `Edge?` | `null` | Modèle des edges créés par connexion (`Type`, `Animated`, marqueurs, style…). |
 | `DefaultMarkerColor` | `Brush?` | `null` | Couleur des marqueurs ; `null` = couleur du trait. |
 | `FitViewOptions` | `FitViewOptions?` | `null` | Options de `FitViewOnInit` et du bouton de cadrage. |

@@ -89,7 +89,7 @@ Clavier : Suppr / Retour arrière supprime, Ctrl+A tout sélectionner, Ctrl+C / 
 
 ### Connexions
 
-`ConnectionMode` (`Strict` / `Loose`), `IsValidConnection`, `ConnectionRadius` (20 px), `ReconnectRadius` (10 px), `ConnectOnClick` (clic sur un handle puis sur un autre), `ConnectionLineType`, `ConnectionLineTemplate` (reçoit l'état de la connexion, avec le tracé du fil dans `Path`), `AutoConnect` (ajoute l'edge), `DefaultEdgeType`, `DefaultEdgeOptions` (`edge => edge with { Animated = true }`). Reconnexion : tirez l'extrémité d'un edge vers un autre handle (relâcher dans le vide la laisse en place). `FlowHandle` : `Type`, `Position`, `HandleId`, `Offset`, `IsConnectable`, `IsConnectableStart`, `IsConnectableEnd`, `IsValidConnection`, `OnConnected`. `CurrentConnection` expose la connexion en cours (`useConnection`).
+`ConnectionMode` (`Strict` / `Loose`), `IsValidConnection`, `ConnectionRadius` (20 px), `ReconnectRadius` (24 px), `ConnectOnClick` (clic sur un handle puis sur un autre), `ConnectionLineType`, `ConnectionLineTemplate` (reçoit l'état de la connexion, avec le tracé du fil dans `Path`), `AutoConnect` (ajoute l'edge), `DefaultEdgeType`, `DefaultEdgeOptions` (`edge => edge with { Animated = true }`). Reconnexion : tirez l'extrémité d'un edge vers un autre handle (relâcher dans le vide la laisse en place) ; un simple clic près d'une extrémité reste un clic sur l'edge. Comme en WPF, elle lève `OnConnectStart` (`IsReconnection`), `OnReconnectStart`, puis `OnReconnect` si elle aboutit, `OnReconnectEnd` et `OnConnectEnd`. `FlowHandle` : `Type`, `Position`, `HandleId`, `Offset`, `IsConnectable`, `IsConnectableStart`, `IsConnectableEnd`, `IsValidConnection`, `OnConnected`. `CurrentConnection` expose la connexion en cours (`useConnection`).
 
 ### Rendu
 
@@ -193,7 +193,7 @@ Deux points propres à Blazor :
 
 ## Différences avec la version WPF
 
-Les deux vues ont les mêmes évènements et les mêmes réglages, ce qu'un test vérifie (`ViewParityTests`), et les mêmes gestes les lèvent dans le même ordre. Restent les écarts liés à la plateforme :
+Les deux vues ont les mêmes évènements et les mêmes réglages, ce qu'un test vérifie (`ViewParityTests`), et les mêmes gestes les lèvent dans le même ordre. Le tableau de parité est la matrice [`GestureMatrix`](../tests/Scenarios.Shared/GestureMatrix.cs) : pour chaque geste, la suite exacte des évènements, jouée avec de vraies entrées dans les deux vues. Restent les écarts liés à la plateforme :
 
 | WPF | Blazor |
 |---|---|
@@ -209,6 +209,9 @@ Les deux vues ont les mêmes évènements et les mêmes réglages, ce qu'un test
 | `FitViewOnInit` faux par défaut | vrai par défaut |
 | `EdgeHitWidth` : 10 par défaut | 20 par défaut |
 | `RenderToBitmap`, `SaveImage` (fichier) | `SaveImage` (téléchargement) |
+| Double-clic sur le fond : `PaneClick`, début du zoom, `PaneClick` | `PaneClick`, `PaneClick`, puis le zoom (le navigateur envoie son `dblclick` après le second clic) |
+| `BeforeDelete` (évènement) | `OnBeforeDelete` (fonction qui répond) |
+| Glisser le fond efface la sélection à l'appui | Glisser le fond la garde ; un clic l'efface |
 
 - **Édition à la souris** : mêmes gestes ; le pont JS (`wpflow.js`) mesure les nodes et les handles et suit le pointeur pendant un geste.
 - **Export d'image** : `SaveImage` capture le rendu du navigateur (le calque est cloné avec ses styles calculés puis rastérisé) ; le contenu non sérialisable en SVG (canvas, vidéo, images d'une autre origine) n'y apparaît pas. `vector: true` ou `ExportSvg()` donnent un dessin simplifié (rectangle + `Node.Data`).

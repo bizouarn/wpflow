@@ -76,8 +76,9 @@
 
     private async Task OnDown(PointerEventArgs e)
     {
-        if (Flow == null || Node == null || !IsConnectable) return;
+        if (Flow == null || Node == null) return;
         var info = Info ?? new HandleInfo(HandleId, Type, Position, 0, 0, 8, 8);
-        await Flow.StartConnect(Node.Id, info, e);
+        // La vue est prévenue même si rien ne peut partir de ce handle : le relâchement reste un clic sur le node.
+        await Flow.StartConnect(Node.Id, IsConnectable ? info : info with { Connectable = false }, e);
     }
 }

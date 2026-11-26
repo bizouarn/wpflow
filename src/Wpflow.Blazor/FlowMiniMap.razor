@@ -18,7 +18,7 @@
                 var stroke = NodeStrokeColor?.Invoke(n);
                 <rect class="wf-minimap-node" x="@FlowView.F(r.X)" y="@FlowView.F(r.Y)" width="@FlowView.F(r.Width)" height="@FlowView.F(r.Height)"
                       rx="@FlowView.F(NodeBorderRadius * scale)" fill="@fill" stroke="@stroke" stroke-width="@(stroke == null ? null : FlowView.F(NodeStrokeWidth * scale))"
-                      @onpointerdown="e => NodeDown(n, e)" @onpointerdown:stopPropagation="@OnNodeClick.HasDelegate" />
+                      @onpointerdown="e => NodeDown(n, e)" />
             }
             <path fill-rule="evenodd" fill="@(MaskColor ?? "var(--wf-minimap-mask)")" pointer-events="none"
                   d="M@(FlowView.F(view.X)) @(FlowView.F(view.Y))h@(FlowView.F(view.Width))v@(FlowView.F(view.Height))h@(FlowView.F(-view.Width))z M@(FlowView.F(m.Visible.X)) @(FlowView.F(m.Visible.Y))h@(FlowView.F(m.Visible.Width))v@(FlowView.F(m.Visible.Height))h@(FlowView.F(-m.Visible.Width))z" />

@@ -40,12 +40,12 @@ jobs:
         run: dotnet test tests/Wpflow.Blazor.Tests -c Release --no-build
 
       - name: Tests Blazor de bout en bout (Chrome)
-        timeout-minutes: 15
+        timeout-minutes: 40
         run: dotnet test tests/Wpflow.Blazor.E2E -c Release --no-build
 
       # Vraie souris : demande un bureau interactif. Un échec bloque la publication (voir work-doc/ROADMAP-TESTS.md, lot 0).
       - name: Auto-tests WPF à la vraie souris
-        timeout-minutes: 15
+        timeout-minutes: 30
         shell: pwsh
         run: ./tests/run-wpf-selftests.ps1 -Configuration Release -NoBuild
 

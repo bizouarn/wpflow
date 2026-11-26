@@ -1,0 +1,23 @@
+@* La page des applications témoins : l'éditeur de schéma (lot 2), ou la matrice des évènements (?matrix=geste, lot 3). *@
+@inject NavigationManager Navigation
+
+@if (Gesture is { } gesture)
+{
+    <MatrixEditor GestureName="@gesture" />
+}
+else
+{
+    <SchemaEditor />
+}
+
+@code {
+    private string? Gesture
+    {
+        get
+        {
+            var query = new Uri(Navigation.Uri).Query.TrimStart('?').Split('&');
+            var found = query.FirstOrDefault(p => p.StartsWith("matrix="));
+            return found == null ? null : Uri.UnescapeDataString(found["matrix=".Length..]);
+        }
+    }
+}

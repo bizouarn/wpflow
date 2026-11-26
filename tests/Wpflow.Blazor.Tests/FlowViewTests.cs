@@ -155,7 +155,8 @@ public sealed class FlowViewTests : TestContext
     public async Task Movement_below_the_threshold_is_a_click_not_a_drag()
     {
         Node? clicked = null;
-        var h = Render(configure: p => p.Add(f => f.OnNodeClick, EventCallback.Factory.Create<NodeEventArgs>(this, n => clicked = n.Node)));
+        var h = Render(configure: p => p.Add(f => f.NodeDragThreshold, 3)
+            .Add(f => f.OnNodeClick, EventCallback.Factory.Create<NodeEventArgs>(this, n => clicked = n.Node)));
         await Measure(h);
 
         await PointerDown(h.Cut.Find("[data-node-id='a']"), 50, 20);

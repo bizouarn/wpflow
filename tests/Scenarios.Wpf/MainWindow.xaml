@@ -81,6 +81,32 @@
             </Border>
         </DataTemplate>
 
+        <!-- Les deux nodes de la matrice des évènements : redimensionnement, barre d'outils, handles avec leur évènement. -->
+        <DataTemplate x:Key="wpflow-node-sizable">
+            <Grid>
+                <flow:NodeResizer ResizeStarted="OnResizeStarted" Resizing="OnResizing" ResizeEnded="OnResizeEnded" />
+                <Border Tag="title" Background="White" BorderBrush="#999999" BorderThickness="1" Margin="6">
+                    <TextBlock Text="redimensionnable" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                </Border>
+                <flow:NodeToolbar>
+                    <Button Tag="tool" Content="outil" Click="OnToolbarClick" />
+                </flow:NodeToolbar>
+                <flow:Handle Type="Source" Position="Right" HandleId="out" Connected="OnHandleConnected" />
+            </Grid>
+        </DataTemplate>
+
+        <DataTemplate x:Key="wpflow-node-grip">
+            <Grid>
+                <Border Tag="title" Background="White" BorderBrush="#999999" BorderThickness="1">
+                    <TextBlock Text="poignée libre" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                </Border>
+                <flow:NodeResizeControl HorizontalAlignment="Right" VerticalAlignment="Bottom" Background="#3367d9"
+                                        ResizeStarted="OnControlResizeStarted" Resizing="OnControlResizing"
+                                        ResizeEnded="OnControlResizeEnded" />
+                <flow:Handle Type="Target" Position="Left" HandleId="in" />
+            </Grid>
+        </DataTemplate>
+
         <DataTemplate x:Key="RelationLabel">
             <Button Content="{Binding Label}" Tag="{Binding Id}" FontSize="11" Padding="4,0" Click="OnLabelClick" />
         </DataTemplate>

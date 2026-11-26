@@ -31,7 +31,11 @@ public sealed record NodeDragEventArgs(Node Node, IReadOnlyList<Node> Nodes, Flo
 
 public sealed record SelectionChangeArgs(IReadOnlyList<Node> Nodes, IReadOnlyList<Edge> Edges);
 
-public sealed record ConnectStartEventArgs(string NodeId, string? HandleId, HandleType HandleType);
+public sealed record ConnectStartEventArgs(string NodeId, string? HandleId, HandleType HandleType)
+{
+    /// <summary>Vrai quand on rattrape l'extrémité d'un edge existant (reconnexion) plutôt qu'un nouveau fil.</summary>
+    public bool IsReconnection { get; init; }
+}
 
 public sealed record ConnectEndEventArgs(ConnectStartEventArgs From, Connection? Connection, bool IsValid, FlowPointer Pointer);
 

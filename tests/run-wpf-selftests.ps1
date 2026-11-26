@@ -1,4 +1,4 @@
-# Auto-tests WPF a la vraie souris : demo principale, fenetre d'exemples, spike de performance, editeur de schema temoin.
+# Auto-tests WPF a la vraie souris : demo principale, fenetre d'exemples, spike de performance, editeur de schema temoin, matrice des gestes.
 # Demande un bureau interactif et deverrouille ; ne pas toucher la souris ni le clavier pendant l'execution.
 # Code de sortie : 0 si tout passe ; 1 si un run echoue (ligne ECHEC, exception, delai, code de sortie non nul, journal vide).
 param(
@@ -6,7 +6,7 @@ param(
     [string]$Output = (Join-Path $PSScriptRoot '..\artifacts\selftest'),
     [int]$PerfNodes = 500,
     [switch]$NoBuild,
-    [string[]]$Only    # noms des runs a executer (demo, examples, perf, scenarios) ; tous par defaut
+    [string[]]$Only    # noms des runs a executer (demo, examples, perf, scenarios, matrix) ; tous par defaut
 )
 
 $ErrorActionPreference = 'Stop'
@@ -29,6 +29,8 @@ $runs = @(
     @{ Name = 'perf';     Log = 'perf.perf.log';   TimeoutSeconds = 240; Env = @{ WPFLOW_PERF = "$PerfNodes" } }
     @{ Name = 'scenarios'; Log = 'scenarios.log';  TimeoutSeconds = 600; Env = @{ WPFLOW_SCENARIOS = (Join-Path $Output 'scenarios.log') }
        Exe = (Join-Path $root "tests\Scenarios.Wpf\bin\$Configuration\net10.0-windows\Scenarios.Wpf.exe") }
+    @{ Name = 'matrix';    Log = 'matrix.log';      TimeoutSeconds = 600; Env = @{ WPFLOW_MATRIX = (Join-Path $Output 'matrix.log') }
+       Exe = (Join-Path $root "tests\Scenarios.Wpf\bin\$Configuration\net10.0-windows\Scenarios.Wpf.exe") }
 )
 
 $failed = @()
@@ -38,7 +40,7 @@ foreach ($run in $runs) {
     Write-Host "== $($run.Name)"
     $log = Join-Path $Output $run.Log
     Remove-Item $log -ErrorAction SilentlyContinue
-    foreach ($v in 'WPFLOW_SELFTEST', 'WPFLOW_EXAMPLES', 'WPFLOW_PERF', 'WPFLOW_SCENARIOS') { Remove-Item "Env:$v" -ErrorAction SilentlyContinue }
+    foreach ($v in 'WPFLOW_SELFTEST', 'WPFLOW_EXAMPLES', 'WPFLOW_PERF', 'WPFLOW_SCENARIOS', 'WPFLOW_MATRIX') { Remove-Item "Env:$v" -ErrorAction SilentlyContinue }
     $env:WPFLOW_SCREENSHOT = Join-Path $Output "$($run.Name).png"
     foreach ($key in $run.Env.Keys) { Set-Item "Env:$key" $run.Env[$key] }
 
@@ -69,7 +71,7 @@ foreach ($run in $runs) {
     }
 }
 
-foreach ($v in 'WPFLOW_SCREENSHOT', 'WPFLOW_SELFTEST', 'WPFLOW_EXAMPLES', 'WPFLOW_PERF', 'WPFLOW_SCENARIOS') { Remove-Item "Env:$v" -ErrorAction SilentlyContinue }
+foreach ($v in 'WPFLOW_SCREENSHOT', 'WPFLOW_SELFTEST', 'WPFLOW_EXAMPLES', 'WPFLOW_PERF', 'WPFLOW_SCENARIOS', 'WPFLOW_MATRIX') { Remove-Item "Env:$v" -ErrorAction SilentlyContinue }
 if ($failed.Count -gt 0) { Write-Host "Auto-tests en echec : $($failed -join ', ')"; exit 1 }
 Write-Host 'Tous les auto-tests WPF passent.'
 exit 0

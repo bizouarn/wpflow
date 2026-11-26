@@ -26,6 +26,8 @@
     <!-- L'éditeur de schéma témoin (ROADMAP-TESTS, lot 2). -->
     <ProjectReference Include="..\Scenarios.Blazor.Server\Scenarios.Blazor.Server.csproj" ReferenceOutputAssembly="false" SkipGetTargetFrameworkProperties="true" UndefineProperties="TargetFramework" />
     <ProjectReference Include="..\Scenarios.Blazor.Wasm\Scenarios.Blazor.Wasm.csproj" ReferenceOutputAssembly="false" />
+    <!-- La matrice des évènements et des gestes (lot 3), la même qu'en WPF. -->
+    <ProjectReference Include="..\Scenarios.Shared\Scenarios.Shared.csproj" />
   </ItemGroup>
 
 </Project>

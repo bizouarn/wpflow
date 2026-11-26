@@ -109,6 +109,9 @@ public partial class FlowView
         PushHistory();
         await ApplyEdgeChanges(edges.Select(e => (EdgeChange)new EdgeRemoveChange(e.Id)).ToList());
         await ApplyNodeChanges(nodeSet.Select(id => (NodeChange)new NodeRemoveChange(id)).ToList());
+        // Mode contrôlé : pendant un évènement du navigateur, Blazor diffère le rendu du parent ; on le laisse arriver,
+        // pour que la nouvelle sélection soit annoncée avant OnDelete, comme en WPF.
+        if (!AutoApplyChanges) await Task.Yield();
         await OnDelete.InvokeAsync(request);
         return true;
     }
@@ -343,12 +346,14 @@ public partial class FlowView
 
     internal async Task NodeDoubleClick(Node n, MouseEventArgs e)
     {
+        if (_lastPressUntracked) return; // double-clic dans un contrôle du node : il est à lui, comme en WPF
         await OnNodeDoubleClick.InvokeAsync(NodeArgs(n, MakePointer(Rel(e.ClientX, e.ClientY), e.ShiftKey, e.CtrlKey, e.AltKey, e.MetaKey)));
         await ReleaseHeldClick();
     }
 
     private async Task EdgeDoubleClick(Edge edge, MouseEventArgs e)
     {
+        if (_lastPressUntracked) return;
         await OnEdgeDoubleClick.InvokeAsync(new EdgeEventArgs(edge, MakePointer(Rel(e.ClientX, e.ClientY), e.ShiftKey, e.CtrlKey, e.AltKey, e.MetaKey)));
         await ReleaseHeldClick();
     }
@@ -381,13 +386,14 @@ public partial class FlowView
 
     private async Task PaneDoubleClick(MouseEventArgs e)
     {
-        if (!ZoomOnDoubleClick) return;
+        if (!ZoomOnDoubleClick || _lastPressUntracked) return; // ni sur un panneau, ni sur un bouton posé sur le graphe
         var p = Rel(e.ClientX, e.ClientY);
         await AnimateTo(ViewportMath.ZoomAt(Viewport, p, Viewport.Zoom * 2, MinZoom, MaxZoom), TimeSpan.FromMilliseconds(200));
     }
 
     internal async Task NodeContextMenu(Node n, MouseEventArgs e)
     {
+        if (_rightDragged) return; // le bouton droit vient de déplacer la vue : ce n'est pas un clic droit
         var pointer = MakePointer(Rel(e.ClientX, e.ClientY), e.ShiftKey, e.CtrlKey, e.AltKey, e.MetaKey);
         // Comme en WPF : le menu de la sélection, puis celui du node visé.
         var args = NodeArgs(n, pointer);
@@ -395,29 +401,74 @@ public partial class FlowView
         await OnNodeContextMenu.InvokeAsync(args);
     }
 
-    private async Task EdgeContextMenu(Edge edge, MouseEventArgs e) =>
+    private async Task EdgeContextMenu(Edge edge, MouseEventArgs e)
+    {
+        if (_rightDragged) return;
         await OnEdgeContextMenu.InvokeAsync(new EdgeEventArgs(edge, MakePointer(Rel(e.ClientX, e.ClientY), e.ShiftKey, e.CtrlKey, e.AltKey, e.MetaKey)));
+    }
 
-    private async Task PaneContextMenu(MouseEventArgs e) =>
+    private async Task PaneContextMenu(MouseEventArgs e)
+    {
+        if (_rightDragged) return;
         await OnPaneContextMenu.InvokeAsync(new PaneEventArgs(MakePointer(Rel(e.ClientX, e.ClientY), e.ShiftKey, e.CtrlKey, e.AltKey, e.MetaKey)));
+    }
 
-    internal EventCallback<PointerEventArgs> NodeEnterHandler(Node n) =>
-        OnNodeMouseEnter.HasDelegate ? Cb(e => OnNodeMouseEnter.InvokeAsync(new NodeEventArgs(n, MakePointer(e)))) : default;
+    // Survol. Comme en WPF, le « fond » est ce qui n'est ni un node ni un edge : le navigateur, lui, ne quitte pas le
+    // conteneur quand le pointeur passe sur un de ses enfants. L'élément survolé est donc suivi ici.
+    private string? _hoverElement; // « n:id » ou « e:id » ; null sur le fond
+    private bool _paneHovered;
 
-    internal EventCallback<PointerEventArgs> NodeLeaveHandler(Node n) =>
-        OnNodeMouseLeave.HasDelegate ? Cb(e => OnNodeMouseLeave.InvokeAsync(new NodeEventArgs(n, MakePointer(e)))) : default;
+    private bool PaneHoverWanted => OnPaneMouseEnter.HasDelegate || OnPaneMouseLeave.HasDelegate || OnPaneMouseMove.HasDelegate;
 
-    private EventCallback<PointerEventArgs> EdgeEnterHandler(Edge edge) =>
-        OnEdgeMouseEnter.HasDelegate ? Cb(e => OnEdgeMouseEnter.InvokeAsync(new EdgeEventArgs(edge, MakePointer(e)))) : default;
+    private Task SetPaneHover(bool over, PointerEventArgs e)
+    {
+        if (_paneHovered == over) return Task.CompletedTask;
+        _paneHovered = over;
+        return (over ? OnPaneMouseEnter : OnPaneMouseLeave).InvokeAsync(new PaneEventArgs(MakePointer(e)));
+    }
 
-    private EventCallback<PointerEventArgs> EdgeLeaveHandler(Edge edge) =>
-        OnEdgeMouseLeave.HasDelegate ? Cb(e => OnEdgeMouseLeave.InvokeAsync(new EdgeEventArgs(edge, MakePointer(e)))) : default;
+    private async Task EnterElement(string key, PointerEventArgs e, Func<Task> enter)
+    {
+        _hoverElement = key;
+        await SetPaneHover(false, e);
+        await enter();
+    }
 
-    private EventCallback<PointerEventArgs> PaneEnterHandler =>
-        OnPaneMouseEnter.HasDelegate ? Cb(e => OnPaneMouseEnter.InvokeAsync(new PaneEventArgs(MakePointer(e)))) : default;
+    private async Task LeaveElement(PointerEventArgs e, Func<Task> leave)
+    {
+        _hoverElement = null;
+        await leave();
+        var p = Rel(e.ClientX, e.ClientY);
+        if (p.X >= 0 && p.Y >= 0 && p.X < _width && p.Y < _height) await SetPaneHover(true, e);
+    }
 
-    private EventCallback<PointerEventArgs> PaneLeaveHandler =>
-        OnPaneMouseLeave.HasDelegate ? Cb(e => OnPaneMouseLeave.InvokeAsync(new PaneEventArgs(MakePointer(e)))) : default;
+    internal EventCallback<PointerEventArgs> NodeEnterHandler(Node n) => OnNodeMouseEnter.HasDelegate || PaneHoverWanted
+        ? Cb(e => EnterElement("n:" + n.Id, e, () => OnNodeMouseEnter.InvokeAsync(new NodeEventArgs(n, MakePointer(e)))))
+        : default;
+
+    internal EventCallback<PointerEventArgs> NodeLeaveHandler(Node n) => OnNodeMouseLeave.HasDelegate || PaneHoverWanted
+        ? Cb(e => LeaveElement(e, () => OnNodeMouseLeave.InvokeAsync(new NodeEventArgs(n, MakePointer(e)))))
+        : default;
+
+    private EventCallback<PointerEventArgs> EdgeEnterHandler(Edge edge) => OnEdgeMouseEnter.HasDelegate || PaneHoverWanted
+        ? Cb(e => EnterElement("e:" + edge.Id, e, () => OnEdgeMouseEnter.InvokeAsync(new EdgeEventArgs(edge, MakePointer(e)))))
+        : default;
+
+    private EventCallback<PointerEventArgs> EdgeLeaveHandler(Edge edge) => OnEdgeMouseLeave.HasDelegate || PaneHoverWanted
+        ? Cb(e => LeaveElement(e, () => OnEdgeMouseLeave.InvokeAsync(new EdgeEventArgs(edge, MakePointer(e)))))
+        : default;
+
+    private EventCallback<PointerEventArgs> PaneEnterHandler => PaneHoverWanted
+        ? Cb(e => _hoverElement == null ? SetPaneHover(true, e) : Task.CompletedTask)
+        : default;
+
+    private EventCallback<PointerEventArgs> PaneLeaveHandler => PaneHoverWanted
+        ? Cb(e =>
+        {
+            _hoverElement = null;
+            return SetPaneHover(false, e);
+        })
+        : default;
 
     private EventCallback<PointerEventArgs> Cb(Func<PointerEventArgs, Task> f) => EventCallback.Factory.Create(this, f);
 

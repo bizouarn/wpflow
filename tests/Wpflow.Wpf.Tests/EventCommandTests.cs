@@ -8,7 +8,7 @@ namespace Wpflow.Wpf.Tests;
 public class EventCommandTests
 {
     /// <summary>Évènements dont la commande reçoit les arguments de l'évènement.</summary>
-    private static readonly Dictionary<string, string> Notified = new()
+    internal static readonly Dictionary<string, string> Notified = new()
     {
         ["FlowInitialized"] = "InitCommand", ["ErrorOccurred"] = "ErrorCommand", ["StateChanged"] = "StateChangedCommand",
         ["NodeChangesRequested"] = "NodeChangesCommand", ["EdgeChangesRequested"] = "EdgeChangesCommand",
@@ -27,7 +27,7 @@ public class EventCommandTests
     };
 
     /// <summary>Évènements dont la commande existait, avec son propre paramètre (voir doc/learn/13-mvvm.md).</summary>
-    private static readonly Dictionary<string, string> Dedicated = new()
+    internal static readonly Dictionary<string, string> Dedicated = new()
     {
         ["NodeClick"] = "NodeClickCommand", ["EdgeClick"] = "EdgeClickCommand", ["PaneClick"] = "PaneClickCommand",
         ["NodeDoubleClick"] = "NodeDoubleClickCommand", ["EdgeDoubleClick"] = "EdgeDoubleClickCommand",

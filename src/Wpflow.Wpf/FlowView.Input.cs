@@ -9,6 +9,11 @@ namespace Wpflow.Wpf;
 public partial class FlowView
 {
     private bool _panMoved, _connectMoved, _selectionStarted;
+    private double _pressDistance; // le plus loin que la souris soit allée du point pressé : au-delà du seuil, plus de clic
+    private (Edge Edge, HandleRef Fixed)? _pendingReconnect;
+
+    /// <summary>En deçà (en pixels), un tremblement reste un clic, quels que soient les seuils de glisser.</summary>
+    private const double ClickTolerance = 4;
     private DependencyObject? _pressedSource;
     private string? _pendingSelect; // node pressé sans être sélectionné (SelectNodesOnDrag faux) : sélectionné au clic
     private HandleRef? _clickConnect; // première extrémité d'une connexion « par deux clics »
@@ -45,12 +50,23 @@ public partial class FlowView
         _pressedPane = host == null && handle == null && edgeId == null;
         _pressedSource = e.OriginalSource as DependencyObject; // au relâchement, la capture a remplacé la source par la vue
         _pendingSelect = null;
+        _pendingReconnect = null;
+        _pressDistance = 0;
 
         if (e.ClickCount == 2)
         {
             if (host?.Node != null) RaiseElementEvent(FlowElementKind.Node, host.Node.Id, _mouseStartFlow, true, _pressedSource);
             else if (edgeId != null) RaiseElementEvent(FlowElementKind.Edge, edgeId, _mouseStartFlow, true, _pressedSource);
-            else if (ZoomOnDoubleClick && handle == null)
+
+            // Un gestionnaire a ouvert une boîte de dialogue : elle a reçu le relâchement, aucun geste ne commence.
+            if (e.LeftButton == MouseButtonState.Released && (host?.Node != null || edgeId != null))
+            {
+                EndMode();
+                e.Handled = true;
+                return;
+            }
+
+            if (host?.Node == null && edgeId == null && ZoomOnDoubleClick && handle == null)
             {
                 SetViewport(ViewportMath.ZoomAt(Viewport, new XYPosition(pos.X, pos.Y), Viewport.Zoom * 2, MinZoom, MaxZoom),
                     TimeSpan.FromMilliseconds(200));
@@ -72,6 +88,7 @@ public partial class FlowView
                 armed.Info.Type, target?.NodeId, target?.Info.Id, connection));
             if (handle != null)
             {
+                _pressedNode = null; // ce clic a terminé la connexion : ce n'est pas aussi un clic sur le node
                 e.Handled = true;
                 return;
             }
@@ -95,9 +112,10 @@ public partial class FlowView
             _mode = Mode.Connect;
             RaiseConnectStarted(_connectFrom, false);
         }
-        else if (handle != null && handleInfo != null)
+        else if (handle != null && host?.Node != null)
         {
-            // Handle qui n'accepte pas de départ de connexion : rien ne se passe.
+            // Handle qui n'accepte pas de départ de connexion (vue verrouillée, node ou handle non connectable) : tirer
+            // dessus ne déplace ni le node ni la vue, comme les classes nodrag et nopan des handles de React Flow.
         }
         else if (host?.Node != null)
         {
@@ -129,7 +147,7 @@ public partial class FlowView
         {
             var edge = Edges.FirstOrDefault(x => x.Id == edgeId);
             if (edge is { Selectable: true }) Select([], [edgeId], additive);
-            if (edge is { Reconnectable: true } && EdgesReconnectable) TryBeginReconnect(edgeId, ScreenToFlow(pos));
+            if (edge is { Reconnectable: true } && EdgesReconnectable) PrepareReconnect(edgeId, ScreenToFlow(pos));
         }
         else if ((Has(SelectionKey) || SelectionOnDrag) && !IsLocked && ElementsSelectable)
         {
@@ -147,6 +165,8 @@ public partial class FlowView
         if (_mode == Mode.Connect) SetConnecting(true);
         if (_mode != Mode.None) CaptureMouse();
         StartAutoPanIfEnabled();
+        // Un gestionnaire (sélection, début de connexion…) a ouvert une boîte de dialogue : le relâchement est perdu.
+        if (_mode != Mode.None && e.LeftButton == MouseButtonState.Released) AbortGesture();
         e.Handled = true;
     }
 
@@ -188,14 +208,22 @@ public partial class FlowView
         }
 
         var distance = Math.Abs(pos.X - _mouseStart.X) + Math.Abs(pos.Y - _mouseStart.Y);
+        _pressDistance = Math.Max(_pressDistance, distance);
         switch (_mode)
         {
+            case Mode.ReconnectPending:
+                if (distance < Math.Max(ClickTolerance, ConnectionDragThreshold)) break;
+                BeginReconnect();
+                UpdateConnectionLine(ScreenToFlow(pos));
+                break;
+
             case Mode.Pan:
                 if (!_panMoved)
                 {
                     if (distance < PaneDragThreshold) break;
                     _panMoved = true;
                     ViewportMoveStarted?.Invoke(this, new ViewportMoveEventArgs(Viewport));
+                    if (_mode != Mode.Pan) break; // un gestionnaire a interrompu le geste
                 }
 
                 Viewport = ViewportMath.PanBy(_viewportStart, pos.X - _mouseStart.X, pos.Y - _mouseStart.Y);
@@ -297,15 +325,12 @@ public partial class FlowView
         {
             _dragMoved = true;
             PushHistory();
-            if (_pendingSelect != null)
-            {
-                Select([_pendingSelect], [], false);
-                _pendingSelect = null;
-            }
+            _pendingSelect = null; // SelectNodesOnDrag faux : un node glissé reste non sélectionné
 
             ApplyNodeChanges(_dragStart.Keys.Select(id => (NodeChange)new NodeInteractionChange(id, Dragging: true)).ToList());
             if (NodeDragStarted != null) NodeDragStarted(this, DragArgs(pos)!);
             if (_dragStart.Count > 1 && SelectionDragStarted != null) SelectionDragStarted(this, DragArgs(pos)!);
+            if (_mode != Mode.DragNodes) return; // un gestionnaire a interrompu le geste
         }
 
         ApplyNodeChanges(_dragStart.Select(kv =>
@@ -315,6 +340,7 @@ public partial class FlowView
             return (NodeChange)new NodePositionChange(kv.Key, ConstrainPosition(kv.Key, p));
         }).ToList());
         ExpandParents();
+        if (_mode != Mode.DragNodes) return;
         if (NodeDragging != null) NodeDragging(this, DragArgs(pos)!);
         if (_dragStart.Count > 1 && SelectionDragging != null) SelectionDragging(this, DragArgs(pos)!);
     }
@@ -369,7 +395,15 @@ public partial class FlowView
     {
         base.OnMouseLeftButtonUp(e);
         var pos = e.GetPosition(this);
-        var moved = Math.Abs(pos.X - _mouseStart.X) + Math.Abs(pos.Y - _mouseStart.Y) >= 4;
+        // Un seuil de glisser plus grand que la tolérance laisse le clic jusqu'à lui ; la plus grande distance parcourue
+        // compte, pas celle du relâchement : un glisser revenu à son départ n'est pas un clic.
+        var tolerance = Math.Max(ClickTolerance, _mode switch
+        {
+            Mode.DragNodes => NodeDragThreshold,
+            Mode.Pan => PaneDragThreshold,
+            _ => 0
+        });
+        var moved = Math.Max(_pressDistance, Math.Abs(pos.X - _mouseStart.X) + Math.Abs(pos.Y - _mouseStart.Y)) >= tolerance;
         var dragged = _mode == Mode.DragNodes && _dragMoved ? DragArgs(pos) : null;
         var (nodeId, edgeId, pane) = (_pressedNode, _pressedEdge, _pressedPane);
         var pendingSelect = _pendingSelect;
@@ -378,6 +412,10 @@ public partial class FlowView
         var wasSelect = _mode == Mode.Select;
         var wasPan = _mode == Mode.Pan && _panMoved;
         var flow = ScreenToFlow(pos);
+
+        // Le geste est terminé : si un gestionnaire retire maintenant la capture (boîte de dialogue), il n'y a rien à
+        // interrompre, et la suite ne doit pas être notifiée deux fois.
+        _mode = Mode.None;
 
         HandleRef? armed = null;
         if (wasConnect)
@@ -401,13 +439,7 @@ public partial class FlowView
         if (box is { } area) SelectionEnded?.Invoke(this, new SelectionBoxEventArgs(area));
 
         // Commandes du ViewModel, une fois l'état de la vue revenu au repos.
-        if (dragged != null)
-        {
-            ApplyNodeChanges(dragged.NodeIds.Select(id => (NodeChange)new NodeInteractionChange(id, Dragging: false)).ToList());
-            NodeDragStopped?.Invoke(this, dragged);
-            if (dragged.NodeIds.Count > 1) SelectionDragStopped?.Invoke(this, dragged);
-            Run(NodeDragStopCommand, dragged.Elements);
-        }
+        if (dragged != null) FinishDrag(dragged);
 
         if (wasConnect || moved) return;
         if (pendingSelect != null) Select([pendingSelect], [], false);
@@ -431,10 +463,48 @@ public partial class FlowView
         }
     }
 
+    private void FinishDrag(NodeDragEventArgs dragged)
+    {
+        ApplyNodeChanges(dragged.NodeIds.Select(id => (NodeChange)new NodeInteractionChange(id, Dragging: false)).ToList());
+        NodeDragStopped?.Invoke(this, dragged);
+        if (dragged.NodeIds.Count > 1) SelectionDragStopped?.Invoke(this, dragged);
+        Run(NodeDragStopCommand, dragged.Elements);
+    }
+
     protected override void OnLostMouseCapture(MouseEventArgs e)
     {
         base.OnLostMouseCapture(e);
-        EndMode();
+        // L'évènement remonte aussi des enfants ; tant que la vue garde la capture, son geste continue.
+        if (!IsMouseCaptured) AbortGesture();
+    }
+
+    /// <summary>
+    ///     La capture est perdue en plein geste (boîte de dialogue, autre application) : le relâchement n'arrivera pas.
+    ///     Tout ce qui a commencé se termine, comme à un relâchement dans le vide : ni connexion, ni clic.
+    /// </summary>
+    private void AbortGesture()
+    {
+        var mode = _mode;
+        if (mode == Mode.None) return;
+        var pos = Mouse.GetPosition(this);
+        var flow = ScreenToFlow(pos);
+        var drag = mode == Mode.DragNodes && _dragMoved ? DragArgs(pos) : null;
+        var panned = mode == Mode.Pan && _panMoved;
+        var from = mode == Mode.Connect ? _connectFrom : null;
+        var reconnecting = _reconnecting;
+        var box = mode == Mode.Select && _selectionStarted ? SelectionArea(pos) : (Core.Rect?)null;
+        _rightPan = false;
+        EndMode(); // l'état revient au repos AVANT les notifications
+
+        if (panned) ViewportMoveEnded?.Invoke(this, new ViewportMoveEventArgs(Viewport));
+        if (box is { } area) SelectionEnded?.Invoke(this, new SelectionBoxEventArgs(area));
+        if (from != null)
+        {
+            if (reconnecting != null) ReconnectEnded?.Invoke(this, new ReconnectEndEventArgs(reconnecting, null, flow));
+            RaiseConnectEnded(from, null, null, flow);
+        }
+
+        if (drag != null) FinishDrag(drag);
     }
 
     private void EndMode()
@@ -442,6 +512,7 @@ public partial class FlowView
         _mode = Mode.None;
         _connectFrom = null;
         _reconnecting = null;
+        _pendingReconnect = null;
         _dragMoved = false;
         _panMoved = _connectMoved = _selectionStarted = false;
         _pendingSelect = null;

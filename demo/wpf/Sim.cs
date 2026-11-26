@@ -15,7 +15,8 @@ internal static class Sim
     [DllImport("user32.dll")] private static extern void mouse_event(uint flags, uint dx, uint dy, uint data, nint extra);
     [DllImport("user32.dll")] private static extern void keybd_event(byte vk, byte scan, uint flags, nint extra);
 
-    private const uint LeftDown = 0x0002, LeftUp = 0x0004, RightDown = 0x0008, RightUp = 0x0010, WheelFlag = 0x0800;
+    private const uint LeftDown = 0x0002, LeftUp = 0x0004, RightDown = 0x0008, RightUp = 0x0010, WheelFlag = 0x0800,
+        MiddleDown = 0x0020, MiddleUp = 0x0040;
     private const uint KeyUp = 2;
 
     public const byte VkTab = 0x09, VkControl = 0x11, VkEscape = 0x1B, VkSpace = 0x20, VkLeft = 0x25, VkRight = 0x27,
@@ -99,6 +100,30 @@ internal static class Sim
         mouse_event(RightUp, 0, 0, 0, 0);
         await Task.Delay(300);
     }
+
+    /// <summary>Bouton enfoncé en <paramref name="from" />, amené en <paramref name="to" />, relâché : bouton droit ou du milieu.</summary>
+    public static Task DragWith(System.Windows.Input.MouseButton button, Point from, Point to, int steps = 12) => Task.Run(() =>
+    {
+        var (down, up) = button switch
+        {
+            System.Windows.Input.MouseButton.Right => (RightDown, RightUp),
+            System.Windows.Input.MouseButton.Middle => (MiddleDown, MiddleUp),
+            _ => (LeftDown, LeftUp)
+        };
+        SetCursorPos((int)from.X, (int)from.Y);
+        Thread.Sleep(120);
+        mouse_event(down, 0, 0, 0, 0);
+        Thread.Sleep(80);
+        for (var i = 1; i <= steps && from != to; i++)
+        {
+            SetCursorPos((int)(from.X + (to.X - from.X) * i / steps), (int)(from.Y + (to.Y - from.Y) * i / steps));
+            Thread.Sleep(25);
+        }
+
+        Thread.Sleep(80);
+        mouse_event(up, 0, 0, 0, 0);
+        Thread.Sleep(250);
+    });
 
     public static void MoveTo(Point p) => SetCursorPos((int)p.X, (int)p.Y);
 

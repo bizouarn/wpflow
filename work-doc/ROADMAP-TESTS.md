@@ -161,13 +161,32 @@ Comportements voulus, ajoutés à `doc/blazor.md` : modèles de nodes mémorisé
 
 ### Lot 3 — Matrice des évènements et des gestes (L)
 
-- [ ] Un journal d'évènements dans chaque application témoin ; chaque évènement est déclenché par une entrée réelle, avec contrôle de son contenu, de son **nombre d'appels** et de son ordre (début, déplacement, fin).
-- [ ] Un test de garde par réflexion échoue si un évènement public manque à la matrice : les `event` et les propriétés `…Command` côté WPF, les `EventCallback` côté Blazor.
-- [ ] Combinaisons : simple et double-clic, clic droit, clic milieu, Ctrl/Maj + clic, glisser sous et au-delà du seuil, relâchement hors de la fenêtre, Échap pendant un geste, perte de focus (Alt+Tab).
-- [ ] Les mêmes sur node, edge, label d'edge, handle, fond, minimap, toolbar et élément interactif dans un node.
-- [ ] Chaque option qui coupe une interaction (`IsLocked`, déplaçable, sélectionnable, connectable…) est vérifiée avec une entrée réelle.
-- [ ] Un tableau de parité : un même geste lève les mêmes évènements, dans le même ordre, en WPF et en Blazor ; chaque écart voulu est documenté.
-- [ ] WPF : perte de la capture souris (`LostMouseCapture`), par exemple quand un gestionnaire de clic ou de double-clic ouvre une boîte de dialogue.
+- [x] Un journal d'évènements dans chaque application témoin ; chaque évènement est déclenché par une entrée réelle, avec contrôle de son contenu, de son **nombre d'appels** et de son ordre (début, déplacement, fin).
+- [x] Un test de garde par réflexion échoue si un évènement public manque à la matrice : les `event` et les propriétés `…Command` côté WPF, les `EventCallback` côté Blazor.
+- [x] Combinaisons : simple et double-clic, clic droit, clic milieu, Ctrl/Maj + clic, glisser sous et au-delà du seuil, relâchement hors de la fenêtre, Échap pendant un geste, perte de focus (Alt+Tab).
+- [x] Les mêmes sur node, edge, label d'edge, handle, fond, minimap, toolbar et élément interactif dans un node. *(pas le produit complet : voir les limites)*
+- [x] Chaque option qui coupe une interaction (`IsLocked`, déplaçable, sélectionnable, connectable…) est vérifiée avec une entrée réelle.
+- [x] Un tableau de parité : un même geste lève les mêmes évènements, dans le même ordre, en WPF et en Blazor ; chaque écart voulu est documenté.
+- [x] WPF : perte de la capture souris (`LostMouseCapture`), par exemple quand un gestionnaire de clic ou de double-clic ouvre une boîte de dialogue.
+
+**État (2026-11-26).** La table « geste → suite exacte des évènements » est `tests/Scenarios.Shared/GestureMatrix.cs` : c'est le tableau de parité, un écart voulu y porte sa suite Blazor et sa raison (aussi dans `doc/blazor.md`). Le catalogue des évènements est `EventCatalog.cs` ; `EventMatrixGuardTests` le compare par réflexion aux deux bibliothèques et exige un geste par évènement (les commandes WPF restent gardées par `EventCommandTests`, qui en exige une par évènement de `FlowView`). WPF : `MatrixRunner.cs`, lancé par `run-wpf-selftests.ps1 -Only matrix` (`WPFLOW_GESTURE=préfixes` pour en jouer quelques-uns). Blazor : `MatrixTests.cs`, Server et WebAssembly.
+
+Derniers résultats en local : auto-tests WPF tous passants (matrice 97/97, scénarios 199/199, exemples 86/86, démo 24/24) ; bout en bout Blazor 310/310 puis les 28 gestes du fond après l'ajout d'un geste ; noyau 147, WPF 128, bUnit 145. La CI n'a pas été exécutée.
+
+Limites :
+
+- La matrice ne tourne qu'en **mode contrôlé** ; en MVVM, les évènements ne sont pas rejoués un à un, et les commandes ne sont pas déclenchées à la souris une à une.
+- Perte de focus : en WPF, une boîte de dialogue modale (pas un vrai Alt+Tab) ; dans le navigateur, un relâchement qui n'arrive jamais, envoyé par le protocole DevTools. `pointercancel` n'est pas essayé (lot 5, tactile).
+- Pas de produit complet des combinaisons et des cibles : Échap n'est essayé que pendant un glisser de node et une connexion par clics ; le label d'edge au clic et au double-clic ; la minimap au clic sur un node (pas au glisser) ; la barre d'outils au clic.
+- Options non couvertes : défilement (`PanOnScroll`), pincement, `SelectionOnDrag`, `PreventScrolling`.
+- `edge.right-click` a échoué une fois en WPF (menu du fond reçu), sans se reproduire aux deux passages suivants.
+
+Défauts trouvés, chacun avec un geste d'abord en échec puis corrigé (détail dans le `CHANGELOG.md`) :
+
+- **WPF** : capture perdue en plein geste, aucun évènement de fin ; après un double-clic ouvrant une boîte de dialogue, le node suivait la souris bouton relâché ; clic perdu avec un seuil de glisser supérieur à 4 px ; clic près d'une extrémité d'edge avalé par la reconnexion ; `NodeClick` en trop à la connexion par deux clics ; handle non connectable déplaçant le node ; `SelectNodesOnDrag` faux sélectionnant au glisser.
+- **Blazor** : `OnDrop` ne fonctionnait pas dans un navigateur ; `OnSelectionChange` jamais levé en mode contrôlé ; geste bloqué après un relâchement perdu ; `OnPaneClick` et sélection vidée par la minimap, une barre d'outils ou le second clic d'une connexion ; reconnexion sans `OnConnectStart` / `OnConnectEnd` ; menu contextuel après un glisser au bouton droit ; double-clic sur un panneau zoomant le graphe ; survol du fond sans tenir compte des nodes et des edges ; plus les écarts de comportement alignés sur WPF (seuils, rayon de reconnexion, sélection multiple, contrôles dans un node, node verrouillé).
+
+À décider : au glisser sur le fond, WPF efface la sélection dès l'appui, Blazor la garde (comme React Flow). L'écart est déclaré dans la matrice.
 
 ### Lot 4 — Conditions d'intégration hostiles (L)
 

@@ -20,6 +20,14 @@ Les deux vues se comportent désormais de la même façon, WPF servant de réfé
 - Blazor : en mode contrôlé (`AutoApplyChanges="false"`), la vue ne tient plus d'historique.
 - WPF : en mode contrôlé, `CanUndo` reste faux (`Undo` n'y faisait déjà rien).
 - WPF, MVVM : annuler et rétablir réécrivent dans les ViewModels toutes les propriétés mappées, plus seulement la position, la sélection, la taille et les extrémités. Un changement que votre code a fait depuis le geste n'est pas défait.
+- Blazor : `NodeDragThreshold`, `ConnectionDragThreshold` et `PaneDragThreshold` valent 1 px par défaut, comme en WPF (3 auparavant), et `ReconnectRadius` 24 px (10).
+- WPF et Blazor : un appui reste un clic tant que le pointeur ne s'éloigne pas de 4 px, ou du seuil de glisser s'il est plus grand. La plus grande distance parcourue compte : un glisser revenu à son départ n'est pas un clic.
+- WPF et Blazor : la reconnexion ne commence qu'au premier mouvement. Un clic près de l'extrémité d'un edge est un clic sur l'edge.
+- WPF : tirer un handle d'où aucune connexion ne peut partir (vue verrouillée, node ou handle non connectable) ne déplace plus ni le node ni la vue.
+- WPF : avec `SelectNodesOnDrag` faux, un node glissé reste non sélectionné, comme le dit la documentation (il était sélectionné au début du glisser).
+- Blazor : un clic sur un node d'une sélection multiple la garde ; Ctrl + clic sur un edge sélectionné ne le désélectionne plus.
+- Blazor : un appui sur un contrôle HTML d'un node (`button`, `input`…) ne sélectionne plus le node.
+- Blazor : un node verrouillé, non sélectionnable ou saisi hors de sa zone `DragHandle` laisse le glisser déplacer la vue.
 
 ### Ajouts
 
@@ -48,6 +56,20 @@ Les deux vues se comportent désormais de la même façon, WPF servant de réfé
 - Blazor : un clic droit ou un clic du milieu vidait la sélection et levait `OnPaneClick`, même sur un node ; `OnSelectionContextMenu` n'était donc jamais levé après un clic droit réel.
 - Mode contrôlé : saisir un node non sélectionné déplaçait à sa place l'ancienne sélection, tant que la nouvelle n'était pas appliquée (`DragSelection.CollectStart`, WPF et Blazor ; nouvelle surcharge avec `additive`).
 - WPF : `RenderToBitmap` / `SaveImage` prenaient l'image avec le viewport courant au lieu du graphe entier. L'image était décalée, tronquée ou entièrement blanche.
+- WPF : quand la vue perdait la capture de la souris en plein geste (boîte de dialogue, autre application), `NodeDragStopped`, `ViewportMoveEnded`, `SelectionEnded`, `ConnectEnded` et `ReconnectEnded` n'étaient jamais levés, et les nodes restaient marqués `Dragging`. Le geste se termine désormais comme à un relâchement dans le vide.
+- WPF : un gestionnaire de double-clic qui ouvrait une boîte de dialogue laissait la vue capturer la souris, et le node la suivait bouton relâché.
+- WPF : un clic légèrement tremblé était perdu quand un seuil de glisser dépassait 4 px.
+- WPF : le second clic d'une connexion par deux clics levait aussi `NodeClick`.
+- WPF et Blazor : un simple clic à moins de `ReconnectRadius` d'une extrémité démarrait une reconnexion ; en WPF, `EdgeClick` et le double-clic étaient avalés.
+- Blazor : `OnDrop` ne fonctionnait pas dans un navigateur (`dragover` n'était pas annulé).
+- Blazor, mode contrôlé : `OnSelectionChange` n'était jamais levé.
+- Blazor : un relâchement perdu (boîte de dialogue, autre application) laissait le geste suivre la souris ; une connexion ou une reconnexion abandonnée ne levait pas `OnConnectEnd` / `OnReconnectEnd`.
+- Blazor : la reconnexion ne levait ni `OnConnectStart` ni `OnConnectEnd` (`ConnectStartEventArgs.IsReconnection` la distingue).
+- Blazor : un clic sur la minimap, une barre d'outils ou le second clic d'une connexion levait aussi `OnPaneClick` et vidait la sélection ; avec `OnNodeClick`, un clic sur un node de la minimap ne déplaçait plus la vue.
+- Blazor : un double-clic sur un panneau zoomait le graphe, et sur un bouton d'un node levait `OnNodeDoubleClick`.
+- Blazor : un glisser au bouton droit qui déplaçait la vue ouvrait ensuite le menu contextuel.
+- Blazor : `OnPaneMouseEnter`, `OnPaneMouseMove` et `OnPaneMouseLeave` ne tenaient pas compte des nodes et des edges survolés ; comme en WPF, le fond est ce qui n'est ni l'un ni l'autre.
+- Blazor : après un appui sur une barre d'outils, l'appui suivant pouvait être ignoré.
 - WPF, MVVM : quand un ViewModel ajustait ou refusait une valeur écrite par la vue (setter qui borne, élément verrouillé), la vue gardait la sienne. Un ViewModel qui lève `PropertyChanged` pendant l'écriture est désormais relu.
 - WPF, MVVM : `UpdateNode` et `UpdateNodeData` n'écrivaient rien dans le ViewModel ; la vue et le ViewModel divergeaient jusqu'au changement suivant du ViewModel, qui annulait la mise à jour.
 - WPF, MVVM : `UpdateEdge` et `UpdateEdgeData` n'écrivaient que les extrémités ; le label, le type, l'animation, la sélection et les autres propriétés mappées sont désormais écrits aussi.

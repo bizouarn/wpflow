@@ -5,7 +5,9 @@ const roots = new WeakMap();
 
 // Contrôles HTML d'un node : un appui dessus ne démarre pas de geste (le node est seulement sélectionné).
 const INTERACTIVE = 'input,textarea,select,button,a,[contenteditable="true"]';
-const TEXT_INPUT = 'input,textarea,select,[contenteditable="true"]';
+// Panneaux et barres d'outils posés sur le graphe : un appui dessus ne concerne pas le graphe.
+const OVERLAY = '.wf-panel,.wf-toolbar,.wf-selection-toolbar';
+const TEXT_INPUT ='input,textarea,select,[contenteditable="true"]';
 // Déplacement (px) au-delà duquel le pointeur est capturé ; en deçà, c'est un clic ou un double-clic.
 const CAPTURE_DISTANCE = 4;
 
@@ -67,6 +69,14 @@ export function attach(root, dotnet) {
     };
     root.addEventListener('wheel', s.onWheel, { passive: false });
 
+    // Dépôt : sans « dragover » annulé, le navigateur ne lève jamais « drop ». Fait ici : l'attribut preventDefault de
+    // Blazor reste sans effet quand aucun gestionnaire n'écoute cet évènement, et en écouter un enverrait un message
+    // par mouvement sur Blazor Server.
+    s.onDragOver = (e) => e.preventDefault();
+    root.addEventListener('dragenter', s.onDragOver);
+    root.addEventListener('dragover', s.onDragOver);
+    root.addEventListener('drop', s.onDragOver); // le navigateur n'ouvre pas ce qui est déposé
+
     // Début de geste : tourne avant le dispatcher d'évènements de Blazor (plus haut dans l'arbre).
     s.onDown = (e) => {
         s.pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
@@ -94,11 +104,13 @@ export function attach(root, dotnet) {
             const sel = /^[.#\[]/.test(h) ? h : '.' + h;
             let inside = false;
             try { inside = !!closest(sel) && nodeEl.contains(closest(sel)); } catch { /* sélecteur invalide */ }
-            if (!inside) flags |= 1;
+            if (!inside) flags |= 8; // hors de la zone de saisie : le node reste en place, le glisser déplace la vue
         }
         if (closest('.nopan')) flags |= 2;
-        if (closest(INTERACTIVE)) flags |= 4;
-        if (flags) dotnet.invokeMethodAsync('OnPressInfo', flags);
+        // Contrôle HTML, panneau ou barre d'outils : l'appui n'est pas un geste du graphe (ni clic sur le fond, ni zoom).
+        if (closest(INTERACTIVE) || closest(OVERLAY)) flags |= 4;
+        // Toujours envoyé : les drapeaux de l'appui précédent ne doivent pas rester en mémoire.
+        dotnet.invokeMethodAsync('OnPressInfo', flags);
         // Toujours envoyé pour un node (même vide) : l'appui précédent ne doit pas rester en mémoire.
         if (nodeEl) dotnet.invokeMethodAsync('OnPressData', nodeEl.dataset.nodeId, targetData(t, nodeEl));
         if (flags & 4) return; // contrôle HTML : le geste n'est pas suivi, il garde son comportement
@@ -108,6 +120,7 @@ export function attach(root, dotnet) {
         s.pointerId = e.pointerId;
         s.downX = e.clientX;
         s.downY = e.clientY;
+        s.buttonMask = e.button === 0 ? 1 : e.button === 1 ? 4 : 2;
         s.captured = false;
         if (e.button === 1) e.preventDefault();
     };
@@ -116,6 +129,13 @@ export function attach(root, dotnet) {
         if (p) { p.x = e.clientX; p.y = e.clientY; }
         if (s.pinch) { movePinch(s); return; }
         if (e.pointerId !== s.pointerId) return;
+        // Le bouton n'est plus enfoncé sans qu'aucun relâchement soit arrivé (boîte de dialogue, autre application) :
+        // le geste est abandonné, sinon il suivrait la souris jusqu'au clic suivant.
+        if (e.pointerType !== 'touch' && (e.buttons & s.buttonMask) === 0) {
+            s.pointers.delete(e.pointerId);
+            finish(e, true);
+            return;
+        }
         // La capture redirige click et dblclick vers la racine : on ne la prend qu'une fois le pointeur réellement
         // déplacé, pour qu'un clic ou un double-clic atteigne le node ou l'edge visé.
         if (!s.captured && Math.hypot(e.clientX - s.downX, e.clientY - s.downY) > CAPTURE_DISTANCE) {
@@ -134,10 +154,13 @@ export function attach(root, dotnet) {
         s.pointers.delete(e.pointerId);
         if (s.pinch && s.pointers.size < 2) s.pinch = null;
         if (e.pointerId !== s.pointerId) return;
+        finish(e, e.type === 'pointercancel');
+    };
+    const finish = (e, cancelled) => {
         s.pointerId = null;
         if (s.moveRaf) { cancelAnimationFrame(s.moveRaf); s.moveRaf = 0; }
         try { root.releasePointerCapture(e.pointerId); } catch { /* ignoré */ }
-        dotnet.invokeMethodAsync('OnPointerUp', e.clientX, e.clientY, e.shiftKey, e.type === 'pointercancel');
+        dotnet.invokeMethodAsync('OnPointerUp', e.clientX, e.clientY, e.shiftKey, cancelled);
     };
     root.addEventListener('pointerdown', s.onDown);
     // Seul « mousedown » porte le nombre de clics ; il suit « pointerdown », donc arrive après l'appui dans la vue.
@@ -177,6 +200,9 @@ export function detach(root) {
     window.removeEventListener('scroll', s.onScroll, true);
     window.removeEventListener('resize', s.onScroll);
     root.removeEventListener('wheel', s.onWheel);
+    root.removeEventListener('dragenter', s.onDragOver);
+    root.removeEventListener('dragover', s.onDragOver);
+    root.removeEventListener('drop', s.onDragOver);
     root.removeEventListener('pointerdown', s.onDown);
     root.removeEventListener('mousedown', s.onPress, true);
     window.removeEventListener('pointermove', s.onMove, true);

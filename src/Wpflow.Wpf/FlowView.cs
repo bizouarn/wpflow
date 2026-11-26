@@ -41,7 +41,10 @@ public partial class FlowView : ContentControl
         Pan,
         DragNodes,
         Connect,
-        Select
+        Select,
+
+        /// <summary>Pression près d'une extrémité d'edge : c'est une reconnexion si la souris s'en éloigne, sinon un clic.</summary>
+        ReconnectPending
     }
 
 

@@ -12,7 +12,7 @@
          @onpointerdown="OnPanePointerDown" @onkeydown="OnKeyDown" @onkeyup="OnKeyUp"
          @onpointermove="HoverMoveHandler" @onpointerenter="PaneEnterHandler" @onpointerleave="PaneLeaveHandler"
          @ondblclick="PaneDoubleClick" @oncontextmenu="PaneContextMenu" @oncontextmenu:preventDefault="OnPaneContextMenu.HasDelegate"
-         @ondragover:preventDefault @ondrop="OnDropped">
+         @ondrop="OnDropped">
         @foreach (var (bgId, layer) in BackgroundLayers())
         {
             var gap = Math.Max(1, layer.Gap * Viewport.Zoom);
@@ -94,8 +94,8 @@
                               @onpointermove="EdgeMoveHandler(edge)" />
                         @if (edge.Selected && EdgesReconnectable && edge.Reconnectable && !IsLocked)
                         {
-                            <circle class="wf-edge-anchor" cx="@F(ev.Context.Geometry.Source.X)" cy="@F(ev.Context.Geometry.Source.Y)" r="@F(ReconnectRadius / 2)" />
-                            <circle class="wf-edge-anchor" cx="@F(ev.Context.Geometry.Target.X)" cy="@F(ev.Context.Geometry.Target.Y)" r="@F(ReconnectRadius / 2)" />
+                            <circle class="wf-edge-anchor" cx="@F(ev.Context.Geometry.Source.X)" cy="@F(ev.Context.Geometry.Source.Y)" r="@F(Math.Min(ReconnectRadius / 2, 5))" />
+                            <circle class="wf-edge-anchor" cx="@F(ev.Context.Geometry.Target.X)" cy="@F(ev.Context.Geometry.Target.Y)" r="@F(Math.Min(ReconnectRadius / 2, 5))" />
                         }
                     </g>
                 }
@@ -117,7 +117,7 @@
                 <FlowNodeHost @key="n.Id" Flow="this" Node="n" Classes="@NodeClasses(n)" Style="@NodeStyle(n)" Label="@NodeLabel(n)"
                               Focusable="@(NodesFocusable && !DisableKeyboardA11y)" Template="TemplateFor(n)"
                               PreventContextMenu="@(OnNodeContextMenu.HasDelegate || OnSelectionContextMenu.HasDelegate)"
-                              HasEnter="OnNodeMouseEnter.HasDelegate" HasLeave="OnNodeMouseLeave.HasDelegate"
+                              HasEnter="OnNodeMouseEnter.HasDelegate || PaneHoverWanted" HasLeave="OnNodeMouseLeave.HasDelegate || PaneHoverWanted"
                               HasMove="OnNodeMouseMove.HasDelegate" />
             }
 
