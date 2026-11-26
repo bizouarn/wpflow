@@ -77,10 +77,19 @@ Les deux vues se comportent désormais de la même façon, WPF servant de réfé
 - WPF : `UpdateNode` ne faisait rien, sans le signaler, tant que le gabarit de la vue n'était pas appliqué (avant le premier affichage).
 - Blazor : `ExportSvg` écrivait telle quelle la couleur propre d'un edge ; elle est échappée.
 
+### Performances
+
+Sans changement d'API ni de comportement. Mesures sur 1 500 nodes (Blazor) et 2 000 nodes (WPF, noyau), Release.
+
+- Blazor : un pas de pan alloue 2 Ko au lieu de 284 Ko (0,32 → 0,07 ms) ; déplacer un node alloue 2,2 Mo au lieu de 4,2 Mo (11 → 7 ms ; avec des groupes 13 → 8 ms).
+- WPF : déplacer un node dans un graphe avec des groupes alloue 0,7 Mo au lieu de 2,1 Mo (2,7 → 2,0 ms) ; seules les copies en coordonnées absolues des nodes qui ont bougé sont refaites. Avec une grosse sélection, plus de chaîne reconstruite à chaque image.
+- WPF et Blazor : tirer un fil ne construit plus la liste des handles candidats à chaque mouvement (331 Ko → 0,1 Ko, 0,36 → 0,10 ms avec 4 000 handles).
+
 ### Tests et publication
 
 - La publication lance les tests de bout en bout Blazor et les auto-tests WPF à la vraie souris avant le `pack`.
 - Les auto-tests WPF rendent un code de sortie en échec (ligne `ECHEC`, exception ou délai dépassé) ; `tests/run-wpf-selftests.ps1` les enchaîne.
+- `tests/run-wpf-selftests-sandbox.ps1` enchaîne les mêmes auto-tests dans le Bac à sable Windows, hors écran : le poste reste utilisable.
 - `tests/consumers/run.ps1` installe les paquets dans des applications neuves, hors de la solution.
 - Tests de bout en bout : `WPFLOW_BROWSER_CHANNEL` choisit le navigateur (par exemple `msedge`) ; `WPFLOW_SERVER_DEMO_TFM=net10.0` permet de lancer la démo Server sur un poste sans runtime .NET 8.
 

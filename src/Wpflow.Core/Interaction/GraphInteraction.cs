@@ -13,18 +13,28 @@ public static class ConnectionSearch
     public static HandleRef? FindCandidate(HandleRef from, XYPosition flow, double radius, ConnectionMode mode,
         IEnumerable<KeyValuePair<string, IReadOnlyList<HandleInfo>>> handles, Func<string, Node?> getNode)
     {
-        var candidates = new List<(HandleRef Handle, XYPosition Position)>();
+        // Appelé à chaque mouvement pendant qu'on tire un fil : un seul parcours, sans liste des candidats.
+        string? bestNode = null;
+        HandleInfo? best = null;
+        var min = double.MaxValue;
+        var bestSameType = false;
         foreach (var (nodeId, list) in handles)
         {
             if (nodeId == from.NodeId || getNode(nodeId) is not { Connectable: true, Hidden: false } node) continue;
-            foreach (var h in list)
-                if (h is { Connectable: true, ConnectableEnd: true } && Connections.AreTypesCompatible(from.Info.Type, h.Type, mode))
-                    candidates.Add((new HandleRef(nodeId, h), GraphUtils.GetHandleCenter(node, h)));
+            for (var i = 0; i < list.Count; i++)
+            {
+                var h = list[i];
+                if (h is not { Connectable: true, ConnectableEnd: true } || !Connections.AreTypesCompatible(from.Info.Type, h.Type, mode))
+                    continue;
+                var distance = GraphUtils.Distance(flow, GraphUtils.GetHandleCenter(node, h));
+                var sameType = h.Type == from.Info.Type;
+                // À distance égale on préfère le handle de type opposé (comme xyflow), sinon le premier rencontré.
+                if (distance <= radius && (distance < min || (distance == min && bestSameType && !sameType)))
+                    (bestNode, best, min, bestSameType) = (nodeId, h, distance, sameType);
+            }
         }
 
-        // À distance égale on préfère le handle de type opposé (comme xyflow).
-        var ordered = candidates.OrderBy(c => c.Handle.Info.Type == from.Info.Type ? 1 : 0).ToList();
-        return GraphUtils.GetClosestHandle(flow, radius, ordered);
+        return best == null ? null : new HandleRef(bestNode!, best);
     }
 
     /// <summary>

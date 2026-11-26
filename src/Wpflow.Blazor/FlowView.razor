@@ -74,7 +74,7 @@
                 {
                     var edge = ev.Edge;
                     <g @key="edge.Id" class="wf-edge @(edge.Selected ? "wf-selected" : "") @(edge.Animated ? "wf-edge-animated" : "")"
-                       role="group" aria-label="@EdgeLabelText(edge)" aria-selected="@(edge.Selected ? "true" : "false")"
+                       role="group" aria-label="@EdgeLabelText(ev)" aria-selected="@(edge.Selected ? "true" : "false")"
                        tabindex="@(EdgesFocusable && !DisableKeyboardA11y ? 0 : (int?)null)" @onfocus="() => EdgeFocused(edge)">
                         @if (ev.Template != null)
                         {

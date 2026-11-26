@@ -12,7 +12,10 @@
     private string? _lastState;
 
     // L'état (origine, cible valide ou refusée) change pendant qu'un fil est tiré, sans que le node soit refait.
-    private string? State => _lastState = Flow?.HandleState(Node?.Id ?? "", Info);
+    private string? State => _lastState = CurrentState();
+
+    // Sans fil en cours, inutile de chercher le handle mesuré (fait par chaque handle après chaque rendu, pan compris).
+    private string? CurrentState() => Flow is { ShowsConnection: true } flow ? flow.HandleState(Node?.Id ?? "", Info) : null;
 
     protected override void OnInitialized()
     {
@@ -21,7 +24,7 @@
 
     private void CheckState()
     {
-        if (Flow?.HandleState(Node?.Id ?? "", Info) != _lastState) _ = InvokeAsync(StateHasChanged);
+        if (CurrentState() != _lastState) _ = InvokeAsync(StateHasChanged);
     }
 
     [CascadingParameter] private FlowView? Flow { get; set; }

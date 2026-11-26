@@ -12,6 +12,8 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Wpflow.Core\Wpflow.Core.csproj" />
+    <!-- Logique commune aux deux vues, internal : voir le fichier. -->
+    <Compile Include="..\Wpflow.Core\Interaction\Shared\*.cs" LinkBase="Shared" />
   </ItemGroup>
 
   <ItemGroup>

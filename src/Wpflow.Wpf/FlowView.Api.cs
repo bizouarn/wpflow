@@ -96,15 +96,8 @@ public partial class FlowView
     internal void EnsureVisible(Core.Rect rect, double margin = 30)
     {
         if (ActualWidth <= 0 || ActualHeight <= 0) return;
-        var v = Viewport;
-        var tl = ViewportMath.FlowToScreen(v, new XYPosition(rect.X, rect.Y));
-        var br = ViewportMath.FlowToScreen(v, new XYPosition(rect.Right, rect.Bottom));
-        double dx = 0, dy = 0;
-        if (tl.X < margin) dx = margin - tl.X;
-        else if (br.X > ActualWidth - margin) dx = ActualWidth - margin - br.X;
-        if (tl.Y < margin) dy = margin - tl.Y;
-        else if (br.Y > ActualHeight - margin) dy = ActualHeight - margin - br.Y;
-        if (dx != 0 || dy != 0) Viewport = new Viewport(v.X + dx, v.Y + dy, v.Zoom);
+        var shown = ViewLogic.PanToShow(Viewport, rect, ActualWidth, ActualHeight, margin);
+        if (shown != Viewport) Viewport = shown;
     }
 
     /// <summary>

@@ -94,15 +94,12 @@ public partial class FlowView
         set => SetValue(HistoryLimitProperty, value);
     }
 
-    private string _selectionSignature = "|";
+    private readonly SelectionTracker _selectionTracker = new();
     private bool _nodesReadyRaised;
 
     private void RaiseSelectionChangedIfNeeded()
     {
-        var signature = string.Join(",", Nodes.Where(n => n.Selected).Select(n => n.Id)) + "|" +
-                        string.Join(",", Edges.Where(e => e.Selected).Select(e => e.Id));
-        if (signature == _selectionSignature) return;
-        _selectionSignature = signature;
+        if (!_selectionTracker.Update(Nodes, Edges)) return;
         SelectionChanged?.Invoke(this,
             new FlowSelectionEventArgs(Nodes.Where(n => n.Selected).ToList(), Edges.Where(e => e.Selected).ToList()));
     }

@@ -10,14 +10,8 @@ using Wpflow.Core;
 namespace Wpflow.Blazor.Tests;
 
 /// <summary><c>NodesSource</c> / <c>EdgesSource</c> : les mêmes garanties qu'en WPF.</summary>
-public sealed class MvvmTests : TestContext
+public sealed class MvvmTests : FlowViewTestContext
 {
-    public MvvmTests()
-    {
-        JSInterop.Mode = JSRuntimeMode.Loose;
-        JSInterop.SetupModule("./_content/Wpflow.Blazor/wpflow.js").Mode = JSRuntimeMode.Loose;
-    }
-
     private abstract class Vm : INotifyPropertyChanged
     {
         public event PropertyChangedEventHandler? PropertyChanged;
@@ -93,21 +87,6 @@ public sealed class MvvmTests : TestContext
             p.Add(f => f.FitViewOnInit, false);
             configure?.Invoke(p);
         });
-
-    private static async Task Measure(IRenderedComponent<FlowView> cut)
-    {
-        await cut.InvokeAsync(() => cut.Instance.OnRootRect(0, 0, 800, 600));
-        var measured = cut.Instance.Nodes.Select(n => new MeasuredNode
-        {
-            Id = n.Id, Width = 100, Height = 40,
-            Handles =
-            [
-                new MeasuredHandle { Type = "target", Position = "top", X = 46, Y = -4, Width = 8, Height = 8 },
-                new MeasuredHandle { Type = "source", Position = "bottom", X = 46, Y = 36, Width = 8, Height = 8 }
-            ]
-        }).ToList();
-        await cut.InvokeAsync(() => cut.Instance.OnMeasured(measured));
-    }
 
     private static async Task Drag(IRenderedComponent<FlowView> cut, string node, double dx, double dy)
     {

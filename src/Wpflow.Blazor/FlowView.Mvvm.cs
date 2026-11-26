@@ -63,10 +63,7 @@ public partial class FlowView
         Nodes = Array.Empty<Node>();
         var adapter = new NodeSourceAdapter(source, NodeMapping ?? Wpflow.Blazor.NodeMapping.Default, () => Nodes, PushNodes,
             () => NodeFactory);
-        adapter.ChangedBySource += (before, after) => _history?.Rewrite(s => s with
-        {
-            Nodes = s.Nodes.Select(n => n.Id == before.Id ? adapter.Rebase(n, before, after) : n).ToList()
-        });
+        adapter.ChangedBySource += (before, after) => ViewLogic.Rebase(_history, adapter, before, after);
         // Les modèles de nodes sont mémorisés : un record recopié (égal, mais nouveau) fait redessiner ce node seul.
         adapter.Notified += node => PushNodes(Nodes.Select(n => ReferenceEquals(n, node) ? n with { } : n).ToList());
         _nodeSource = adapter;
@@ -84,10 +81,7 @@ public partial class FlowView
         Edges = Array.Empty<Edge>();
         var adapter = new EdgeSourceAdapter(source, EdgeMapping ?? Wpflow.Blazor.EdgeMapping.Default, () => Edges, PushEdges,
             () => EdgeFactory);
-        adapter.ChangedBySource += (before, after) => _history?.Rewrite(s => s with
-        {
-            Edges = s.Edges.Select(e => e.Id == before.Id ? adapter.Rebase(e, before, after) : e).ToList()
-        });
+        adapter.ChangedBySource += (before, after) => ViewLogic.Rebase(_history, adapter, before, after);
         adapter.Notified += edge =>
         {
             _edgeCache.Clear();

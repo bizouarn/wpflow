@@ -13,7 +13,13 @@ public static class NodeTree
         foreach (var n in nodes) byId[n.Id] = n;
 
         var result = new Dictionary<string, XYPosition>(byId.Count);
-        foreach (var n in byId.Values) Resolve(n, byId, result, new HashSet<string>());
+        var visiting = new HashSet<string>(); // vidé pour chaque node : un seul ensemble au lieu d'un par node
+        foreach (var n in byId.Values)
+        {
+            visiting.Clear();
+            Resolve(n, byId, result, visiting);
+        }
+
         return result;
     }
 
@@ -36,12 +42,14 @@ public static class NodeTree
         var byId = new Dictionary<string, Node>();
         foreach (var n in nodes) byId[n.Id] = n;
 
-        var result = new Dictionary<string, int>();
+        var result = new Dictionary<string, int>(byId.Count);
+        var seen = new HashSet<string>();
         foreach (var n in byId.Values)
         {
             var depth = 0;
             var current = n;
-            var seen = new HashSet<string> { n.Id };
+            seen.Clear();
+            seen.Add(n.Id);
             while (current.ParentId is { } pid && byId.TryGetValue(pid, out var p) && seen.Add(pid))
             {
                 depth++;

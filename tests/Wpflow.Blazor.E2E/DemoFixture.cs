@@ -155,9 +155,7 @@ public static class PageExtensions
         var style = await page.Locator(".wf-viewport").GetAttributeAsync("style") ?? "";
         var t = Translate.Match(style);
         var s = Scale.Match(style);
-        return (double.Parse(t.Groups[1].Value, System.Globalization.CultureInfo.InvariantCulture),
-            double.Parse(t.Groups[2].Value, System.Globalization.CultureInfo.InvariantCulture),
-            double.Parse(s.Groups[1].Value, System.Globalization.CultureInfo.InvariantCulture));
+        return (Number(t.Groups[1]), Number(t.Groups[2]), Number(s.Groups[1]));
     }
 
     /// <summary>La position absolue (flow) d'un node, lue dans son style.</summary>
@@ -165,8 +163,18 @@ public static class PageExtensions
     {
         var style = await page.Locator($"[data-node-id='{id}']").GetAttributeAsync("style") ?? "";
         var t = Translate.Match(style);
-        return (double.Parse(t.Groups[1].Value, System.Globalization.CultureInfo.InvariantCulture),
-            double.Parse(t.Groups[2].Value, System.Globalization.CultureInfo.InvariantCulture));
+        return (Number(t.Groups[1]), Number(t.Groups[2]));
+    }
+
+    private static double Number(Group group) => double.Parse(group.Value, System.Globalization.CultureInfo.InvariantCulture);
+
+    /// <summary>Les erreurs de la console et les exceptions de la page à partir de maintenant ; un test les attend vides.</summary>
+    public static List<string> CollectErrors(this IPage page)
+    {
+        var errors = new List<string>();
+        page.Console += (_, m) => { if (m.Type == "error") errors.Add(m.Text); };
+        page.PageError += (_, e) => errors.Add(e);
+        return errors;
     }
 
     public static async Task<(double X, double Y)> CenterAsync(this IPage page, string selector)

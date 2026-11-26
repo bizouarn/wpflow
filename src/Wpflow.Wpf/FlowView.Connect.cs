@@ -14,14 +14,6 @@ public partial class FlowView
     private HandleRef? _statusTarget;
     private bool? _statusValid;
 
-    private static Position Opposite(Position p) => p switch
-    {
-        Position.Left => Position.Right,
-        Position.Right => Position.Left,
-        Position.Top => Position.Bottom,
-        _ => Position.Top
-    };
-
     private void UpdateConnectionLine(XYPosition mouseFlow)
     {
         if (_connectFrom is { } from) UpdateConnectionLine(from, mouseFlow);
@@ -36,21 +28,14 @@ public partial class FlowView
         bool? valid = target == null ? null : Validate(from, target, out _);
 
         var end = mouseFlow;
-        var endSide = Opposite(from.Info.Position);
+        var endSide = ViewLogic.Opposite(from.Info.Position);
         if (target != null && _nodeIndex.TryGetValue(target.NodeId, out var targetNode))
         {
             end = GraphUtils.GetHandleCenter(targetNode, target.Info); // le fil s'accroche au handle
             endSide = target.Info.Position;
         }
 
-        var path = ConnectionLineType switch
-        {
-            ConnectionLineType.Straight => EdgePaths.Straight(start, end),
-            ConnectionLineType.Step => EdgePaths.Step(start, from.Info.Position, end, endSide),
-            ConnectionLineType.SmoothStep => EdgePaths.SmoothStep(start, from.Info.Position, end, endSide),
-            ConnectionLineType.SimpleBezier => EdgePaths.SimpleBezier(start, from.Info.Position, end, endSide),
-            _ => EdgePaths.Bezier(start, from.Info.Position, end, endSide)
-        };
+        var path = ViewLogic.ConnectionLine(ConnectionLineType, start, from.Info.Position, end, endSide);
 
         var state = new FlowConnectionState(from.NodeId, from.Info.Id, from.Info.Type, from.Info.Position, start, end,
             target?.NodeId, target?.Info.Id, valid, _reconnecting != null);
@@ -110,11 +95,7 @@ public partial class FlowView
 
     private void Mark(HandleRef reference, HandleConnectionStatus status)
     {
-        if (!_hosts.TryGetValue(reference.NodeId, out var host)) return;
-        var handle = FindDescendants<Handle>(host).FirstOrDefault(h => h.HandleId == reference.Info.Id
-                                                                       && h.Type == reference.Info.Type
-                                                                       && h.Position == reference.Info.Position);
-        if (handle == null) return;
+        if (FindHandleElement(reference) is not { } handle) return;
         handle.ConnectionStatus = status;
         _statusHandles.Add(handle);
     }

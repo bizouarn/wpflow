@@ -33,22 +33,30 @@ internal static class Sim
     ///     occupe ce thread avec sa propre boucle : un geste qui attend d'y revenir entre deux pas reste figé jusqu'à ce que la
     ///     vraie souris bouge, puisque c'est lui qui devait envoyer le mouvement suivant.
     /// </remarks>
-    public static Task Drag(Point from, (double X, double Y) to, int steps = 12, int delay = 25) => Task.Run(() =>
+    public static Task Drag(Point from, (double X, double Y) to, int steps = 12, int delay = 25) =>
+        Gesture(LeftDown, LeftUp, from, new Point(to.X, to.Y), steps, delay);
+
+    /// <summary>Le geste complet : appui en <paramref name="from" />, glisser, relâchement.</summary>
+    private static Task Gesture(uint down, uint up, Point from, Point to, int steps, int delay) => Task.Run(() =>
+    {
+        PressAndMove(down, from, to, steps, delay);
+        Thread.Sleep(80);
+        mouse_event(up, 0, 0, 0, 0);
+        Thread.Sleep(250);
+    });
+
+    private static void PressAndMove(uint down, Point from, Point to, int steps, int delay)
     {
         SetCursorPos((int)from.X, (int)from.Y);
         Thread.Sleep(120);
-        mouse_event(LeftDown, 0, 0, 0, 0);
+        mouse_event(down, 0, 0, 0, 0);
         Thread.Sleep(80);
         for (var i = 1; i <= steps; i++)
         {
             SetCursorPos((int)(from.X + (to.X - from.X) * i / steps), (int)(from.Y + (to.Y - from.Y) * i / steps));
             Thread.Sleep(delay);
         }
-
-        Thread.Sleep(80);
-        mouse_event(LeftUp, 0, 0, 0, 0);
-        Thread.Sleep(250);
-    });
+    }
 
     /// <summary>Comme <see cref="Drag" />, mais exécute <paramref name="whileHeld" /> avant de relâcher le bouton (pour observer l'état pendant le geste).</summary>
     public static async Task DragHolding(Point from, (double X, double Y) to, Func<Task> whileHeld)
@@ -56,16 +64,7 @@ internal static class Sim
         // Même raison que Drag : le déplacement est joué hors du thread d'interface ; seule l'observation y revient.
         await Task.Run(() =>
         {
-            SetCursorPos((int)from.X, (int)from.Y);
-            Thread.Sleep(120);
-            mouse_event(LeftDown, 0, 0, 0, 0);
-            Thread.Sleep(80);
-            for (var i = 1; i <= 12; i++)
-            {
-                SetCursorPos((int)(from.X + (to.X - from.X) * i / 12), (int)(from.Y + (to.Y - from.Y) * i / 12));
-                Thread.Sleep(25);
-            }
-
+            PressAndMove(LeftDown, from, new Point(to.X, to.Y), 12, 25);
             Thread.Sleep(120);
         });
         await whileHeld();
@@ -102,7 +101,7 @@ internal static class Sim
     }
 
     /// <summary>Bouton enfoncé en <paramref name="from" />, amené en <paramref name="to" />, relâché : bouton droit ou du milieu.</summary>
-    public static Task DragWith(System.Windows.Input.MouseButton button, Point from, Point to, int steps = 12) => Task.Run(() =>
+    public static Task DragWith(System.Windows.Input.MouseButton button, Point from, Point to, int steps = 12)
     {
         var (down, up) = button switch
         {
@@ -110,20 +109,8 @@ internal static class Sim
             System.Windows.Input.MouseButton.Middle => (MiddleDown, MiddleUp),
             _ => (LeftDown, LeftUp)
         };
-        SetCursorPos((int)from.X, (int)from.Y);
-        Thread.Sleep(120);
-        mouse_event(down, 0, 0, 0, 0);
-        Thread.Sleep(80);
-        for (var i = 1; i <= steps && from != to; i++)
-        {
-            SetCursorPos((int)(from.X + (to.X - from.X) * i / steps), (int)(from.Y + (to.Y - from.Y) * i / steps));
-            Thread.Sleep(25);
-        }
-
-        Thread.Sleep(80);
-        mouse_event(up, 0, 0, 0, 0);
-        Thread.Sleep(250);
-    });
+        return Gesture(down, up, from, to, from == to ? 0 : steps, 25); // sur place : un simple clic
+    }
 
     public static void MoveTo(Point p) => SetCursorPos((int)p.X, (int)p.Y);
 

@@ -37,7 +37,7 @@ public partial class FlowView : ComponentBase, IAsyncDisposable
     private bool _forceLayer; // un changement autre que le viewport : la couche des nodes et des edges est refaite
     private bool _viewportOnly;// le prochain rendu ne change que le viewport (pan, zoom) : la couche des nodes est conservée
     private string? _announce;
-    private string _selectionSignature = "|"; // rien de sélectionné : un graphe sans sélection n'annonce rien
+    private readonly SelectionTracker _selectionTracker = new(); // au départ rien de sélectionné : rien à annoncer
     private string? _jsOptions;
     private readonly HashSet<string> _reportedErrors = new();
 
@@ -102,14 +102,27 @@ public partial class FlowView : ComponentBase, IAsyncDisposable
     private void RebuildIndex()
     {
         _indexedNodes = Nodes;
+        var (previous, previousAbsolute) = (_nodeIndex, _absNodes);
         _nodeIndex = new Dictionary<string, Node>(Nodes.Count);
         foreach (var n in Nodes) _nodeIndex[n.Id] = n;
-        _depth = Nodes.Any(n => n.ParentId != null) ? NodeTree.Depths(Nodes) : Nodes.ToDictionary(n => n.Id, _ => 0);
+        _depth = Nodes.Any(n => n.ParentId != null) ? NodeTree.Depths(Nodes) : NoDepth;
         _abs = NodeConstraints.Absolute(Nodes, NodeOrigin);
         _absNodes = new Dictionary<string, Node>(Nodes.Count);
-        foreach (var n in Nodes) _absNodes[n.Id] = n with { Position = _abs[n.Id], ParentId = null };
+        foreach (var n in Nodes)
+        {
+            // Sans parent ni décalage, le node est sa propre version absolue ; inchangé à la même place, la copie précédente
+            // est gardée. Seuls les nodes qui ont bougé en allouent une nouvelle.
+            var position = _abs[n.Id];
+            _absNodes[n.Id] = n.ParentId == null && n.Position == position ? n
+                : previousAbsolute.GetValueOrDefault(n.Id) is { } was && was.Position == position
+                                                                     && ReferenceEquals(previous.GetValueOrDefault(n.Id), n) ? was
+                : n with { Position = position, ParentId = null };
+        }
+
         _elevated = NodeZOrder.ElevatedSet(Nodes, ZIndexMode);
     }
+
+    private static readonly Dictionary<string, int> NoDepth = new();
 
     /// <summary>Levé après chaque rendu : les panneaux (minimap) se rafraîchissent car Blazor saute les composants sans paramètre.</summary>
     internal event Action? Rendered;
@@ -362,21 +375,30 @@ public partial class FlowView : ComponentBase, IAsyncDisposable
         return _renderNodes;
     }
 
-    internal string NodeClasses(Node n) => string.Join(' ', new[]
-    {
-        "wf-node", n.Selected ? "wf-selected" : null, n.Dragging ? "wf-dragging" : null,
-        n.DragHandle != null ? "wf-has-handle" : null
-    }.Where(s => s != null));
+    // Les huit combinaisons, composées une fois : rien à allouer par node et par rendu.
+    private static readonly string[] NodeClassNames = Enumerable.Range(0, 8).Select(i =>
+        "wf-node" + ((i & 1) != 0 ? " wf-selected" : "") + ((i & 2) != 0 ? " wf-dragging" : "") + ((i & 4) != 0 ? " wf-has-handle" : "")).ToArray();
+
+    internal string NodeClasses(Node n) =>
+        NodeClassNames[(n.Selected ? 1 : 0) | (n.Dragging ? 2 : 0) | (n.DragHandle != null ? 4 : 0)];
+
+    // Le style ne dépend que du node, de sa position absolue et de son empilement : il n'est recomposé que s'ils changent.
+    private readonly Dictionary<string, (Node Node, XYPosition Position, int ZIndex, string Style)> _styles = new();
 
     internal string NodeStyle(Node n)
     {
         var p = _abs.TryGetValue(n.Id, out var a) ? a : n.Position;
+        var z = NodeZIndex(n);
+        if (_styles.TryGetValue(n.Id, out var known) && ReferenceEquals(known.Node, n) && known.Position == p && known.ZIndex == z)
+            return known.Style;
         var t = $"translate({F(p.X)}px,{F(p.Y)}px)";
         if (n.Rotation != 0) t += $" rotate({F(n.Rotation)}deg)";
         var s = $"transform:{t};";
         if (n.FixedWidth is { } w) s += $"width:{F(w)}px;";
         if (n.FixedHeight is { } h) s += $"height:{F(h)}px;";
-        s += $"z-index:{NodeZIndex(n)};";
+        s += $"z-index:{z};";
+        if (_styles.Count > Nodes.Count) _styles.Clear(); // des nodes ont disparu
+        _styles[n.Id] = (n, p, z, s);
         return s;
     }
 
@@ -385,7 +407,8 @@ public partial class FlowView : ComponentBase, IAsyncDisposable
 
     internal string? NodeLabel(Node n) => n.AriaLabel ?? NodeAriaLabelProvider?.Invoke(n) ?? n.Id;
 
-    private string? EdgeLabelText(Edge e) => e.AriaLabel ?? EdgeAriaLabelProvider?.Invoke(e) ?? $"Edge de {e.Source} vers {e.Target}";
+    private string EdgeLabelText(EdgeView view) =>
+        view.Edge.AriaLabel ?? EdgeAriaLabelProvider?.Invoke(view.Edge) ?? view.DefaultLabel;
 
     internal RenderFragment<Node>? TemplateFor(Node n) =>
         NodeTemplates != null && NodeTemplates.TryGetValue(n.Type, out var t) ? t : NodeTemplate;
@@ -402,10 +425,21 @@ public partial class FlowView : ComponentBase, IAsyncDisposable
     private readonly Dictionary<string, (EdgeKey Key, EdgeView View)> _edgeCache = new();
 
     private sealed record EdgeView(Edge Edge, EdgeRenderContext Context, string? MarkerStart, string? MarkerEnd,
-        RenderFragment<EdgeRenderContext>? Template);
+        RenderFragment<EdgeRenderContext>? Template)
+    {
+        /// <summary>Nom accessible quand ni l'edge ni la vue n'en donnent.</summary>
+        public string DefaultLabel { get; } = $"Edge de {Edge.Source} vers {Edge.Target}";
+    }
+
+    // Créés une fois : sans cela, la résolution des extrémités allouerait ses délégués à chaque edge et à chaque rendu.
+    private Func<string, Node?>? _rawLookup, _absoluteLookup;
+    private Func<string, IReadOnlyList<HandleInfo>?>? _handleLookup;
 
     private IEnumerable<EdgeView> EdgeViews()
     {
+        _rawLookup ??= id => _nodeIndex.GetValueOrDefault(id);
+        _absoluteLookup ??= id => _absNodes.GetValueOrDefault(id);
+        _handleLookup ??= id => _handles.GetValueOrDefault(id);
         var virtualize = OnlyRenderVisibleElements && _didFit && _width > 0;
         var visible = virtualize ? ViewportMath.GetVisibleRect(Viewport, _width, _height) : default;
         _edgeContexts.Clear();
@@ -413,15 +447,14 @@ public partial class FlowView : ComponentBase, IAsyncDisposable
         foreach (var e in ordered)
         {
             if (e.Hidden) continue;
-            if (EdgeEndpoints.MissingNode(e, id => _nodeIndex.GetValueOrDefault(id)) is { } missing)
+            if (EdgeEndpoints.MissingNode(e, _rawLookup) is { } missing)
             {
                 ReportError("error008", $"Edge {e.Id} : node {missing} introuvable.");
                 continue;
             }
 
             // Résolution partagée avec la vue WPF : handles mesurés, handles annoncés, sinon milieu du côté.
-            if (EdgeEndpoints.Resolve(e, id => _absNodes.GetValueOrDefault(id), id => _handles.GetValueOrDefault(id), Position.Bottom, Position.Top)
-                is not { } ends)
+            if (EdgeEndpoints.Resolve(e, _absoluteLookup, _handleLookup, Position.Bottom, Position.Top) is not { } ends)
                 continue;
             if (virtualize && _absNodes[e.Source].Rect is { } sr && _absNodes[e.Target].Rect is { } tr && !GraphUtils.IsEdgeVisible(sr, tr, visible))
                 continue;
@@ -484,13 +517,12 @@ public partial class FlowView : ComponentBase, IAsyncDisposable
     {
         var seen = new HashSet<string>();
         foreach (var e in Edges)
-        foreach (var spec in new[]
-                 {
-                     SpecOf(e.MarkerStart, e.MarkerStartKey, e.MarkerStartOptions, e),
-                     SpecOf(e.MarkerEnd, e.MarkerEndKey, e.MarkerEndOptions, e)
-                 })
-            if (spec != null && seen.Add(spec.Id))
-                yield return spec;
+        {
+            if (SpecOf(e.MarkerStart, e.MarkerStartKey, e.MarkerStartOptions, e) is { } start && seen.Add(start.Id))
+                yield return start;
+            if (SpecOf(e.MarkerEnd, e.MarkerEndKey, e.MarkerEndOptions, e) is { } end && seen.Add(end.Id))
+                yield return end;
+        }
     }
 
     private string EdgeStyle(Edge e)
@@ -564,10 +596,13 @@ public partial class FlowView : ComponentBase, IAsyncDisposable
         return bounds;
     }
 
+    /// <summary>Vrai quand un fil est dessiné (glisser, reconnexion ou connexion par clics).</summary>
+    internal bool ShowsConnection => _from != null && (_mode is Mode.Connect or Mode.Reconnect && _moved || _clickMode);
+
     /// <summary>Classe CSS du handle selon le fil en cours (pour le style).</summary>
     internal string? HandleState(string nodeId, HandleInfo? handle)
     {
-        if (_from is not { } f || handle == null || !(_mode == Mode.Connect && _moved || _clickMode || _mode == Mode.Reconnect && _moved)) return null;
+        if (!ShowsConnection || _from is not { } f || handle == null) return null;
         if (f.NodeId == nodeId && f.Handle.Id == handle.Id && f.Handle.Type == handle.Type) return "wf-connecting";
         return _candidate is { } c && c.NodeId == nodeId && c.Handle.Id == handle.Id && c.Handle.Type == handle.Type ? (_candidateValid ? "wf-valid" : "wf-invalid") : null;
     }

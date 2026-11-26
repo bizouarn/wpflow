@@ -8,74 +8,20 @@ using Wpflow.Core;
 namespace Wpflow.Blazor.Tests;
 
 /// <summary>Tests des fonctions ajoutées pour égaler la version WPF : édition, historique, clavier, composants, évènements, API.</summary>
-public sealed class FlowViewFeatureTests : TestContext
+public sealed class FlowViewFeatureTests : FlowViewTestContext
 {
-    private static readonly Node A = new("a", new XYPosition(0, 0), Data: "A");
-    private static readonly Node B = new("b", new XYPosition(300, 100), Data: "B");
     private static readonly Node C = new("c", new XYPosition(300, 300), Data: "C");
-    private static readonly Edge AB = new("e-ab", "a", "b");
+    private Harness Render(IReadOnlyList<Node>? nodes = null, IReadOnlyList<Edge>? edges = null,
+        Action<ComponentParameterCollectionBuilder<FlowView>>? configure = null, bool fit = false) =>
+        RenderHarness(nodes, edges, (_, p) => configure?.Invoke(p), fit);
 
-    public FlowViewFeatureTests()
-    {
-        JSInterop.Mode = JSRuntimeMode.Loose;
-        JSInterop.SetupModule("./_content/Wpflow.Blazor/wpflow.js").Mode = JSRuntimeMode.Loose;
-    }
-
-    private sealed class H
-    {
-        public IRenderedComponent<FlowView> Cut = default!;
-        public IReadOnlyList<Node> Nodes = [];
-        public IReadOnlyList<Edge> Edges = [];
-        public FlowView Flow => Cut.Instance;
-        public IEnumerable<string> Selected => Nodes.Where(n => n.Selected).Select(n => n.Id);
-        public Node Node(string id) => Nodes.Single(n => n.Id == id);
-    }
-
-    private H Render(IReadOnlyList<Node>? nodes = null, IReadOnlyList<Edge>? edges = null,
-        Action<ComponentParameterCollectionBuilder<FlowView>>? configure = null, bool fit = false)
-    {
-        var h = new H { Nodes = nodes ?? [A, B], Edges = edges ?? [AB] };
-        h.Cut = RenderComponent<FlowView>(p =>
-        {
-            p.Add(f => f.Nodes, h.Nodes);
-            p.Add(f => f.Edges, h.Edges);
-            p.Add(f => f.FitViewOnInit, fit);
-            p.Add(f => f.NodesChanged, EventCallback.Factory.Create<IReadOnlyList<Node>>(this, n => h.Nodes = n));
-            p.Add(f => f.EdgesChanged, EventCallback.Factory.Create<IReadOnlyList<Edge>>(this, e => h.Edges = e));
-            configure?.Invoke(p);
-        });
-        return h;
-    }
-
-    private static async Task Measure(H h)
-    {
-        await h.Cut.InvokeAsync(() => h.Flow.OnRootRect(0, 0, 800, 600));
-        var measured = h.Nodes.Select(n => new MeasuredNode
-        {
-            Id = n.Id, Width = 100, Height = 40,
-            Handles =
-            [
-                new MeasuredHandle { Type = "target", Position = "top", X = 46, Y = -4, Width = 8, Height = 8 },
-                new MeasuredHandle { Type = "source", Position = "bottom", X = 46, Y = 36, Width = 8, Height = 8 }
-            ]
-        }).ToList();
-        await h.Cut.InvokeAsync(() => h.Flow.OnMeasured(measured));
-    }
-
-    private static Task Down(AngleSharp.Dom.IElement el, double x, double y, bool shift = false, bool ctrl = false, long button = 0) =>
-        el.TriggerEventAsync("onpointerdown", new PointerEventArgs { Button = button, ClientX = x, ClientY = y, ShiftKey = shift, CtrlKey = ctrl });
-
-    private static Task Move(H h, double x, double y, bool shift = false) => h.Cut.InvokeAsync(() => h.Flow.OnPointerMove(x, y, shift, false));
-
-    private static Task Up(H h, double x, double y, bool shift = false) => h.Cut.InvokeAsync(() => h.Flow.OnPointerUp(x, y, shift, false));
-
-    private static async Task Click(H h, string nodeId, double x, double y, bool shift = false)
+    private static async Task Click(Harness h, string nodeId, double x, double y, bool shift = false)
     {
         await Down(h.Cut.Find($"[data-node-id='{nodeId}']"), x, y, shift);
         await Up(h, x, y);
     }
 
-    private static Task Key(H h, string key, bool ctrl = false, bool shift = false) =>
+    private static Task Key(Harness h, string key, bool ctrl = false, bool shift = false) =>
         h.Cut.Find(".wf-flow").KeyDownAsync(new KeyboardEventArgs { Key = key, CtrlKey = ctrl, ShiftKey = shift });
 
     private static RenderFragment<Node> Template<T>(Action<RenderTreeBuilder>? extra = null) where T : IComponent => n => b =>

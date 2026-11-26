@@ -29,6 +29,10 @@ export function attach(root, dotnet) {
         options: { preventScrolling: true, pinch: true, zoomOnScroll: true, panOnScroll: false }
     };
     roots.set(root, s);
+    // Un seul signal retire tous les écouteurs à la fois (detach).
+    s.listeners = new AbortController();
+    const listen = (target, type, handler, options = {}) =>
+        target.addEventListener(type, handler, { ...options, signal: s.listeners.signal });
 
     const sendRect = (force) => {
         const r = root.getBoundingClientRect();
@@ -37,7 +41,6 @@ export function attach(root, dotnet) {
         s.rect = next;
         dotnet.invokeMethodAsync('OnRootRect', ...next);
     };
-    s.sendRect = sendRect;
 
     s.ro = new ResizeObserver(entries => {
         for (const e of entries) {
@@ -50,12 +53,12 @@ export function attach(root, dotnet) {
     });
     s.ro.observe(root);
 
-    s.onScroll = () => sendRect(false);
-    window.addEventListener('scroll', s.onScroll, true);
-    window.addEventListener('resize', s.onScroll);
+    const onScroll = () => sendRect(false);
+    listen(window, 'scroll', onScroll, { capture: true });
+    listen(window, 'resize', onScroll);
 
     // Molette : écoutée ici car preventDefault doit être appelé par un écouteur non passif.
-    s.onWheel = (e) => {
+    const onWheel = (e) => {
         if (e.target.closest && e.target.closest('.nowheel')) return;
         const zoomKey = e.ctrlKey || e.metaKey;
         const handled = s.options.zoomOnScroll || s.options.panOnScroll || zoomKey;
@@ -67,18 +70,18 @@ export function attach(root, dotnet) {
         sendRect(false);
         dotnet.invokeMethodAsync('OnWheel', e.clientX, e.clientY, e.deltaX, e.deltaY, e.ctrlKey, e.shiftKey, e.metaKey, e.deltaMode);
     };
-    root.addEventListener('wheel', s.onWheel, { passive: false });
+    listen(root, 'wheel', onWheel, { passive: false });
 
     // Dépôt : sans « dragover » annulé, le navigateur ne lève jamais « drop ». Fait ici : l'attribut preventDefault de
     // Blazor reste sans effet quand aucun gestionnaire n'écoute cet évènement, et en écouter un enverrait un message
     // par mouvement sur Blazor Server.
-    s.onDragOver = (e) => e.preventDefault();
-    root.addEventListener('dragenter', s.onDragOver);
-    root.addEventListener('dragover', s.onDragOver);
-    root.addEventListener('drop', s.onDragOver); // le navigateur n'ouvre pas ce qui est déposé
+    const allowDrop = (e) => e.preventDefault();
+    listen(root, 'dragenter', allowDrop);
+    listen(root, 'dragover', allowDrop);
+    listen(root, 'drop', allowDrop); // le navigateur n'ouvre pas ce qui est déposé
 
     // Début de geste : tourne avant le dispatcher d'évènements de Blazor (plus haut dans l'arbre).
-    s.onDown = (e) => {
+    const onDown = (e) => {
         s.pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
         if (s.pointers.size >= 2 && s.options.pinch) {
             // Un second doigt : le geste en cours est annulé, on passe en pincement.
@@ -124,7 +127,7 @@ export function attach(root, dotnet) {
         s.captured = false;
         if (e.button === 1) e.preventDefault();
     };
-    s.onMove = (e) => {
+    const onMove = (e) => {
         const p = s.pointers.get(e.pointerId);
         if (p) { p.x = e.clientX; p.y = e.clientY; }
         if (s.pinch) { movePinch(s); return; }
@@ -150,7 +153,7 @@ export function attach(root, dotnet) {
             if (m && s.pointerId !== null) dotnet.invokeMethodAsync('OnPointerMove', m.clientX, m.clientY, m.shiftKey, m.ctrlKey || m.metaKey);
         });
     };
-    s.onUp = (e) => {
+    const onUp = (e) => {
         s.pointers.delete(e.pointerId);
         if (s.pinch && s.pointers.size < 2) s.pinch = null;
         if (e.pointerId !== s.pointerId) return;
@@ -162,19 +165,18 @@ export function attach(root, dotnet) {
         try { root.releasePointerCapture(e.pointerId); } catch { /* ignoré */ }
         dotnet.invokeMethodAsync('OnPointerUp', e.clientX, e.clientY, e.shiftKey, cancelled);
     };
-    root.addEventListener('pointerdown', s.onDown);
+    listen(root, 'pointerdown', onDown);
     // Seul « mousedown » porte le nombre de clics ; il suit « pointerdown », donc arrive après l'appui dans la vue.
-    s.onPress = (e) => { if (e.button === 0 && e.detail === 2) dotnet.invokeMethodAsync('OnSecondPress'); };
-    root.addEventListener('mousedown', s.onPress, true);
+    listen(root, 'mousedown', (e) => { if (e.button === 0 && e.detail === 2) dotnet.invokeMethodAsync('OnSecondPress'); }, { capture: true });
     // Suite du geste suivie sur la fenêtre : sans capture, le pointeur peut quitter la vue avant le premier mouvement.
-    window.addEventListener('pointermove', s.onMove, true);
-    window.addEventListener('pointerup', s.onUp, true);
-    window.addEventListener('pointercancel', s.onUp, true);
+    listen(window, 'pointermove', onMove, { capture: true });
+    listen(window, 'pointerup', onUp, { capture: true });
+    listen(window, 'pointercancel', onUp, { capture: true });
 
     // Clavier : les saisies dans un champ ne sont pas traitées par le graphe ; les touches du graphe n'agissent pas sur la page.
     // La propagation n'est pas arrêtée : Blazor délègue les évènements plus haut dans l'arbre, et les @onkeydown de
     // l'application sur ses propres champs ne se déclencheraient jamais. La vue est prévenue avant son propre @onkeydown.
-    s.onKey = (e) => {
+    const onKey = (e) => {
         const inField = !!(e.target.closest && e.target.closest(TEXT_INPUT));
         dotnet.invokeMethodAsync('OnKeyOrigin', inField);
         if (inField) return;
@@ -182,7 +184,7 @@ export function attach(root, dotnet) {
         const ctrl = e.ctrlKey || e.metaKey;
         if (k === ' ' || k.startsWith('Arrow') || (ctrl && ['a', 'z', 'y'].includes(k.toLowerCase()))) e.preventDefault();
     };
-    root.addEventListener('keydown', s.onKey);
+    listen(root, 'keydown', onKey);
 
     sendRect(true);
 }
@@ -197,18 +199,7 @@ export function detach(root) {
     if (!s) return;
     s.ro.disconnect();
     for (const m of s.mutations.values()) m.disconnect();
-    window.removeEventListener('scroll', s.onScroll, true);
-    window.removeEventListener('resize', s.onScroll);
-    root.removeEventListener('wheel', s.onWheel);
-    root.removeEventListener('dragenter', s.onDragOver);
-    root.removeEventListener('dragover', s.onDragOver);
-    root.removeEventListener('drop', s.onDragOver);
-    root.removeEventListener('pointerdown', s.onDown);
-    root.removeEventListener('mousedown', s.onPress, true);
-    window.removeEventListener('pointermove', s.onMove, true);
-    window.removeEventListener('pointerup', s.onUp, true);
-    window.removeEventListener('pointercancel', s.onUp, true);
-    root.removeEventListener('keydown', s.onKey);
+    s.listeners.abort();
     if (s.raf) cancelAnimationFrame(s.raf);
     roots.delete(root);
 }
@@ -361,10 +352,13 @@ function measure(el, id) {
     const w = el.offsetWidth, h = el.offsetHeight;
     if (!w || !h) return null;
     const nr = el.getBoundingClientRect();
-    // Zoom du viewport (offsetWidth ignore les transformations) ; une rotation élargit le rectangle : on ne s'en sert que pour l'échelle.
-    const scale = el.getBoundingClientRect().width / w || 1;
-    const rotated = el.style.transform.includes('rotate');
-    const k = rotated ? (el.closest('.wf-viewport').getBoundingClientRect().width / (el.closest('.wf-viewport').offsetWidth || 1) || 1) : scale;
+    // Zoom du viewport (offsetWidth ignore les transformations). Une rotation élargit le rectangle du node : l'échelle se
+    // lit alors sur le calque.
+    let k = nr.width / w || 1;
+    if (el.style.transform.includes('rotate')) {
+        const viewport = el.closest('.wf-viewport');
+        k = viewport.getBoundingClientRect().width / (viewport.offsetWidth || 1) || 1;
+    }
     const handles = [];
     for (const he of el.querySelectorAll('.wf-handle')) {
         const r = he.getBoundingClientRect();
@@ -384,27 +378,43 @@ function measure(el, id) {
     return { id, width: w, height: h, handles };
 }
 
-/** Télécharge une image : `.svg` tel quel, sinon rastérisée (PNG) à l'échelle demandée. */
-export async function saveImage(svg, filename, scale) {
-    let blob;
-    if (filename.toLowerCase().endsWith('.svg')) {
-        blob = new Blob([svg], { type: 'image/svg+xml' });
-    } else {
-        const url = URL.createObjectURL(new Blob([svg], { type: 'image/svg+xml' }));
-        const img = new Image();
-        await new Promise((resolve, reject) => { img.onload = resolve; img.onerror = reject; img.src = url; });
-        const canvas = document.createElement('canvas');
-        canvas.width = Math.max(1, Math.round(img.width * scale));
-        canvas.height = Math.max(1, Math.round(img.height * scale));
-        canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
-        URL.revokeObjectURL(url);
-        blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
-    }
+const svgBlob = (svg) => new Blob([svg], { type: 'image/svg+xml' });
+
+/** Rastérise en PNG l'image SVG de l'adresse `src`, à la taille (x `scale`) donnée, sinon à la sienne. */
+async function toPng(src, scale, width, height) {
+    const img = new Image();
+    await new Promise((resolve, reject) => {
+        img.onload = resolve;
+        img.onerror = () => reject(new Error('capture impossible'));
+        img.src = src;
+    });
+    const canvas = document.createElement('canvas');
+    canvas.width = Math.max(1, Math.round((width ?? img.width) * scale));
+    canvas.height = Math.max(1, Math.round((height ?? img.height) * scale));
+    canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+    return new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
+}
+
+function download(blob, filename) {
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
     a.download = filename;
     a.click();
     setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+}
+
+/** Télécharge une image : `.svg` tel quel, sinon rastérisée (PNG) à l'échelle demandée. */
+export async function saveImage(svg, filename, scale) {
+    let blob = svgBlob(svg);
+    if (!filename.toLowerCase().endsWith('.svg')) {
+        const url = URL.createObjectURL(blob);
+        try {
+            blob = await toPng(url, scale);
+        } finally {
+            URL.revokeObjectURL(url);
+        }
+    }
+    download(blob, filename);
 }
 
 /** Coin haut gauche et taille d un element (pixels page). */
@@ -439,26 +449,8 @@ export async function saveImageFromDom(root, x, y, w, h, filename, scale) {
     const xhtml = new XMLSerializer().serializeToString(wrapper);
     const svg = '<svg xmlns="http://www.w3.org/2000/svg" width="' + w + '" height="' + h + '"><foreignObject width="100%" height="100%">' + xhtml + '</foreignObject></svg>';
 
-    let blob;
-    if (filename.toLowerCase().endsWith('.svg')) {
-        blob = new Blob([svg], { type: 'image/svg+xml' });
-    } else {
-        const img = new Image();
-        await new Promise((resolve, reject) => {
-            img.onload = resolve;
-            img.onerror = () => reject(new Error('capture impossible'));
-            img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
-        });
-        const canvas = document.createElement('canvas');
-        canvas.width = Math.max(1, Math.round(w * scale));
-        canvas.height = Math.max(1, Math.round(h * scale));
-        canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
-        blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
-    }
-
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
-    a.download = filename;
-    a.click();
-    setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+    // Une adresse « data: » et non un blob : un foreignObject chargé depuis un blob rendrait le canvas illisible.
+    download(filename.toLowerCase().endsWith('.svg')
+        ? svgBlob(svg)
+        : await toPng('data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg), scale, w, h), filename);
 }

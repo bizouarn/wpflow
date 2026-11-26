@@ -11,9 +11,6 @@ public partial class FlowView
     private bool _panMoved, _connectMoved, _selectionStarted;
     private double _pressDistance; // le plus loin que la souris soit allée du point pressé : au-delà du seuil, plus de clic
     private (Edge Edge, HandleRef Fixed)? _pendingReconnect;
-
-    /// <summary>En deçà (en pixels), un tremblement reste un clic, quels que soient les seuils de glisser.</summary>
-    private const double ClickTolerance = 4;
     private DependencyObject? _pressedSource;
     private string? _pendingSelect; // node pressé sans être sélectionné (SelectNodesOnDrag faux) : sélectionné au clic
     private HandleRef? _clickConnect; // première extrémité d'une connexion « par deux clics »
@@ -212,7 +209,7 @@ public partial class FlowView
         switch (_mode)
         {
             case Mode.ReconnectPending:
-                if (distance < Math.Max(ClickTolerance, ConnectionDragThreshold)) break;
+                if (ViewLogic.IsClick(distance, ConnectionDragThreshold)) break;
                 BeginReconnect();
                 UpdateConnectionLine(ScreenToFlow(pos));
                 break;
@@ -397,13 +394,13 @@ public partial class FlowView
         var pos = e.GetPosition(this);
         // Un seuil de glisser plus grand que la tolérance laisse le clic jusqu'à lui ; la plus grande distance parcourue
         // compte, pas celle du relâchement : un glisser revenu à son départ n'est pas un clic.
-        var tolerance = Math.Max(ClickTolerance, _mode switch
-        {
-            Mode.DragNodes => NodeDragThreshold,
-            Mode.Pan => PaneDragThreshold,
-            _ => 0
-        });
-        var moved = Math.Max(_pressDistance, Math.Abs(pos.X - _mouseStart.X) + Math.Abs(pos.Y - _mouseStart.Y)) >= tolerance;
+        var moved = !ViewLogic.IsClick(Math.Max(_pressDistance, Math.Abs(pos.X - _mouseStart.X) + Math.Abs(pos.Y - _mouseStart.Y)),
+            _mode switch
+            {
+                Mode.DragNodes => NodeDragThreshold,
+                Mode.Pan => PaneDragThreshold,
+                _ => 0
+            });
         var dragged = _mode == Mode.DragNodes && _dragMoved ? DragArgs(pos) : null;
         var (nodeId, edgeId, pane) = (_pressedNode, _pressedEdge, _pressedPane);
         var pendingSelect = _pendingSelect;

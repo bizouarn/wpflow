@@ -10,68 +10,16 @@ namespace Wpflow.Blazor.Tests;
 ///     Tests de <see cref="FlowView" /> sans navigateur : le pont JS est simulé (mode souple) et les callbacks que JS
 ///     appellerait (<c>OnMeasured</c>, <c>OnPointerMove</c>…) sont invoqués directement.
 /// </summary>
-public sealed class FlowViewTests : TestContext
+public sealed class FlowViewTests : FlowViewTestContext
 {
-    private static readonly Node A = new("a", new XYPosition(0, 0), Data: "A");
-    private static readonly Node B = new("b", new XYPosition(300, 100), Data: "B");
-    private static readonly Edge AB = new("e-ab", "a", "b");
-
-    public FlowViewTests()
-    {
-        JSInterop.Mode = JSRuntimeMode.Loose;
-        JSInterop.SetupModule("./_content/Wpflow.Blazor/wpflow.js").Mode = JSRuntimeMode.Loose;
-    }
-
-    private sealed class Harness
-    {
-        public IRenderedComponent<FlowView> Cut = default!;
-        public IReadOnlyList<Node> Nodes = [];
-        public IReadOnlyList<Edge> Edges = [];
-        public List<IReadOnlyList<NodeChange>> NodeChanges = [];
-        public List<Connection> Connections = [];
-        public FlowView Flow => Cut.Instance;
-    }
-
     private Harness Render(IReadOnlyList<Node>? nodes = null, IReadOnlyList<Edge>? edges = null,
-        Action<ComponentParameterCollectionBuilder<FlowView>>? configure = null, bool fit = false)
-    {
-        var h = new Harness { Nodes = nodes ?? [A, B], Edges = edges ?? [AB] };
-        h.Cut = RenderComponent<FlowView>(p =>
+        Action<ComponentParameterCollectionBuilder<FlowView>>? configure = null, bool fit = false) =>
+        RenderHarness(nodes, edges, (h, p) =>
         {
-            p.Add(f => f.Nodes, h.Nodes);
-            p.Add(f => f.Edges, h.Edges);
-            p.Add(f => f.FitViewOnInit, fit);
-            p.Add(f => f.NodesChanged, EventCallback.Factory.Create<IReadOnlyList<Node>>(this, n => h.Nodes = n));
-            p.Add(f => f.EdgesChanged, EventCallback.Factory.Create<IReadOnlyList<Edge>>(this, e => h.Edges = e));
             p.Add(f => f.OnNodesChange, EventCallback.Factory.Create<IReadOnlyList<NodeChange>>(this, c => h.NodeChanges.Add(c)));
             p.Add(f => f.OnConnect, EventCallback.Factory.Create<Connection>(this, c => h.Connections.Add(c)));
             configure?.Invoke(p);
-        });
-        return h;
-    }
-
-    /// <summary>Simule le pont JS : conteneur 800×600 en (0,0), nodes de 100×40 avec un handle cible en haut et un handle source en bas.</summary>
-    private static async Task Measure(Harness h, params string[] ids)
-    {
-        await h.Cut.InvokeAsync(() => h.Flow.OnRootRect(0, 0, 800, 600));
-        var measured = (ids.Length == 0 ? h.Nodes.Select(n => n.Id).ToArray() : ids).Select(id => new MeasuredNode
-        {
-            Id = id, Width = 100, Height = 40,
-            Handles =
-            [
-                new MeasuredHandle { Type = "target", Position = "top", X = 46, Y = -4, Width = 8, Height = 8 },
-                new MeasuredHandle { Type = "source", Position = "bottom", X = 46, Y = 36, Width = 8, Height = 8 }
-            ]
-        }).ToList();
-        await h.Cut.InvokeAsync(() => h.Flow.OnMeasured(measured));
-    }
-
-    private static Task PointerDown(AngleSharp.Dom.IElement el, double x, double y, bool shift = false) =>
-        el.TriggerEventAsync("onpointerdown", new PointerEventArgs { Button = 0, ClientX = x, ClientY = y, ShiftKey = shift });
-
-    private static Task Move(Harness h, double x, double y) => h.Cut.InvokeAsync(() => h.Flow.OnPointerMove(x, y, false, false));
-
-    private static Task Up(Harness h, double x, double y) => h.Cut.InvokeAsync(() => h.Flow.OnPointerUp(x, y, false, false));
+        }, fit);
 
     [Fact]
     public void Renders_a_div_per_node_with_default_handles()
@@ -127,7 +75,7 @@ public sealed class FlowViewTests : TestContext
         var h = Render();
         await Measure(h);
 
-        await PointerDown(h.Cut.Find("[data-node-id='a']"), 50, 20);
+        await Down(h.Cut.Find("[data-node-id='a']"), 50, 20);
         await Move(h, 80, 50);
         await Up(h, 80, 50);
 
@@ -144,7 +92,7 @@ public sealed class FlowViewTests : TestContext
         var h = Render(configure: p => p.Add(f => f.Viewport, new Viewport(0, 0, 2)));
         await Measure(h);
 
-        await PointerDown(h.Cut.Find("[data-node-id='a']"), 50, 20);
+        await Down(h.Cut.Find("[data-node-id='a']"), 50, 20);
         await Move(h, 90, 60);
         await Up(h, 90, 60);
 
@@ -159,7 +107,7 @@ public sealed class FlowViewTests : TestContext
             .Add(f => f.OnNodeClick, EventCallback.Factory.Create<NodeEventArgs>(this, n => clicked = n.Node)));
         await Measure(h);
 
-        await PointerDown(h.Cut.Find("[data-node-id='a']"), 50, 20);
+        await Down(h.Cut.Find("[data-node-id='a']"), 50, 20);
         await Move(h, 51, 21);
         await Up(h, 51, 21);
 
@@ -173,16 +121,16 @@ public sealed class FlowViewTests : TestContext
         var h = Render();
         await Measure(h);
 
-        await PointerDown(h.Cut.Find("[data-node-id='a']"), 50, 20);
+        await Down(h.Cut.Find("[data-node-id='a']"), 50, 20);
         await Up(h, 50, 20);
         Assert.Equal(["a"], h.Nodes.Where(n => n.Selected).Select(n => n.Id));
         Assert.Contains("wf-selected", h.Cut.Find("[data-node-id='a']").ClassList);
 
-        await PointerDown(h.Cut.Find("[data-node-id='b']"), 350, 120);
+        await Down(h.Cut.Find("[data-node-id='b']"), 350, 120);
         await Up(h, 350, 120);
         Assert.Equal(["b"], h.Nodes.Where(n => n.Selected).Select(n => n.Id));
 
-        await PointerDown(h.Cut.Find(".wf-flow"), 600, 500);
+        await Down(h.Cut.Find(".wf-flow"), 600, 500);
         await Up(h, 600, 500);
         Assert.DoesNotContain(h.Nodes, n => n.Selected);
     }
@@ -193,9 +141,9 @@ public sealed class FlowViewTests : TestContext
         var h = Render();
         await Measure(h);
 
-        await PointerDown(h.Cut.Find("[data-node-id='a']"), 50, 20);
+        await Down(h.Cut.Find("[data-node-id='a']"), 50, 20);
         await Up(h, 50, 20);
-        await PointerDown(h.Cut.Find("[data-node-id='b']"), 350, 120, shift: true);
+        await Down(h.Cut.Find("[data-node-id='b']"), 350, 120, shift: true);
         await Up(h, 350, 120);
 
         Assert.Equal(2, h.Nodes.Count(n => n.Selected));
@@ -206,12 +154,12 @@ public sealed class FlowViewTests : TestContext
     {
         var h = Render(configure: p => { });
         await Measure(h);
-        await PointerDown(h.Cut.Find("[data-node-id='a']"), 50, 20);
+        await Down(h.Cut.Find("[data-node-id='a']"), 50, 20);
         await Up(h, 50, 20);
-        await PointerDown(h.Cut.Find("[data-node-id='b']"), 350, 120, shift: true);
+        await Down(h.Cut.Find("[data-node-id='b']"), 350, 120, shift: true);
         await Up(h, 350, 120);
 
-        await PointerDown(h.Cut.Find("[data-node-id='b']"), 350, 120);
+        await Down(h.Cut.Find("[data-node-id='b']"), 350, 120);
         await Move(h, 360, 130);
         await Up(h, 360, 130);
 
@@ -225,7 +173,7 @@ public sealed class FlowViewTests : TestContext
         var h = Render(configure: p => p.Add(f => f.SnapGrid, 20.0));
         await Measure(h);
 
-        await PointerDown(h.Cut.Find("[data-node-id='a']"), 50, 20);
+        await Down(h.Cut.Find("[data-node-id='a']"), 50, 20);
         await Move(h, 77, 53);
         await Up(h, 77, 53);
 
@@ -238,7 +186,7 @@ public sealed class FlowViewTests : TestContext
         var h = Render(configure: p => p.Add(f => f.NodesDraggable, false));
         await Measure(h);
 
-        await PointerDown(h.Cut.Find("[data-node-id='a']"), 50, 20);
+        await Down(h.Cut.Find("[data-node-id='a']"), 50, 20);
         await Move(h, 150, 120);
         await Up(h, 150, 120);
 
@@ -251,7 +199,7 @@ public sealed class FlowViewTests : TestContext
         var h = Render();
         await Measure(h);
 
-        await PointerDown(h.Cut.Find(".wf-flow"), 500, 400);
+        await Down(h.Cut.Find(".wf-flow"), 500, 400);
         await Move(h, 540, 430);
         await Up(h, 540, 430);
 
@@ -328,7 +276,7 @@ public sealed class FlowViewTests : TestContext
         await Measure(h);
 
         // handle source de a (centre 50,40) vers le handle cible de b (centre 350,100)
-        await PointerDown(h.Cut.Find("[data-node-id='a'] .wf-handle-bottom"), 50, 40);
+        await Down(h.Cut.Find("[data-node-id='a'] .wf-handle-bottom"), 50, 40);
         await Move(h, 300, 90);
         await Move(h, 352, 102);
         Assert.NotEmpty(h.Cut.FindAll(".wf-connection-line"));
@@ -349,7 +297,7 @@ public sealed class FlowViewTests : TestContext
         var h = Render(edges: []);
         await Measure(h);
 
-        await PointerDown(h.Cut.Find("[data-node-id='a'] .wf-handle-bottom"), 50, 40);
+        await Down(h.Cut.Find("[data-node-id='a'] .wf-handle-bottom"), 50, 40);
         await Move(h, 600, 500);
         await Up(h, 600, 500);
 
@@ -363,7 +311,7 @@ public sealed class FlowViewTests : TestContext
         var h = Render(edges: []);
         await Measure(h);
 
-        await PointerDown(h.Cut.Find("[data-node-id='a'] .wf-handle-top"), 50, 0);
+        await Down(h.Cut.Find("[data-node-id='a'] .wf-handle-top"), 50, 0);
         await Move(h, 350, 100); // handle cible de b
         await Up(h, 350, 100);
 
@@ -376,7 +324,7 @@ public sealed class FlowViewTests : TestContext
         var h = Render(edges: [], configure: p => p.Add(f => f.ConnectionMode, ConnectionMode.Loose));
         await Measure(h);
 
-        await PointerDown(h.Cut.Find("[data-node-id='a'] .wf-handle-top"), 50, 0);
+        await Down(h.Cut.Find("[data-node-id='a'] .wf-handle-top"), 50, 0);
         await Move(h, 350, 100);
         await Up(h, 350, 100);
 
@@ -389,7 +337,7 @@ public sealed class FlowViewTests : TestContext
         var h = Render(edges: [], configure: p => p.Add(f => f.IsValidConnection, _ => false));
         await Measure(h);
 
-        await PointerDown(h.Cut.Find("[data-node-id='a'] .wf-handle-bottom"), 50, 40);
+        await Down(h.Cut.Find("[data-node-id='a'] .wf-handle-bottom"), 50, 40);
         await Move(h, 350, 100);
         await Up(h, 350, 100);
 
@@ -403,7 +351,7 @@ public sealed class FlowViewTests : TestContext
         var h = Render();
         await Measure(h);
 
-        await PointerDown(h.Cut.Find("[data-node-id='a'] .wf-handle-bottom"), 50, 40);
+        await Down(h.Cut.Find("[data-node-id='a'] .wf-handle-bottom"), 50, 40);
         await Move(h, 350, 100);
         await Up(h, 350, 100);
 
@@ -417,7 +365,7 @@ public sealed class FlowViewTests : TestContext
         var h = Render(edges: [], configure: p => p.Add(f => f.AutoConnect, false));
         await Measure(h);
 
-        await PointerDown(h.Cut.Find("[data-node-id='a'] .wf-handle-bottom"), 50, 40);
+        await Down(h.Cut.Find("[data-node-id='a'] .wf-handle-bottom"), 50, 40);
         await Move(h, 350, 100);
         await Up(h, 350, 100);
 
@@ -430,7 +378,7 @@ public sealed class FlowViewTests : TestContext
     {
         var h = Render();
         await Measure(h);
-        await PointerDown(h.Cut.Find("[data-node-id='a']"), 50, 20);
+        await Down(h.Cut.Find("[data-node-id='a']"), 50, 20);
         await Up(h, 50, 20);
 
         await h.Cut.Find(".wf-flow").KeyDownAsync(new KeyboardEventArgs { Key = "Delete" });
@@ -445,7 +393,7 @@ public sealed class FlowViewTests : TestContext
     {
         var h = Render([A with { Deletable = false }, B]);
         await Measure(h);
-        await PointerDown(h.Cut.Find("[data-node-id='a']"), 50, 20);
+        await Down(h.Cut.Find("[data-node-id='a']"), 50, 20);
         await Up(h, 50, 20);
 
         await h.Cut.Find(".wf-flow").KeyDownAsync(new KeyboardEventArgs { Key = "Delete" });
@@ -459,7 +407,7 @@ public sealed class FlowViewTests : TestContext
         var h = Render();
         await Measure(h);
 
-        await PointerDown(h.Cut.Find(".wf-edge-hit"), 200, 70);
+        await Down(h.Cut.Find(".wf-edge-hit"), 200, 70);
         await Up(h, 200, 70);
 
         Assert.True(h.Edges.Single().Selected);
@@ -472,7 +420,7 @@ public sealed class FlowViewTests : TestContext
         var h = Render();
         await Measure(h);
 
-        await PointerDown(h.Cut.Find(".wf-flow"), -10, -10, shift: true);
+        await Down(h.Cut.Find(".wf-flow"), -10, -10, shift: true);
         await Move(h, 120, 60); // recouvre a (0..100 × 0..40) mais pas b
         Assert.NotEmpty(h.Cut.FindAll(".wf-selection-box"));
         await Up(h, 120, 60);
@@ -487,7 +435,7 @@ public sealed class FlowViewTests : TestContext
         var h = Render(configure: p => p.Add(f => f.AutoApplyChanges, false));
         await Measure(h);
 
-        await PointerDown(h.Cut.Find("[data-node-id='a']"), 50, 20);
+        await Down(h.Cut.Find("[data-node-id='a']"), 50, 20);
         await Move(h, 80, 50);
         await Up(h, 80, 50);
 

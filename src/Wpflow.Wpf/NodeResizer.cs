@@ -57,11 +57,11 @@ public sealed class NodeResizer : Grid
     private static readonly ControlTemplate ThumbTemplate = BuildThumbTemplate();
 
     private readonly Dictionary<ResizeDirection, Thumb> _thumbs = new();
-    private Core.Rect _startRect;
-    private XYPosition _startMouse;
+    private readonly ResizeGesture _gesture;
 
     public NodeResizer()
     {
+        _gesture = new ResizeGesture(this);
         SetBinding(VisibilityProperty, new MultiBinding
         {
             Bindings =
@@ -237,40 +237,20 @@ public sealed class NodeResizer : Grid
         Children.Add(thumb);
     }
 
-    private (FlowView Flow, NodeHost Host)? Context() =>
-        FlowView.FindAncestor<NodeHost>(this) is { } host && FlowView.FindAncestor<FlowView>(host) is { } flow
-            ? (flow, host)
-            : null;
-
-    private XYPosition MouseInFlow(FlowView flow) => flow.ScreenToFlow(Mouse.GetPosition(flow));
-
     private void OnDragStarted(ResizeDirection dir)
     {
-        if (Context() is not { } c || c.Host.Node?.Rect is not { } rect) return;
-        _startRect = rect;
-        _startMouse = MouseInFlow(c.Flow);
-        c.Flow.PushHistory();
-        c.Flow.ApplyNodeChanges([new NodeInteractionChange(c.Host.Node.Id, Resizing: true)]);
-        ResizeStarted?.Invoke(this, new NodeResizeEventArgs(c.Host.Node.Id, dir, rect, rect));
+        if (_gesture.Start(dir) is { } args) ResizeStarted?.Invoke(this, args);
     }
 
     private void OnDragDelta(ResizeDirection dir)
     {
-        if (Context() is not { } c || c.Host.Node is not { } node) return;
-        var m = MouseInFlow(c.Flow);
-        var r = NodeResize.Resize(dir, _startRect, m.X - _startMouse.X, m.Y - _startMouse.Y,
-            NodeMinWidth, NodeMinHeight, NodeMaxWidth, NodeMaxHeight, KeepAspectRatio);
-        if (ShouldResize is { } allowed && !allowed(dir, r)) return;
-        c.Flow.ApplyNodeChanges([new NodeResizeChange(node.Id, r.Width, r.Height, new XYPosition(r.X, r.Y))]);
-        Resizing?.Invoke(this, new NodeResizeEventArgs(node.Id, dir, _startRect, r));
+        if (_gesture.Move(dir, NodeMinWidth, NodeMinHeight, NodeMaxWidth, NodeMaxHeight, KeepAspectRatio, ShouldResize) is { } args)
+            Resizing?.Invoke(this, args);
     }
 
     private void OnDragCompleted(ResizeDirection dir)
     {
-        if (Context() is not { } c || c.Host.Node is not { } node) return;
-        var end = node.Rect ?? _startRect;
-        c.Flow.ApplyNodeChanges([new NodeInteractionChange(node.Id, Resizing: false)]);
-        ResizeEnded?.Invoke(this, new NodeResizeEventArgs(node.Id, dir, _startRect, end));
+        if (_gesture.End(dir) is { } args) ResizeEnded?.Invoke(this, args);
     }
 
     // Handle : carrés aux coins, côtés invisibles. Line : traits sur les côtés, coins invisibles.
@@ -296,7 +276,12 @@ public sealed class NodeResizer : Grid
 
 /// <summary>Un redimensionnement : début, en cours ou terminé (<c>onResizeStart</c>, <c>onResize</c>, <c>onResizeEnd</c>).</summary>
 public sealed class NodeResizeEventArgs(string nodeId, ResizeDirection direction, Core.Rect startRect, Core.Rect rect) : EventArgs
-{    public string NodeId { get; } = nodeId;    public ResizeDirection Direction { get; } = direction;    public Core.Rect StartRect { get; } = startRect;    public Core.Rect Rect { get; } = rect;}
+{
+    public string NodeId { get; } = nodeId;
+    public ResizeDirection Direction { get; } = direction;
+    public Core.Rect StartRect { get; } = startRect;
+    public Core.Rect Rect { get; } = rect;
+}
 
 /// <summary>Visible si le node est sélectionné ET si le resizer est autorisé.</summary>
 internal sealed class SelectedAndShownConverter : IMultiValueConverter

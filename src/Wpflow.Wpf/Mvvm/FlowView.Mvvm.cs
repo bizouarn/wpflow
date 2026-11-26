@@ -88,10 +88,7 @@ public partial class FlowView
         var adapter = _nodeSource = new NodeSourceAdapter(source, NodeMapping ?? Wpflow.Wpf.NodeMapping.Default, () => Nodes,
             items => SetCurrentValue(NodesProperty, items), () => NodeFactory);
         // Un changement fait par l'application ne doit pas être défait par l'annulation d'un geste.
-        adapter.ChangedBySource += (before, after) => _history.Rewrite(s => s with
-        {
-            Nodes = s.Nodes.Select(n => n.Id == before.Id ? adapter.Rebase(n, before, after) : n).ToList()
-        });
+        adapter.ChangedBySource += (before, after) => ViewLogic.Rebase(_history, adapter, before, after);
         ClearHistory();
     }
 
@@ -102,10 +99,7 @@ public partial class FlowView
         if (EdgesSource is not { } source) return;
         var adapter = _edgeSource = new EdgeSourceAdapter(source, EdgeMapping ?? Wpflow.Wpf.EdgeMapping.Default, () => Edges,
             items => SetCurrentValue(EdgesProperty, items), () => EdgeFactory);
-        adapter.ChangedBySource += (before, after) => _history.Rewrite(s => s with
-        {
-            Edges = s.Edges.Select(e => e.Id == before.Id ? adapter.Rebase(e, before, after) : e).ToList()
-        });
+        adapter.ChangedBySource += (before, after) => ViewLogic.Rebase(_history, adapter, before, after);
         ClearHistory();
     }
 
@@ -248,11 +242,6 @@ public partial class FlowView
     }
 
     #endregion
-
-    /// <summary>Reporte dans les ViewModels les changes que la vue vient d'appliquer.</summary>
-    private void WriteBackNodes(IReadOnlyList<NodeChange> changes) => _nodeSource?.WriteBack(changes);
-
-    private void WriteBackEdges(IReadOnlyList<EdgeChange> changes) => _edgeSource?.WriteBack(changes);
 }
 
 /// <summary>

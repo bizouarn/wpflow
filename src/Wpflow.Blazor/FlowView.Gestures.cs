@@ -30,13 +30,9 @@ public partial class FlowView
     private bool _noClick; // l'appui a déjà servi (second clic d'une connexion)
     private string? _pendingSelect; // node pressé sans être sélectionné (SelectNodesOnDrag faux) : sélectionné au clic
     private bool _rightDragged; // le bouton droit a déplacé la vue : le menu contextuel qui suit est ignoré
-
-    /// <summary>En deçà (en pixels), un tremblement reste un clic, quels que soient les seuils de glisser (comme en WPF).</summary>
-    private const double ClickTolerance = 4;
     private string? _pressedNode;
     private string? _pressedEdge;
     private bool _pressedMulti;
-    private bool _pressedWasSelected;
     private long _pressedButton;
     private bool _secondPress; // second appui d'un double-clic, signalé par le pont JS
     private Dictionary<string, XYPosition> _dragStart = new();
@@ -120,7 +116,6 @@ public partial class FlowView
         _mode = Mode.None;
         _pressedNode = _pressedEdge = null;
         _pressedMulti = e.ShiftKey || Held(MultiSelectionKey, e.ShiftKey, e.CtrlKey, e.AltKey, e.MetaKey);
-        _pressedWasSelected = false;
         _secondPress = false;
         _tabbed = false;
         _pressedButton = e.Button;
@@ -143,7 +138,7 @@ public partial class FlowView
     private async Task OnPanePointerDown(PointerEventArgs e)
     {
         var flags = BeginGesture(e);
-        if (_clickMode) await CancelClickConnect(e);
+        if (_clickMode) await CancelClickConnect();
         if (flags.Untracked) return;
         var button = (int)e.Button;
         var panKey = _space && PanActivationKey == "Space" || Held(PanActivationKey, e.ShiftKey, e.CtrlKey, e.AltKey, e.MetaKey);
@@ -165,7 +160,7 @@ public partial class FlowView
     internal async Task OnNodePointerDown(Node n, PointerEventArgs e)
     {
         var flags = BeginGesture(e);
-        if (_clickMode) await CancelClickConnect(e);
+        if (_clickMode) await CancelClickConnect();
         var button = (int)e.Button;
         var panKey = _space && PanActivationKey == "Space" || Held(PanActivationKey, e.ShiftKey, e.CtrlKey, e.AltKey, e.MetaKey);
         if (!flags.Untracked && !flags.NoPan && (button == 1 || panKey && button == 0))
@@ -178,7 +173,6 @@ public partial class FlowView
         // Un contrôle HTML du node garde l'appui, comme en WPF : ni sélection ni clic.
         if (button != 0 || flags.Untracked) return;
         _pressedNode = n.Id;
-        _pressedWasSelected = n.Selected;
 
         // Verrouillé, non sélectionnable ou hors de la zone de saisie : le node reste en place, le glisser déplace la vue.
         if (IsLocked || !n.Selectable || flags.OutsideHandle)
@@ -217,7 +211,7 @@ public partial class FlowView
     private async Task OnEdgePointerDown(Edge edge, PointerEventArgs e)
     {
         var flags = BeginGesture(e);
-        if (_clickMode) await CancelClickConnect(e);
+        if (_clickMode) await CancelClickConnect();
         if ((int)e.Button != 0 || flags.Untracked) return;
         _pressedEdge = edge.Id;
 
@@ -242,7 +236,7 @@ public partial class FlowView
                     _from = (m == HandleType.Source ? edge.Target : edge.Source, fixedHandle);
                     _cursorFlow = _startFlow;
                     _mode = Mode.Reconnect;
-                    _threshold = Math.Max(ClickTolerance, ConnectionDragThreshold);
+                    _threshold = Math.Max(ViewLogic.ClickTolerance, ConnectionDragThreshold);
                 }
             }
         }
@@ -272,7 +266,7 @@ public partial class FlowView
             _from = from;
             _cursorFlow = _startFlow;
             _candidate = FindCandidate(_startFlow);
-            await FinishConnect(e, true);
+            await FinishConnect();
             return;
         }
 
@@ -392,7 +386,7 @@ public partial class FlowView
         // La plus grande distance parcourue compte : un glisser revenu à son départ n'est pas un clic ; un seuil de
         // glisser plus grand que la tolérance laisse le clic jusqu'à lui.
         var distance = Math.Max(_pressDistance, Math.Abs(_pointer.X - _startPointer.X) + Math.Abs(_pointer.Y - _startPointer.Y));
-        var clicked = distance < Math.Max(ClickTolerance, mode switch
+        var clicked = ViewLogic.IsClick(distance, mode switch
         {
             Mode.DragNodes => NodeDragThreshold,
             Mode.Pan => PaneDragThreshold,
@@ -411,9 +405,9 @@ public partial class FlowView
                 if (cancelled)
                 {
                     _candidate = null; // abandon : le geste se termine sans connexion
-                    await FinishConnect(null, false);
+                    await FinishConnect();
                 }
-                else if (!clicked || !ConnectOnClick) await FinishConnect(null, false);
+                else if (!clicked || !ConnectOnClick) await FinishConnect();
                 else await BeginClickConnect();
 
                 break;
@@ -579,7 +573,7 @@ public partial class FlowView
         return DefaultEdgeOptions?.Invoke(edge) ?? edge;
     }
 
-    private async Task FinishConnect(PointerEventArgs? e, bool clickMode)
+    private async Task FinishConnect()
     {
         var from = _from;
         var candidate = _candidate;
@@ -619,7 +613,7 @@ public partial class FlowView
         await OnClickConnectStart.InvokeAsync(new ConnectStartEventArgs(f.NodeId, f.Handle.Id, f.Handle.Type));
     }
 
-    private async Task CancelClickConnect(PointerEventArgs? e = null)
+    private async Task CancelClickConnect()
     {
         if (!_clickMode) return;
         var args = _from is { } f ? new ConnectStartEventArgs(f.NodeId, f.Handle.Id, f.Handle.Type) : null;
@@ -683,39 +677,22 @@ public partial class FlowView
     /// <summary>Chemin du fil de connexion en cours (coordonnées flow), ou <c>null</c> s'il n'y en a pas.</summary>
     private string? ConnectionPath()
     {
-        if (_from is not { } from || !(_mode is Mode.Connect or Mode.Reconnect && _moved || _clickMode)) return null;
-        if (!_nodeIndex.TryGetValue(from.NodeId, out var n)) return null;
-        var start = GraphUtils.GetHandlePosition(n with { Position = _abs[n.Id] }, from.Handle.Position, from.Handle);
-        var endPos = _candidate is { } c ? c.Handle.Position : Opposite(from.Handle.Position);
+        if (!ShowsConnection || _from is not { } from) return null;
+        if (!_absNodes.TryGetValue(from.NodeId, out var n)) return null;
+        var start = GraphUtils.GetHandlePosition(n, from.Handle.Position, from.Handle);
+        var endPos = _candidate is { } c ? c.Handle.Position : ViewLogic.Opposite(from.Handle.Position);
         var end = _cursorFlow;
-        if (_candidate is { } cand && _nodeIndex.TryGetValue(cand.NodeId, out var cn))
-            end = GraphUtils.GetHandlePosition(cn with { Position = _abs[cn.Id] }, cand.Handle.Position, cand.Handle);
-        var type = ConnectionLineType switch
-        {
-            ConnectionLineType.Straight => "straight",
-            ConnectionLineType.Step => "step",
-            ConnectionLineType.SmoothStep => "smoothstep",
-            ConnectionLineType.SimpleBezier => "simplebezier",
-            _ => "default"
-        };
-        var geometry = new EdgeGeometry(start, from.Handle.Position, end, endPos);
-        return EdgePathProviders.ForType(type).GetPath(geometry).Path;
+        if (_candidate is { } cand && _absNodes.TryGetValue(cand.NodeId, out var cn))
+            end = GraphUtils.GetHandlePosition(cn, cand.Handle.Position, cand.Handle);
+        return ViewLogic.ConnectionLine(ConnectionLineType, start, from.Handle.Position, end, endPos).Path;
     }
 
     private ConnectionState CurrentConnectionState()
     {
-        var inProgress = _from != null && (_mode is Mode.Connect or Mode.Reconnect && _moved || _clickMode);
+        var inProgress = ShowsConnection;
         return new ConnectionState(inProgress, _from?.NodeId, _from?.Handle.Id, _from?.Handle.Type,
             _candidate?.NodeId, _candidate?.Handle.Id, _candidate != null && _candidateValid, _cursorFlow, inProgress ? ConnectionPath() : null);
     }
-
-    private static Position Opposite(Position p) => p switch
-    {
-        Position.Left => Position.Right,
-        Position.Right => Position.Left,
-        Position.Top => Position.Bottom,
-        _ => Position.Top
-    };
 
     // ---------- Rectangle de sélection ----------
 

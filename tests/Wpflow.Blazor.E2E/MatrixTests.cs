@@ -27,9 +27,7 @@ public abstract class MatrixTests(DemoFixture app)
     {
         var gesture = GestureMatrix.Named(name);
         var page = await app.OpenAsync(query: "?matrix=" + name);
-        var errors = new List<string>();
-        page.Console += (_, m) => { if (m.Type == "error") errors.Add(m.Text); };
-        page.PageError += (_, e) => errors.Add(e);
+        var errors = page.CollectErrors();
         try
         {
             await page.WaitForTimeoutAsync(700); // chargement, mesures et cadrage

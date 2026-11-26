@@ -8,16 +8,11 @@ using Xunit.Abstractions;
 namespace Wpflow.Blazor.Tests;
 
 /// <summary>Mesure du coût d'un rendu après un déplacement dans un grand graphe (affiché, jamais en échec).</summary>
-public sealed class PerfTests : TestContext
+public sealed class PerfTests : FlowViewTestContext
 {
     private readonly ITestOutputHelper _output;
 
-    public PerfTests(ITestOutputHelper output)
-    {
-        _output = output;
-        JSInterop.Mode = JSRuntimeMode.Loose;
-        JSInterop.SetupModule("./_content/Wpflow.Blazor/wpflow.js").Mode = JSRuntimeMode.Loose;
-    }
+    public PerfTests(ITestOutputHelper output) => _output = output;
 
     [Fact]
     public async Task Move_one_node_in_a_large_graph()
@@ -34,15 +29,7 @@ public sealed class PerfTests : TestContext
             p.Add(f => f.NodesChanged, EventCallback.Factory.Create<IReadOnlyList<Node>>(this, n => current = n));
         });
         await cut.InvokeAsync(() => cut.Instance.OnRootRect(0, 0, 1280, 800));
-        await cut.InvokeAsync(() => cut.Instance.OnMeasured(nodes.Select(n => new MeasuredNode
-        {
-            Id = n.Id, Width = 150, Height = 40,
-            Handles =
-            [
-                new MeasuredHandle { Type = "target", Position = "top", X = 71, Y = -4, Width = 8, Height = 8 },
-                new MeasuredHandle { Type = "source", Position = "bottom", X = 71, Y = 36, Width = 8, Height = 8 }
-            ]
-        }).ToList()));
+        await cut.InvokeAsync(() => cut.Instance.OnMeasured(nodes.Select(n => Measured(n.Id, width: 150)).ToList()));
 
         var sw = Stopwatch.StartNew();
         for (var i = 1; i <= 20; i++)

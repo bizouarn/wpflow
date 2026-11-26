@@ -39,9 +39,7 @@ public abstract class ScenarioTests(DemoFixture app)
     private async Task<(IPage Page, List<string> Errors)> OpenAsync()
     {
         var page = await app.OpenAsync(query: Query);
-        var errors = new List<string>();
-        page.Console += (_, m) => { if (m.Type == "error") errors.Add(m.Text); };
-        page.PageError += (_, e) => errors.Add(e);
+        var errors = page.CollectErrors();
         await page.WaitForTimeoutAsync(900); // second cadrage, après le chargement asynchrone
         return (page, errors);
     }

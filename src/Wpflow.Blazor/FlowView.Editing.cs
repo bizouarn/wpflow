@@ -51,12 +51,10 @@ public partial class FlowView
 
     private async Task AfterSelectionMaybeChanged()
     {
+        var hadSelection = _selectionTracker.HasSelection;
+        if (!_selectionTracker.Update(Nodes, Edges)) return;
         var nodes = SelectedNodes;
         var edges = SelectedEdges;
-        var signature = string.Join(",", nodes.Select(n => n.Id)) + "|" + string.Join(",", edges.Select(e => e.Id));
-        if (signature == _selectionSignature) return;
-        var hadSelection = _selectionSignature is { Length: > 1 };
-        _selectionSignature = signature;
         if (AnnounceSelection)
             _announce = (nodes.Count, edges.Count) switch
             {
@@ -80,13 +78,8 @@ public partial class FlowView
     public Task ClearSelection() => SelectOnly(null, null);
 
     /// <summary>Sélectionne tous les nodes et tous les edges, comme en WPF.</summary>
-    public async Task SelectAll()
-    {
-        if (!CanSelect) return;
-        var (nodeChanges, edgeChanges) = SelectionOps.Select(Nodes, Edges, Nodes.Select(n => n.Id), Edges.Select(e => e.Id), false);
-        await ApplyNodeChanges(nodeChanges);
-        await ApplyEdgeChanges(edgeChanges);
-    }
+    public Task SelectAll() =>
+        CanSelect ? SelectElements(Nodes.Select(n => n.Id), Edges.Select(e => e.Id), false) : Task.CompletedTask;
 
     // ---------- Suppression ----------
 

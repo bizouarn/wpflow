@@ -7,17 +7,12 @@ using Wpflow.Core;
 namespace Wpflow.Blazor.Tests;
 
 /// <summary>Les comportements alignés sur la vue WPF, qui fait référence.</summary>
-public sealed class ParityTests : TestContext
+public sealed class ParityTests : FlowViewTestContext
 {
-    private static readonly Node A = new("a", new XYPosition(0, 0), Selected: true);
-    private static readonly Node B = new("b", new XYPosition(300, 100), Selected: true);
+    // Ici A et B sont déjà sélectionnés, contrairement à ceux du socle.
+    private new static readonly Node A = new("a", new XYPosition(0, 0), Selected: true);
+    private new static readonly Node B = new("b", new XYPosition(300, 100), Selected: true);
     private static readonly Edge Link = new("e", "a", "b");
-
-    public ParityTests()
-    {
-        JSInterop.Mode = JSRuntimeMode.Loose;
-        JSInterop.SetupModule("./_content/Wpflow.Blazor/wpflow.js").Mode = JSRuntimeMode.Loose;
-    }
 
     private IRenderedComponent<FlowView> Render(IReadOnlyList<Node> nodes, IReadOnlyList<Edge> edges,
         Action<ComponentParameterCollectionBuilder<FlowView>>? configure = null) => RenderComponent<FlowView>(p =>
@@ -119,21 +114,6 @@ public sealed class ParityTests : TestContext
         await Measure(cut); // les edges ne sont tracés qu'une fois les nodes mesurés
 
         Assert.Contains("stroke-width:30px", cut.Find(".wf-edge-hit").GetAttribute("style"));
-    }
-
-    private static async Task Measure(IRenderedComponent<FlowView> cut)
-    {
-        await cut.InvokeAsync(() => cut.Instance.OnRootRect(0, 0, 800, 600));
-        var measured = cut.Instance.Nodes.Select(n => new MeasuredNode
-        {
-            Id = n.Id, Width = 100, Height = 40,
-            Handles =
-            [
-                new MeasuredHandle { Type = "target", Position = "top", X = 46, Y = -4, Width = 8, Height = 8 },
-                new MeasuredHandle { Type = "source", Position = "bottom", X = 46, Y = 36, Width = 8, Height = 8 }
-            ]
-        }).ToList();
-        await cut.InvokeAsync(() => cut.Instance.OnMeasured(measured));
     }
 
     [Fact]

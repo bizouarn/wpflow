@@ -61,6 +61,9 @@ public static class GraphUtils
         return new XYPosition(node.Position.X + dx, node.Position.Y + dy);
     }
 
+    /// <summary>Distance entre deux points.</summary>
+    internal static double Distance(XYPosition a, XYPosition b) => Math.Sqrt((a.X - b.X) * (a.X - b.X) + (a.Y - b.Y) * (a.Y - b.Y));
+
     /// <summary>Handle le plus proche de <paramref name="point" /> dans le rayon donné (<c>connectionRadius</c>), sinon <c>null</c>.</summary>
     public static T? GetClosestHandle<T>(XYPosition point, double radius, IEnumerable<(T Handle, XYPosition Position)> candidates)
         where T : class
@@ -69,7 +72,7 @@ public static class GraphUtils
         var min = double.MaxValue;
         foreach (var (handle, pos) in candidates)
         {
-            var dist = Math.Sqrt(Math.Pow(pos.X - point.X, 2) + Math.Pow(pos.Y - point.Y, 2));
+            var dist = Distance(point, pos);
             if (dist <= radius && dist < min)
             {
                 min = dist;

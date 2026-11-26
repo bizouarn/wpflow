@@ -344,7 +344,8 @@ public partial class FlowView : ContentControl
 
     private readonly Dictionary<string, NodeHost> _hosts = new();
     private Dictionary<string, Node> _nodeIndex = new(); // coordonnées absolues
-    private readonly Dictionary<string, Node> _rawIndex = new(); // tels que fournis (position relative au parent) ; rempli seulement s'il y a des groupes
+    // Tels que fournis (position relative au parent) ; rempli seulement s'il y a des groupes ou une origine.
+    private Dictionary<string, Node> _rawIndex = new(), _previousRaw = new();
     private bool _virtualized;
     private readonly Dictionary<string, IReadOnlyList<HandleInfo>> _handleMap = new();
     private Canvas? _nodeCanvas;
@@ -564,14 +565,15 @@ public partial class FlowView : ContentControl
         var origin = NodeOrigin;
         var shifted = origin != XYPosition.Zero || nodes.Any(n => n.Origin != null); // origine non nulle : positions décalées
         // Avec une origine, le coin haut-gauche d'un enfant part du coin haut-gauche (déjà décalé) de son parent.
-        var abs = !_hasTree ? null : shifted ? AbsoluteWithOrigin(nodes) : NodeTree.AbsolutePositions(nodes);
+        var abs = !_hasTree ? null : shifted ? NodeConstraints.AbsoluteWithOrigin(nodes, origin) : NodeTree.AbsolutePositions(nodes);
         _virtualized = OnlyRenderVisibleElements;
         ComputeViewRects();
 
         (_nodeIndex, _previousIndex) = (_previousIndex, _nodeIndex);
         _nodeIndex.Clear();
-        _useRaw = _hasTree || shifted;
-        if (_useRaw) _rawIndex.Clear(); // sans arbre ni origine, _nodeIndex contient déjà les nodes tels que fournis
+        (_rawIndex, _previousRaw) = (_previousRaw, _rawIndex);
+        _rawIndex.Clear();
+        _useRaw = _hasTree || shifted; // sans arbre ni origine, _nodeIndex contient déjà les nodes tels que fournis
 
         var changed = new HashSet<string>();
         var added = false;
@@ -579,13 +581,22 @@ public partial class FlowView : ContentControl
         foreach (var node in nodes)
         {
             // _nodeIndex contient des nodes en coordonnées absolues (edges, handles, minimap).
-            var absolute = abs == null ? node : node with { Position = abs[node.Id], ParentId = null };
-            if (shifted && abs == null) absolute = absolute with { Position = absolute.Position - NodeConstraints.OriginOffset(node, NodeOrigin) };
-            if (_useRaw) _rawIndex[node.Id] = node;
+            var existed = _previousIndex.TryGetValue(node.Id, out var before);
+            var absolute = node;
+            if (_useRaw)
+            {
+                var position = abs != null ? abs[node.Id] : node.Position - NodeConstraints.OriginOffset(node, origin);
+                // Même node qu'au passage précédent, à la même place : la copie absolue est gardée (aucune allocation).
+                absolute = existed && before!.Position == position && ReferenceEquals(_previousRaw.GetValueOrDefault(node.Id), node)
+                    ? before
+                    : node with { Position = position, ParentId = abs != null ? null : node.ParentId };
+                _rawIndex[node.Id] = node;
+            }
+
             _nodeIndex[node.Id] = absolute;
 
             // Nodes immuables : même référence (ou, avec un arbre ou une origine, même valeur) = rien n'a changé.
-            if (_previousIndex.TryGetValue(node.Id, out var before))
+            if (existed)
             {
                 kept++;
                 if (!ReferenceEquals(before, absolute) && !((_hasTree || shifted) && before == absolute)) changed.Add(node.Id);
@@ -668,17 +679,10 @@ public partial class FlowView : ContentControl
         (_showRect, _keepRect) = Virtualization.Zones(view, Viewport.Zoom);
     }
 
-    private static Core.Rect Inflate(Core.Rect r, double m) => Virtualization.Inflate(r, m);
-
-    /// <summary>Taille supposée d'un node jamais mesuré, pour décider s'il faut le créer.</summary>
-    private static Core.Rect AssumedRect(Node n) => Virtualization.AssumedRect(n);
-
-    private static Node WithInitialSize(Node n) => Virtualization.WithInitialSize(n);
-
     private Presence PresenceOf(Node absolute)
     {
         if (!_virtualized || absolute.Selected) return Presence.Shown;
-        var rect = AssumedRect(absolute);
+        var rect = Virtualization.AssumedRect(absolute);
         return rect.Overlaps(_showRect) ? Presence.Shown : rect.Overlaps(_keepRect) ? Presence.Hidden : Presence.Absent;
     }
 
@@ -738,7 +742,7 @@ public partial class FlowView : ContentControl
     internal Core.Rect? NodeRectOf(string id) => _nodeIndex.TryGetValue(id, out var n) ? n.Rect : null;
 
     /// <summary>Rectangle d'un node pour la virtualisation des edges : mesuré, sinon supposé.</summary>
-    internal Core.Rect? ViewRectOf(string id) => _nodeIndex.TryGetValue(id, out var n) ? n.Rect ?? AssumedRect(n) : null;
+    internal Core.Rect? ViewRectOf(string id) => _nodeIndex.TryGetValue(id, out var n) ? n.Rect ?? Virtualization.AssumedRect(n) : null;
 
     #region Theme
 
@@ -868,7 +872,7 @@ public partial class FlowView : ContentControl
         if (Debug) System.Diagnostics.Trace.WriteLine($"[wpflow] {changes.Count} change(s) de nodes : {string.Join(", ", changes.Select(c => c.GetType().Name))}");
         if (!AutoApplyChanges || changes.Count == 0) return;
         Nodes = Changes.Apply(changes, Nodes);
-        WriteBackNodes(changes);
+        _nodeSource?.WriteBack(changes); // un ViewModel qui ajuste ou refuse une valeur est relu
         if (AnnounceSelection)
             foreach (var c in changes.OfType<NodeSelectChange>().Where(c => c.Selected))
                 if (Nodes.FirstOrDefault(x => x.Id == c.Id) is { } picked)
@@ -882,10 +886,10 @@ public partial class FlowView : ContentControl
         var args = new EdgeChangesEventArgs(changes);
         EdgeChangesRequested?.Invoke(this, args);
         changes = args.Changes; // un gestionnaire peut avoir remplacé les changes (middleware)
-        if (Debug) System.Diagnostics.Trace.WriteLine($"[wpflow] {changes.Count} change(s) de nodes : {string.Join(", ", changes.Select(c => c.GetType().Name))}");
+        if (Debug) System.Diagnostics.Trace.WriteLine($"[wpflow] {changes.Count} change(s) d'edges : {string.Join(", ", changes.Select(c => c.GetType().Name))}");
         if (!AutoApplyChanges || changes.Count == 0) return;
         Edges = Changes.Apply(changes, Edges);
-        WriteBackEdges(changes);
+        _edgeSource?.WriteBack(changes);
         if (AnnounceSelection)
             foreach (var c in changes.OfType<EdgeSelectChange>().Where(c => c.Selected))
                 Announce(SelectionOps.AnnounceEdge(Edges.First(x => x.Id == c.Id), EdgeAriaLabelProvider));
@@ -909,8 +913,6 @@ public partial class FlowView : ContentControl
         var parent = node.ParentId != null ? _nodeIndex.GetValueOrDefault(node.ParentId) : null;
         return NodeConstraints.Constrain(node, relative, parent, NodeExtent, NodeOrigin);
     }
-
-    private Dictionary<string, XYPosition> AbsoluteWithOrigin(IReadOnlyList<Node> nodes) => NodeConstraints.AbsoluteWithOrigin(nodes, NodeOrigin);
 
     /// <summary>Nodes déplaçables sélectionnés ; un enfant dont un ancêtre est aussi sélectionné suit déjà son parent.</summary>
     private Dictionary<string, XYPosition> CollectDragStart(string? pressedId = null, bool additive = false) =>

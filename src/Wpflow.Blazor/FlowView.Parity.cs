@@ -73,13 +73,7 @@ public partial class FlowView
     private async Task EnsureVisible(string nodeId, double margin = 30)
     {
         if (_width <= 0 || _height <= 0 || !_absNodes.TryGetValue(nodeId, out var n) || n.Width is not { } w || n.Height is not { } h) return;
-        var topLeft = FlowToScreen(n.Position);
-        var bottomRight = FlowToScreen(new XYPosition(n.Position.X + w, n.Position.Y + h));
-        double dx = 0, dy = 0;
-        if (topLeft.X < margin) dx = margin - topLeft.X;
-        else if (bottomRight.X > _width - margin) dx = _width - margin - bottomRight.X;
-        if (topLeft.Y < margin) dy = margin - topLeft.Y;
-        else if (bottomRight.Y > _height - margin) dy = _height - margin - bottomRight.Y;
-        if (dx != 0 || dy != 0) await SetViewport(new Viewport(Viewport.X + dx, Viewport.Y + dy, Viewport.Zoom));
+        var shown = ViewLogic.PanToShow(Viewport, new Rect(n.Position.X, n.Position.Y, w, h), _width, _height, margin);
+        if (shown != Viewport) await SetViewport(shown);
     }
 }

@@ -36,10 +36,6 @@ public sealed class FlowBackground : FrameworkElement
         IsHitTestVisible = false;
     }
 
-    /// <summary>Un seul motif (rétrocompatible).</summary>
-    internal void Configure(BackgroundVariant variant, double gap, Brush color) =>
-        Configure([(new BackgroundLayer(variant, gap), color)]);
-
     internal void Configure(IReadOnlyList<(BackgroundLayer Layer, Brush Color)> layers)
     {
         _layers = layers;
