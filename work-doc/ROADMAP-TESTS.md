@@ -29,6 +29,8 @@ Il manque deux choses des deux côtés : des **entrées réelles** pour chaque �
 
 La correction `26b32b3` est sur `main` mais dans aucune version publiée. Elle retire `EdgeGeometry.Options` : les fournisseurs de tracé personnalisés qui le lisent, WPF comme Blazor, doivent être modifiés.
 
+Depuis la version 1.1.0 (26 novembre 2026), `ci.yml` et `release.yml` ne lancent plus que les tests de base (noyau, WPF, bUnit), en une minute au plus. Le bout en bout Blazor, les auto-tests WPF et la consommation des paquets se lancent à la main avant de poser le tag : plus rien ne bloque automatiquement la publication sur leur résultat. Les cases « en CI » des lots ci-dessous décrivent l'état antérieur.
+
 ## Règles
 
 1. Un défaut trouvé en usage réel donne **d'abord un test qui échoue**, au niveau où il se produit (navigateur ou vraie souris), puis la correction.

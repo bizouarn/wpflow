@@ -1,5 +1,9 @@
 name: CI
 
+# Seulement les tests de base (noyau, WPF, bUnit). Les tests lents se lancent en local avant une version :
+#   dotnet test tests/Wpflow.Blazor.E2E          (Chrome, environ 22 min)
+#   powershell -File tests/run-wpf-selftests.ps1 (vraie souris, environ 15 min)
+#   powershell -File tests/consumers/run.ps1     (paquets installés dans des applications neuves)
 on:
   push:
     branches: [main]
@@ -9,6 +13,7 @@ jobs:
   build-test:
     # WPF et les tests WPF (net10.0-windows) demandent Windows.
     runs-on: windows-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
 
@@ -24,19 +29,13 @@ jobs:
       - name: Build
         run: dotnet build wpflow.sln -c Release --no-restore
 
-      - name: Tests du noyau
-        run: dotnet test tests/Wpflow.Core.Tests -c Release --no-build
-
-      - name: Tests WPF
-        run: dotnet test tests/Wpflow.Wpf.Tests -c Release --no-build
-
-      - name: Tests Blazor
-        run: dotnet test tests/Wpflow.Blazor.Tests -c Release --no-build
-
-      # Démo lancée en vrai (Server et WebAssembly) et pilotée dans le Chrome du runner : le pont JS de bout en bout.
-      - name: Tests Blazor de bout en bout (Chrome)
-        timeout-minutes: 40
-        run: dotnet test tests/Wpflow.Blazor.E2E -c Release --no-build
+      - name: Tests de base
+        timeout-minutes: 1
+        shell: bash
+        run: |
+          for p in Core Wpf Blazor; do
+            dotnet test "tests/Wpflow.$p.Tests" -c Release --no-build
+          done
 
       # Avec la validation de paquet : une API retirée par rapport à la version publiée fait échouer cette étape.
       - name: Pack (vérification)
@@ -49,43 +48,3 @@ jobs:
         with:
           name: packages
           path: artifacts/*.nupkg
-
-  # Les paquets de ce commit, installés dans des applications neuves hors de la solution (aucune référence de projet).
-  consumers:
-    runs-on: windows-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-dotnet@v4
-        with:
-          dotnet-version: |
-            8.0.x
-            10.0.x
-
-      - name: Consommer les paquets
-        timeout-minutes: 25
-        shell: pwsh
-        run: ./tests/consumers/run.ps1
-
-  # Vraie souris et vrai clavier Win32 : demande un bureau interactif sur le runner.
-  selftests-wpf:
-    runs-on: windows-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-dotnet@v4
-        with:
-          dotnet-version: |
-            8.0.x
-            10.0.x
-
-      - name: Auto-tests WPF
-        timeout-minutes: 30
-        shell: pwsh
-        run: ./tests/run-wpf-selftests.ps1 -Configuration Release
-
-      - uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: selftests-wpf
-          path: artifacts/selftest
