@@ -27,6 +27,7 @@
     private FlowView? _flow;
     private bool _protect = true;
     private int _next = 3;
+    private string? _toShow;
     private readonly List<string> _log = ["Déplacez, sélectionnez, supprimez (Suppr)."];
 
     private IReadOnlyList<Node> _nodes =
@@ -64,9 +65,21 @@
 
     private Task Add()
     {
+        // Les ajouts se rangent à droite du graphe, par colonnes de trois : ils ne se superposent pas entre eux.
+        var index = _next - 3;
+        var position = new XYPosition(260 + 180 * (index / 3), 70 * (index % 3));
         var id = _next++.ToString();
+        _toShow = id;
         // ApplyNodeChanges injecte des changes : ils repassent par OnNodesChange.
-        return _flow!.ApplyNodeChanges([new NodeAddChange(new Node(id, new XYPosition(220, 40 * (_next % 5)), Data: $"Node {id}"))]);
+        return _flow!.ApplyNodeChanges([new NodeAddChange(new Node(id, position, Data: $"Node {id}"))]);
+    }
+
+    // Recadre la vue sur le node ajouté, une fois qu'il est mesuré (FitView ignore les nodes sans dimensions).
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (_toShow is null || !_nodes.Any(n => n.Id == _toShow && n.Width != null)) return;
+        _toShow = null;
+        await _flow!.FitView(new FitViewOptions(Duration: TimeSpan.FromMilliseconds(300)));
     }
 
     private static string Describe(NodeChange change) => change switch

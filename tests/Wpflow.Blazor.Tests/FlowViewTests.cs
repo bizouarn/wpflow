@@ -374,6 +374,26 @@ public sealed class FlowViewTests : FlowViewTestContext
     }
 
     [Fact]
+    public async Task Controlled_mode_connection_only_raises_OnConnect()
+    {
+        // Comme en WPF : l'application crée l'edge dans OnConnect, la vue ne demande pas un second ajout.
+        var requested = new List<EdgeChange>();
+        var h = Render(edges: [], configure: p =>
+        {
+            p.Add(f => f.AutoApplyChanges, false);
+            p.Add(f => f.OnEdgesChange, EventCallback.Factory.Create<IReadOnlyList<EdgeChange>>(this, requested.AddRange));
+        });
+        await Measure(h);
+
+        await Down(h.Cut.Find("[data-node-id='a'] .wf-handle-bottom"), 50, 40);
+        await Move(h, 350, 100);
+        await Up(h, 350, 100);
+
+        Assert.Single(h.Connections);
+        Assert.DoesNotContain(requested, c => c is EdgeAddChange);
+    }
+
+    [Fact]
     public async Task Delete_key_removes_selected_nodes_and_their_edges()
     {
         var h = Render();

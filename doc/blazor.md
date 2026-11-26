@@ -42,7 +42,7 @@ Le conteneur doit avoir une hauteur (la vue remplit son parent). `@bind-Nodes` /
 
 ## État : les changes
 
-Comme dans React Flow, une interaction ne modifie jamais les listes : elle produit des `NodeChange` / `EdgeChange`, publiés par `OnNodesChange` / `OnEdgesChange` puis appliqués (`AutoApplyChanges`, vrai par défaut) avec `Changes.Apply`. Avec `AutoApplyChanges="false"` (mode contrôlé), vous appliquez les changes vous-même. `ApplyNodeChanges` / `ApplyEdgeChanges` permettent d'en injecter.
+Comme dans React Flow, une interaction ne modifie jamais les listes : elle produit des `NodeChange` / `EdgeChange`, publiés par `OnNodesChange` / `OnEdgesChange` puis appliqués (`AutoApplyChanges`, vrai par défaut) avec `Changes.Apply`. Avec `AutoApplyChanges="false"` (mode contrôlé), vous appliquez les changes vous-même. Une connexion lève alors seulement `OnConnect`, comme en WPF : créez-y l'edge. `ApplyNodeChanges` / `ApplyEdgeChanges` permettent d'en injecter.
 
 <!-- exemple-blazor: etat-controle -->
 

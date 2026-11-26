@@ -611,7 +611,8 @@ public partial class FlowView
             await OnConnect.InvokeAsync(connection);
             if (from is { } cf) await (Extras(cf.NodeId, cf.Handle.Id, cf.Handle.Type)?.Connected.InvokeAsync(connection) ?? Task.CompletedTask);
             if (candidate is { } ct) await (Extras(ct.NodeId, ct.Handle.Id, ct.Handle.Type)?.Connected.InvokeAsync(connection) ?? Task.CompletedTask);
-            if (AutoConnect)
+            // En mode contrôlé, OnConnect suffit : demander en plus l'ajout créerait un second edge (comme en WPF).
+            if (AutoApplyChanges && AutoConnect)
             {
                 PushHistory();
                 await ApplyEdgeChanges([new EdgeAddChange(NewEdge(connection))]);
