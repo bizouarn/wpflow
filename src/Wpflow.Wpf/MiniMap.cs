@@ -257,8 +257,7 @@ public sealed class MiniMap : FrameworkElement
     {
         base.OnMouseWheel(e);
         if (!Zoomable || _flow == null) return;
-        var factor = Math.Pow(ViewportMath.WheelZoomFactor(-e.Delta), ZoomStep / 10);
-        _flow.ZoomBy(factor);
+        _flow.ZoomBy(ViewLogic.MiniMapZoomFactor(-e.Delta, ZoomStep));
         e.Handled = true;
     }
 

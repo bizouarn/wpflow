@@ -15,7 +15,7 @@
               EdgeTypes="_edgeTypes" NodeTemplates="_nodeTemplates" EdgeLabelTemplate="Label" FitViewOnInit="false" MinZoom="0.05">
         <FlowControls OnZoomIn='() => Note("ZoomIn")' OnZoomOut='() => Note("ZoomOut")' OnFitView='() => Note("FitView")'
                       OnInteractiveChange='on => Note("InteractiveChange", on ? "true" : "false")' />
-        <FlowMiniMap OnNodeClick='n => Note("MiniMapNodeClick", n.Id)' />
+        <FlowMiniMap Zoomable="true" OnNodeClick='n => Note("MiniMapNodeClick", n.Id)' />
     </FlowView>
 </div>
 

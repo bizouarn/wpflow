@@ -6,11 +6,11 @@
     var m = Flow.MiniMapBounds(Width, Height);
     var view = m.View;
     var scale = view.Width / Width;
-    <div class="wf-panel wf-minimap wf-panel-@(PanelPosition.ToString().ToLowerInvariant()) nopan nodrag nowheel @Class" style="width:@(Width)px;height:@(Height)px">
+    <div class="wf-panel wf-minimap wf-panel-@(PanelPosition.ToString().ToLowerInvariant()) nopan nodrag nowheel @Class" style="width:@(Width)px;height:@(Height)px" data-wf-wheel="@(Zoomable ? "zoom" : null)">
         <svg @ref="_svg" width="@Width" height="@Height" viewBox="@FlowView.F(view.X) @FlowView.F(view.Y) @FlowView.F(view.Width) @FlowView.F(view.Height)"
              @onpointerdown="e => Down(e, view)" @onpointerdown:stopPropagation
              @onpointermove="DragHandler(view)" @onpointerup="Up" @onpointerleave="Up"
-             @onwheel="e => Wheel(e)" @onwheel:preventDefault="Zoomable" @onwheel:stopPropagation>
+             @onwheel="e => Wheel(e)" @onwheel:stopPropagation>
             @foreach (var (node, r) in m.Nodes)
             {
                 var n = node;
@@ -99,7 +99,7 @@
     private async Task Wheel(WheelEventArgs e)
     {
         if (!Zoomable || Flow == null) return;
-        var factor = Math.Pow(2, -e.DeltaY * 0.001 * ZoomStep / 10);
-        await Flow.ZoomBy(factor);
+        var pixels = e.DeltaY * (e.DeltaMode == 1 ? 20 : 1); // lignes -> pixels, comme sur la surface
+        await Flow.ZoomBy(ViewLogic.MiniMapZoomFactor(pixels, ZoomStep));
     }
 }

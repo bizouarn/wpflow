@@ -37,14 +37,24 @@ Après les changements : build sans avertissement, validation d'API au `dotnet p
 
 À surveiller : à la première passe de bout en bout, `ServerScenarioTests.Loading_another_schema_reframes_and_forgets_selection_and_history` a échoué une fois, sans que son message soit journalisé. Il ne s'est pas reproduit (seul sur les quatre hôtes, six passes de sa classe, puis la suite complète). Cause inconnue : si l'échec revient, relancer avec `--logger "console;verbosity=detailed"`.
 
-## Écarts de comportement entre les vues (non corrigés : ils changeraient le comportement)
+## Écarts de comportement entre les vues (corrigés ensuite, WPF servant de référence)
 
-- `Node.ExpandParent` n'agit qu'en WPF : la vue Blazor ne l'applique pas.
-- Reconnexion d'un edge court, quand les deux extrémités sont à portée : WPF déplace la plus proche, Blazor la source.
-- Molette sur la minimap : le zoom Blazor est deux fois moins sensible que celui de WPF (les unités de molette diffèrent aussi : à mesurer avant de changer).
-- `SelectOnly` en Blazor sélectionne même avec `ElementsSelectable` faux ; en WPF non.
+L'audit les avait laissés, car les corriger change le comportement (voir `CHANGELOG.md`). `ViewParityTests` ne compare que les évènements et les réglages, et la matrice des gestes ne jouait pas ces cas : ils lui avaient échappé.
 
-`ViewParityTests` ne compare que les évènements et les réglages, et la matrice des gestes ne joue pas ces cas : ils lui ont échappé.
+| Écart | Correction | Ce qui le détecte |
+|---|---|---|
+| `Node.ExpandParent` n'agissait qu'en WPF | `ParentExpansion` (`Interaction/Shared/`), appelé par les deux vues pendant un glisser | `SharedInteractionTests` (noyau), deux tests bUnit de glisser (droite et bas, gauche et haut), `P2Tests` en WPF |
+| Edge court : WPF reconnectait l'extrémité la plus proche, Blazor la source | `ViewLogic.ReconnectedEnd` | geste `reconnect.nearest-end` de la matrice (`ReconnectRadius=1000` met les deux extrémités à portée), noyau, bUnit |
+| Molette sur la minimap moins sensible en Blazor | `ViewLogic.MiniMapZoomFactor` | geste `minimap.wheel` (un cran zoome comme sur la surface), noyau, bUnit |
+| `SelectOnly` en Blazor ignorait `ElementsSelectable` | passe par la même sélection que les gestes | bUnit, `ApiParityTests` en WPF |
+
+Les 6 tests bUnit ajoutés échouent avec l'ancien comportement Blazor.
+
+**Mesure de la molette.** Un `WM_MOUSEWHEEL` Windows de ±120 envoyé à Chrome (3 lignes par cran, échelle 100 %, une seule machine) donne `deltaY = ∓100` en pixels ; ±240 donne ∓200. Par cran : WPF zoomait de 2^0,24 (×1,18) sur la surface comme sur la minimap ; Blazor de 2^0,2 (×1,15) sur la surface et de 2^0,1 (×1,07) sur la minimap, soit deux fois moins. La minimap Blazor suit maintenant sa surface. Le petit écart entre les surfaces (unités de molette de chaque plateforme) reste.
+
+Le geste `minimap.wheel` a trouvé un autre défaut Blazor, corrigé : `@onwheel:preventDefault` restait sans effet (écouteur passif), la page pouvait défiler pendant le zoom. `wpflow.js` s'en charge.
+
+Vérification de ces corrections : build sans avertissement, noyau 169 tests, WPF 128, bUnit 151, les cinq auto-tests WPF dans le Bac à sable. Blazor de bout en bout : passe complète à 313 sur 316 ; les deux échecs de `minimap.wheel` (le défaut ci-dessus) passent après la correction, relancés avec les autres gestes de molette et de minimap (la passe complète n'a pas été refaite ensuite). Reste `WasmMvvmScenarioTests.Controls_inside_a_node_keep_their_behaviour`, en échec à chacune de ses trois passes : le navigateur reçoit un 404 sur `/_framework/dotnet-browser-tools/hot-reload-settings.json`, un fichier des outils du SDK .NET demandé en développement, et le test refuse toute erreur de console. Non corrigé.
 
 ## Laissé de côté
 

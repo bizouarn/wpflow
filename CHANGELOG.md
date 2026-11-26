@@ -2,7 +2,7 @@
 
 Les trois paquets (`Wpflow.Core`, `Wpflow.Wpf`, `Wpflow.Blazor`) partagent le même numéro. Au `dotnet pack`, la validation de paquet compare l'API à la version publiée (`PackageValidationBaselineVersion` dans `Directory.Build.props`) : une API retirée fait échouer la construction, sauf si la rupture est déclarée dans `CompatibilitySuppressions.xml`.
 
-## 1.1.0 — non publiée
+## 1.1.0
 
 ### Ruptures
 
@@ -28,6 +28,10 @@ Les deux vues se comportent désormais de la même façon, WPF servant de réfé
 - Blazor : un clic sur un node d'une sélection multiple la garde ; Ctrl + clic sur un edge sélectionné ne le désélectionne plus.
 - Blazor : un appui sur un contrôle HTML d'un node (`button`, `input`…) ne sélectionne plus le node.
 - Blazor : un node verrouillé, non sélectionnable ou saisi hors de sa zone `DragHandle` laisse le glisser déplacer la vue.
+- Blazor : `Node.ExpandParent` agit, comme en WPF (il était ignoré). Glisser un tel enfant au-delà de son parent agrandit celui-ci ; à gauche et en haut, le parent recule et ses autres enfants restent en place à l'écran.
+- Blazor : quand les deux extrémités d'un edge sont à portée (edge court), l'appui reconnecte la plus proche, la cible à égale distance (il reconnectait toujours la source).
+- Blazor : la molette sur la minimap (`Zoomable`) zoome deux fois plus à chaque cran. Avec `ZoomStep` à 10, un cran zoome comme sur la surface, comme en WPF. Pour retrouver l'ancienne sensibilité : `ZoomStep="5"`. Les défilements exprimés en lignes sont aussi convertis en pixels, comme sur la surface.
+- Blazor : avec `ElementsSelectable` faux, `SelectOnly` ne fait plus que désélectionner, comme en WPF.
 
 ### Ajouts
 
@@ -50,6 +54,7 @@ Les deux vues se comportent désormais de la même façon, WPF servant de réfé
 ### Corrections
 
 - Blazor : le double-clic sur un node n'arrivait jamais et zoomait le fond.
+- Blazor : la molette sur une minimap `Zoomable` n'empêchait pas la page de défiler, et le navigateur écrivait une erreur dans la console (`preventDefault` dans un écouteur passif).
 - Blazor Server : le circuit SignalR tombait au premier affichage dès quelques dizaines de nodes riches (ou une seule table de 150 colonnes), les mesures partant en un seul message de plus de 32 Ko. Elles sont envoyées en plusieurs messages.
 - Blazor : les edges ne suivaient pas des handles déplacés, ajoutés ou retirés sans changement de taille du node (colonnes réordonnées). Le contenu des nodes est observé et remesuré.
 - Blazor : aucun `@onkeydown` posé sur un champ dans un node ne se déclenchait (Entrée, Échap…), le pont JS arrêtant la propagation des touches.

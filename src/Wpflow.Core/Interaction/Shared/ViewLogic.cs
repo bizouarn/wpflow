@@ -16,6 +16,25 @@ internal static class ViewLogic
     /// </summary>
     public static bool IsClick(double travelled, double dragThreshold) => travelled < Math.Max(ClickTolerance, dragThreshold);
 
+    /// <summary>
+    ///     L'extrémité qu'un appui sur un edge peut déplacer : la plus proche des deux à portée (la cible à égale distance), ou
+    ///     <c>null</c> si aucune ne l'est.
+    /// </summary>
+    public static HandleType? ReconnectedEnd(XYPosition press, XYPosition source, XYPosition target, double reach)
+    {
+        static double Distance(XYPosition a, XYPosition b) => Math.Sqrt((a.X - b.X) * (a.X - b.X) + (a.Y - b.Y) * (a.Y - b.Y));
+        var (toSource, toTarget) = (Distance(press, source), Distance(press, target));
+        if (Math.Min(toSource, toTarget) > reach) return null;
+        return toTarget <= toSource ? HandleType.Target : HandleType.Source;
+    }
+
+    /// <summary>
+    ///     Facteur de zoom d'un défilement sur la minimap : celui de la surface, élevé à <c>zoomStep</c> / 10 (10 = comme la
+    ///     surface). <paramref name="deltaY" /> suit la convention de <see cref="WheelInput.Resolve" />.
+    /// </summary>
+    public static double MiniMapZoomFactor(double deltaY, double zoomStep) =>
+        Math.Pow(ViewportMath.WheelZoomFactor(deltaY), zoomStep / 10);
+
     public static Position Opposite(Position side) => side switch
     {
         Position.Left => Position.Right,

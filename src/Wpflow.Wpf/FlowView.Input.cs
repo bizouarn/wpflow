@@ -342,49 +342,20 @@ public partial class FlowView
         if (_dragStart.Count > 1 && SelectionDragging != null) SelectionDragging(this, DragArgs(pos)!);
     }
 
-    /// <summary>
-    ///     Un enfant <see cref="Node.ExpandParent" /> qui dépasse de son parent l'agrandit (<c>expandParent</c>). À droite et en bas,
-    ///     seule la taille change ; à gauche et en haut, le parent recule et ses enfants sont recalés pour ne pas bouger à l'écran.
-    /// </summary>
+    /// <summary>Agrandit les parents que les enfants déplacés dépassent (<see cref="ParentExpansion" />).</summary>
     internal void ExpandParents() => ExpandParents(_dragStart.Keys.ToList());
 
     internal void ExpandParents(IReadOnlyCollection<string> moved)
     {
-        var parents = moved.Select(RawNode).Where(n => n is { ExpandParent: true, ParentId: not null })
-            .Select(n => n!.ParentId!).Distinct().ToList();
-        foreach (var parentId in parents)
+        foreach (var parentId in ParentExpansion.Parents(moved, RawNode))
         {
-            if (RawNode(parentId) is not { } parent) continue;
-            var pw = parent.Width ?? parent.FixedWidth ?? 0;
-            var ph = parent.Height ?? parent.FixedHeight ?? 0;
-            double minX = 0, minY = 0, maxX = pw, maxY = ph;
-            foreach (var id in moved)
-            {
-                if (RawNode(id) is not { ExpandParent: true } child || child.ParentId != parentId) continue;
-                var shift = NodeConstraints.OriginOffset(child, NodeOrigin);
-                var (x, y) = (child.Position.X - shift.X, child.Position.Y - shift.Y);
-                minX = Math.Min(minX, x);
-                minY = Math.Min(minY, y);
-                maxX = Math.Max(maxX, x + (child.Width ?? 0));
-                maxY = Math.Max(maxY, y + (child.Height ?? 0));
-            }
-
-            if (minX == 0 && minY == 0 && maxX <= pw && maxY <= ph) continue;
-
-            var changes = new List<NodeChange>();
-            var newPosition = parent.Position + new XYPosition(minX, minY);
-            changes.Add(new NodeResizeChange(parentId, maxX - minX, maxY - minY, newPosition));
-            if (minX != 0 || minY != 0)
-            {
-                // Les enfants gardent leur place à l'écran : on compense le recul du parent.
-                foreach (var sibling in Nodes.Where(n => n.ParentId == parentId))
-                    changes.Add(new NodePositionChange(sibling.Id, sibling.Position - new XYPosition(minX, minY)));
+            if (ParentExpansion.Compute(parentId, moved, RawNode, Nodes, NodeOrigin) is not { } expansion) continue;
+            if (expansion.Shift != XYPosition.Zero)
                 foreach (var id in _dragStart.Keys.ToList()) // sans geste en cours, _dragStart est vide
                     if (RawNode(id)?.ParentId == parentId)
-                        _dragStart[id] -= new XYPosition(minX, minY); // le déplacement en cours se mesure dans le nouveau repère
-            }
+                        _dragStart[id] -= expansion.Shift; // le déplacement en cours se mesure dans le nouveau repère
 
-            ApplyNodeChanges(changes);
+            ApplyNodeChanges(expansion.Changes);
         }
     }
 

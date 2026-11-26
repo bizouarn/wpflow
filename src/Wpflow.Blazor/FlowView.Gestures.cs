@@ -220,12 +220,8 @@ public partial class FlowView
         // Un appui près d'une extrémité, suivi d'un glisser, la déplace (reconnexion) ; sans glisser, c'est un clic.
         if (EdgesReconnectable && !IsLocked && edge.Reconnectable && _edgeContexts.TryGetValue(edge.Id, out var ctx))
         {
-            var radius = ReconnectRadius / Viewport.Zoom;
             var g = ctx.Geometry;
-            var moving = Distance(_startFlow, g.Source) <= radius ? HandleType.Source
-                : Distance(_startFlow, g.Target) <= radius ? HandleType.Target
-                : (HandleType?)null;
-            if (moving is { } m)
+            if (ViewLogic.ReconnectedEnd(_startFlow, g.Source, g.Target, ReconnectRadius / Viewport.Zoom) is { } m)
             {
                 var fixedHandle = m == HandleType.Source
                     ? FindHandle(edge.Target, edge.TargetHandle, HandleType.Target)
@@ -249,8 +245,6 @@ public partial class FlowView
         await ApplyNodeChanges(nodeChanges);
         await ApplyEdgeChanges(edgeChanges);
     }
-
-    private static double Distance(XYPosition a, XYPosition b) => Math.Sqrt((a.X - b.X) * (a.X - b.X) + (a.Y - b.Y) * (a.Y - b.Y));
 
     internal async Task StartConnect(string nodeId, HandleInfo handle, PointerEventArgs e)
     {
@@ -495,10 +489,28 @@ public partial class FlowView
         }
 
         await ApplyNodeChanges(changes);
+        await ExpandParents();
         var moved = DraggedNodes();
         var drag = new NodeDragEventArgs(_nodeIndex[_pressedNode ?? moved[0].Id], moved, MakePointer(_pointer));
         await OnNodeDrag.InvokeAsync(drag);
         if (moved.Count > 1) await OnSelectionDrag.InvokeAsync(drag);
+    }
+
+    /// <summary>Agrandit les parents que les enfants déplacés dépassent (<see cref="ParentExpansion" />).</summary>
+    private async Task ExpandParents()
+    {
+        _rawLookup ??= id => _nodeIndex.GetValueOrDefault(id);
+        var moved = _dragStart.Keys.ToList();
+        foreach (var parentId in ParentExpansion.Parents(moved, _rawLookup))
+        {
+            if (ParentExpansion.Compute(parentId, moved, _rawLookup, Nodes, NodeOrigin) is not { } expansion) continue;
+            if (expansion.Shift != XYPosition.Zero)
+                foreach (var id in _dragStart.Keys.ToList()) // un geste fini entre-temps a vidé _dragStart
+                    if (_nodeIndex.GetValueOrDefault(id)?.ParentId == parentId)
+                        _dragStart[id] -= expansion.Shift; // le déplacement en cours se mesure dans le nouveau repère
+
+            await ApplyNodeChanges(expansion.Changes);
+        }
     }
 
     /// <summary>Applique <c>Node.Extent</c>, <c>ExtentParent</c> et <see cref="NodeExtent" /> à une position stockée.</summary>

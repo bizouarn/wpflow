@@ -254,7 +254,108 @@ public sealed class FlowViewFeatureTests : FlowViewTestContext
         Assert.Contains("rotate(90deg)", h.Cut.Find("[data-node-id='a']").GetAttribute("style"));
     }
 
+    // ---------- expandParent ----------
+
+    private async Task<Harness> RenderGroup(XYPosition child)
+    {
+        var group = new Node("g", new XYPosition(100, 100), "group") { FixedWidth = 200, FixedHeight = 100 };
+        var h = Render(
+        [
+            group,
+            new Node("c", child) { ParentId = "g", ExpandParent = true },
+            new Node("s", new XYPosition(50, 50)) { ParentId = "g" }
+        ], []);
+        await h.Cut.InvokeAsync(() => h.Flow.OnRootRect(0, 0, 800, 600));
+        await h.Cut.InvokeAsync(() => h.Flow.OnMeasured([Measured("g", 200, 100), Measured("c"), Measured("s")]));
+        return h;
+    }
+
+    [Fact]
+    public async Task Dragging_an_ExpandParent_child_past_the_right_and_bottom_grows_the_parent()
+    {
+        var h = await RenderGroup(new XYPosition(10, 10));
+
+        await Down(h.Cut.Find("[data-node-id='c']"), 150, 130);
+        await Move(h, 290, 200);
+        await Up(h, 290, 200);
+
+        Assert.Equal(new XYPosition(100, 100), h.Node("g").Position);
+        Assert.Equal((250.0, 120.0), (h.Node("g").FixedWidth, h.Node("g").FixedHeight));
+        Assert.Equal(new XYPosition(150, 80), h.Node("c").Position);
+    }
+
+    [Fact]
+    public async Task Dragging_an_ExpandParent_child_past_the_left_and_top_moves_the_parent_back_and_keeps_its_siblings_in_place()
+    {
+        var h = await RenderGroup(new XYPosition(10, 10));
+
+        await Down(h.Cut.Find("[data-node-id='c']"), 150, 130);
+        await Move(h, 110, 100); // à (-30, -20) du coin du groupe
+        Assert.Equal(new XYPosition(70, 80), h.Node("g").Position);
+        Assert.Equal(new XYPosition(0, 0), h.Node("c").Position);
+        await Move(h, 100, 90); // le glisser continue dans le nouveau repère
+        await Up(h, 100, 90);
+
+        Assert.Equal(new XYPosition(60, 70), h.Node("g").Position);
+        Assert.Equal((240.0, 130.0), (h.Node("g").FixedWidth, h.Node("g").FixedHeight));
+        Assert.Equal(new XYPosition(0, 0), h.Node("c").Position);
+        Assert.Equal(new XYPosition(90, 80), h.Node("s").Position); // toujours en (150, 150) à l'écran
+    }
+
+    // ---------- Molette sur la minimap ----------
+
+    [Theory]
+    [InlineData(10)]
+    [InlineData(5)]
+    public async Task The_minimap_wheel_zooms_like_the_surface_scaled_by_ZoomStep(double step)
+    {
+        var h = Render(configure: p => p.Add(f => f.ChildContent, (RenderFragment)(b =>
+        {
+            b.OpenComponent<FlowMiniMap>(0);
+            b.AddAttribute(1, nameof(FlowMiniMap.Zoomable), true);
+            b.AddAttribute(2, nameof(FlowMiniMap.ZoomStep), step);
+            b.CloseComponent();
+        })));
+        await Measure(h);
+
+        await h.Cut.InvokeAsync(() => h.Flow.OnWheel(400, 300, 0, -100, false, false, false, 0));
+        var surface = h.Flow.Viewport.Zoom;
+        await h.Cut.InvokeAsync(() => h.Flow.ZoomTo(1));
+        await h.Cut.Find(".wf-minimap svg").TriggerEventAsync("onwheel", new WheelEventArgs { DeltaY = -100 });
+
+        Assert.Equal(Math.Pow(surface, step / 10), h.Flow.Viewport.Zoom, 6);
+    }
+
+    // ---------- Sélection par l'API ----------
+
+    [Fact]
+    public async Task SelectOnly_only_deselects_when_elements_are_not_selectable()
+    {
+        var h = Render([A with { Selected = true }, B], [AB], p => p.Add(f => f.ElementsSelectable, false));
+        await Measure(h);
+
+        await h.Cut.InvokeAsync(() => h.Flow.SelectOnly("b", "e-ab"));
+
+        Assert.Empty(h.Selected);
+        Assert.False(h.Edges.Single().Selected);
+    }
+
     // ---------- Connexions ----------
+
+    [Fact]
+    public async Task Pressing_a_short_edge_near_its_target_reconnects_the_target()
+    {
+        var h = Render([A, B, C], [AB], p => p.Add(f => f.ReconnectRadius, 1000)); // les deux extrémités sont à portée
+        await Measure(h);
+
+        await Down(h.Cut.Find(".wf-edge-hit"), 340, 96);
+        await Move(h, 350, 200);
+        await Move(h, 350, 296);
+        await Up(h, 350, 296);
+
+        var edge = Assert.Single(h.Edges);
+        Assert.Equal(("a", "c"), (edge.Source, edge.Target));
+    }
 
     [Fact]
     public async Task Reconnecting_an_edge_end_moves_it_to_another_node()

@@ -59,7 +59,12 @@ export function attach(root, dotnet) {
 
     // Molette : écoutée ici car preventDefault doit être appelé par un écouteur non passif.
     const onWheel = (e) => {
-        if (e.target.closest && e.target.closest('.nowheel')) return;
+        if (e.target.closest && e.target.closest('.nowheel')) {
+            // La molette sert à l'élément (minimap « zoomable ») : la page ne défile pas. Les écouteurs « wheel » de
+            // Blazor sont passifs, son « preventDefault » y resterait sans effet.
+            if (e.target.closest('[data-wf-wheel]')) e.preventDefault();
+            return;
+        }
         const zoomKey = e.ctrlKey || e.metaKey;
         const handled = s.options.zoomOnScroll || s.options.panOnScroll || zoomKey;
         if (!handled && !s.options.preventScrolling) { // la page défile ; l'application en est tout de même prévenue

@@ -61,6 +61,13 @@ public class ApiParityTests
             flow.ClearSelection();
             Assert.Equal("", Selected());
 
+            // ElementsSelectable faux : SelectOnly ne peut que désélectionner.
+            flow.SelectOnly("a", null);
+            flow.ElementsSelectable = false;
+            flow.SelectOnly("b", "e");
+            Assert.Equal("", Selected());
+            flow.ElementsSelectable = true;
+
             flow.Viewport = new Viewport(10, 20, 2);
             var screen = flow.FlowToScreen(new XYPosition(5, 6));
             Assert.Equal(new System.Windows.Point(20, 32), screen);

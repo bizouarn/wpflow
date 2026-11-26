@@ -78,7 +78,7 @@ public partial class MainWindow
     internal (FlowControls Controls, MiniMap Map) AddCompanions()
     {
         var controls = new FlowControls();
-        var map = new MiniMap();
+        var map = new MiniMap { Zoomable = true };
         controls.ZoomedIn += (_, _) => Journal?.Add("ZoomIn");
         controls.ZoomedOut += (_, _) => Journal?.Add("ZoomOut");
         controls.FitViewClicked += (_, _) => Journal?.Add("FitView");

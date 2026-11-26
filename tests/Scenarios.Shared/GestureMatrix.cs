@@ -144,6 +144,9 @@ public static class GestureMatrix
             "ConnectEnd box.out box.out>grip.in"),
 
         // ---------- reconnexion ----------
+        // Les deux extrémités à portée (edge court, ou ici une portée énorme) : l'appui près de l'arrivée déplace la cible.
+        With("reconnect.nearest-end", "ReconnectRadius=1000", Lines, "ConnectStart orders.id", "ReconnectStart r-lines",
+            "Reconnect r-lines " + Relinked, "ReconnectEnd r-lines " + Relinked, "ConnectEnd orders.id " + Relinked),
         G("reconnect.to-handle", Lines, "ConnectStart orders.id", "ReconnectStart r-lines", "Reconnect r-lines " + Relinked,
             "ReconnectEnd r-lines " + Relinked, "ConnectEnd orders.id " + Relinked),
         G("reconnect.to-void", Lines, "ConnectStart orders.id", "ReconnectStart r-lines", "ReconnectEnd r-lines -",
@@ -161,6 +164,7 @@ public static class GestureMatrix
         G("controls.fit", "Move", "FitView"),
         G("controls.lock", "InteractiveChange false"),
         G("minimap.node-click", "MiniMapNodeClick orders", "Move"),
+        G("minimap.wheel", "Move"), // et le zoom d'un cran de la surface (zoomStep à 10)
         G("resizer.drag", "ResizeStart box", "Resize box", "ResizeEnd box"),
         G("resize-control.drag", "ControlResizeStart grip", "ControlResize grip", "ControlResizeEnd grip"),
         G("toolbar.click"),

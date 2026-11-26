@@ -46,6 +46,9 @@ public abstract class MatrixTests(DemoFixture app)
                 $"{name} : attendu [{string.Join(" > ", expected)}], reçu [{string.Join(" > ", got)}]");
 
             if (name == "selection.click-one") Assert.Equal(2, await page.CountAsync(".wf-node.wf-selected"));
+            // zoomStep à 10 : un cran sur la minimap zoome comme un cran sur la surface.
+            if (name == "minimap.wheel")
+                Assert.Equal(Wpflow.Core.ViewportMath.WheelZoomFactor(Player.Notch), await player.ZoomAsync(), 3);
             await player.AssertNothingInProgressAsync();
             Assert.Empty(errors);
         }
@@ -63,6 +66,15 @@ public abstract class MatrixTests(DemoFixture app)
 
         public async Task<IReadOnlyList<string>> JournalAsync() =>
             ((await page.Locator("#journal").TextContentAsync()) ?? "").Split('\n', StringSplitOptions.RemoveEmptyEntries);
+
+        /// <summary>
+        ///     Le <c>deltaY</c> d'un cran de molette vers le haut : mesuré dans Chrome sous Windows avec un vrai
+        ///     <c>WM_MOUSEWHEEL</c> de ±120 (3 lignes par cran, échelle 100 %).
+        /// </summary>
+        public const int Notch = -100;
+
+        public Task<double> ZoomAsync() => page.EvaluateAsync<double>(
+            "() => new DOMMatrix(getComputedStyle(document.querySelector('.wf-viewport')).transform).a");
 
         /// <summary>Souris relâchée, la bouger ne doit plus rien déplacer.</summary>
         public async Task AssertNothingInProgressAsync()
@@ -341,7 +353,14 @@ public abstract class MatrixTests(DemoFixture app)
                 "handle.right-click" => P(async () => await Right(await From())),
                 "handle.connected" => P(async () => await Drag(await NodeHandle("box"), await NodeHandle("grip"))),
 
-                "reconnect.to-handle" or "no-edges-reconnectable.drag" or "edge-not-reconnectable.drag" => Reconnect(),
+                "reconnect.to-handle" or "reconnect.nearest-end" or "no-edges-reconnectable.drag"
+                    or "edge-not-reconnectable.drag" => Reconnect(),
+                "minimap.wheel" => P(async () =>
+                {
+                    await Move(await At(".wf-minimap"));
+                    await Mouse.WheelAsync(0, Notch);
+                    await page.WaitForTimeoutAsync(500);
+                }),
                 "reconnect.to-void" => P(async () => await Drag(await OnEdge(pixels: -14), await Blank())),
                 "reconnect.interrupted" => P(async () => await Interrupted(await OnEdge(pixels: -14), await Blank())),
 

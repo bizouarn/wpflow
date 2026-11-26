@@ -145,7 +145,7 @@ Côté commandes, `CommandsReceiveEventArgs="True"` fait recevoir l'`ElementEven
 | `ConnectOnClick` | `bool` | `true` | Connecte par deux clics (handle, puis handle) ; Échap annule. |
 | `ConnectionLineType` | `Bezier`, `Straight`, `Step`, `SmoothStep`, `SimpleBezier` | `Bezier` | Forme de l'aperçu de connexion. |
 | `ConnectionLineTemplate` | `DataTemplate?` | `null` | Rendu libre de l'aperçu ; `DataContext` = `ConnectionLineContext`. |
-| `ReconnectRadius` | `double` | 24 | Portée (pixels) pour rattraper l'extrémité d'un edge, en la tirant ; un simple clic à cette distance reste un clic sur l'edge. |
+| `ReconnectRadius` | `double` | 24 | Portée (pixels) pour rattraper l'extrémité d'un edge, en la tirant ; un simple clic à cette distance reste un clic sur l'edge. Si les deux extrémités sont à portée, la plus proche est déplacée. |
 | `DefaultEdgeOptions` | `Edge?` | `null` | Modèle des edges créés par connexion (`Type`, `Animated`, marqueurs, style…). |
 | `DefaultMarkerColor` | `Brush?` | `null` | Couleur des marqueurs ; `null` = couleur du trait. |
 | `FitViewOptions` | `FitViewOptions?` | `null` | Options de `FitViewOnInit` et du bouton de cadrage. |

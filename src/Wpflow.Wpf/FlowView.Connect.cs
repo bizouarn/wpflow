@@ -195,16 +195,10 @@ public partial class FlowView
     {
         var edge = Edges.FirstOrDefault(e => e.Id == edgeId);
         if (edge == null || GetEdgeEnds(edge) is not { } ends) return;
-        var reach = ReconnectRadius / Viewport.Zoom;
-        double Dist(XYPosition p) => Math.Sqrt(Math.Pow(p.X - mouseFlow.X, 2) + Math.Pow(p.Y - mouseFlow.Y, 2));
-
-        HandleRef? fixedEnd;
-        if (Dist(ends.Target) <= reach && Dist(ends.Target) <= Dist(ends.Source))
-            fixedEnd = FindHandle(edge.Source, edge.SourceHandle, HandleType.Source); // on déplace la cible
-        else if (Dist(ends.Source) <= reach)
-            fixedEnd = FindHandle(edge.Target, edge.TargetHandle, HandleType.Target); // on déplace la source
-        else
-            return;
+        if (ViewLogic.ReconnectedEnd(mouseFlow, ends.Source, ends.Target, ReconnectRadius / Viewport.Zoom) is not { } moving) return;
+        var fixedEnd = moving == HandleType.Target
+            ? FindHandle(edge.Source, edge.SourceHandle, HandleType.Source)
+            : FindHandle(edge.Target, edge.TargetHandle, HandleType.Target);
 
         if (fixedEnd == null) return;
         _pendingReconnect = (edge, fixedEnd);

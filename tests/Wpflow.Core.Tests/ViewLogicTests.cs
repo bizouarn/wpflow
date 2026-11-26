@@ -80,3 +80,80 @@ public class ViewLogicTests
         Assert.Equal("opposite", found!.Info.Id);
     }
 }
+
+public class SharedInteractionTests
+{
+    [Theory]
+    [InlineData(5, 20, HandleType.Source)] // seule la source est à portée
+    [InlineData(35, 20, HandleType.Target)] // seule l'arrivée
+    [InlineData(18, 30, HandleType.Source)] // les deux : la plus proche
+    [InlineData(22, 30, HandleType.Target)]
+    [InlineData(20, 30, HandleType.Target)] // à égale distance : la cible
+    public void A_press_reconnects_the_closest_end_in_reach(double x, double reach, HandleType expected) =>
+        Assert.Equal(expected, ViewLogic.ReconnectedEnd(new XYPosition(x, 0), XYPosition.Zero, new XYPosition(40, 0), reach));
+
+    [Fact]
+    public void A_press_far_from_both_ends_reconnects_nothing() =>
+        Assert.Null(ViewLogic.ReconnectedEnd(new XYPosition(50, 0), XYPosition.Zero, new XYPosition(100, 0), 20));
+
+    [Fact]
+    public void The_minimap_wheel_zooms_like_the_surface_at_zoom_step_10()
+    {
+        Assert.Equal(ViewportMath.WheelZoomFactor(-100), ViewLogic.MiniMapZoomFactor(-100, 10), 9);
+        Assert.Equal(Math.Sqrt(ViewportMath.WheelZoomFactor(-100)), ViewLogic.MiniMapZoomFactor(-100, 5), 9);
+    }
+
+    private static readonly Node Group = new("g", new XYPosition(100, 100)) { Width = 200, Height = 100 };
+
+    private static Node Child(string id, double x, double y, bool expand = true) =>
+        new(id, new XYPosition(x, y)) { ParentId = "g", ExpandParent = expand, Width = 100, Height = 40 };
+
+    private static ParentExpansion.Expansion? Expand(XYPosition nodeOrigin, params Node[] children)
+    {
+        Node[] nodes = [Group, .. children];
+        Func<string, Node?> get = id => nodes.FirstOrDefault(n => n.Id == id);
+        return ParentExpansion.Compute("g", children.Select(n => n.Id), get, nodes, nodeOrigin);
+    }
+
+    [Fact]
+    public void Only_parents_of_moved_ExpandParent_children_can_grow()
+    {
+        Node[] nodes = [Group, Child("c", 0, 0), Child("d", 0, 0), Child("s", 0, 0, expand: false), new("top", XYPosition.Zero) { ExpandParent = true }];
+
+        Assert.Equal(["g"], ParentExpansion.Parents(["c", "d", "top", "inconnu"], id => nodes.FirstOrDefault(n => n.Id == id)));
+        Assert.Empty(ParentExpansion.Parents(["s", "g"], id => nodes.FirstOrDefault(n => n.Id == id)));
+    }
+
+    [Fact]
+    public void A_child_that_fits_changes_nothing() => Assert.Null(Expand(XYPosition.Zero, Child("c", 100, 60)));
+
+    [Fact]
+    public void Growing_right_and_bottom_only_resizes_the_parent()
+    {
+        var expansion = Expand(XYPosition.Zero, Child("c", 150, 80))!;
+
+        Assert.Equal(XYPosition.Zero, expansion.Shift);
+        Assert.Equal(new NodeResizeChange("g", 250, 120, Group.Position), Assert.Single(expansion.Changes));
+    }
+
+    [Fact]
+    public void Growing_left_and_top_moves_the_parent_back_and_compensates_every_child()
+    {
+        var expansion = Expand(XYPosition.Zero, Child("c", -30, -20), Child("s", 50, 50, expand: false))!;
+
+        Assert.Equal(new XYPosition(-30, -20), expansion.Shift);
+        Assert.Equal(
+        [
+            new NodeResizeChange("g", 230, 120, new XYPosition(70, 80)),
+            new NodePositionChange("c", XYPosition.Zero),
+            new NodePositionChange("s", new XYPosition(80, 70))
+        ], expansion.Changes);
+    }
+
+    [Fact]
+    public void The_node_origin_is_taken_into_account()
+    {
+        // Origine au centre : la position stockée (150, 80) place le coin de l'enfant en (100, 60), qui tient dans le groupe.
+        Assert.Null(Expand(new XYPosition(0.5, 0.5), Child("c", 150, 80)));
+    }
+}

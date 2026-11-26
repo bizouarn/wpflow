@@ -467,6 +467,7 @@ internal static class MatrixRunner
             ["handle.connected"] = P(() => DragTo(NodeHandle("box"), NodeHandle("grip"))),
 
             ["reconnect.to-handle"] = Reconnect(),
+            ["reconnect.nearest-end"] = Reconnect(),
             ["reconnect.to-void"] = P(() => DragTo(EdgeEnd("r-lines"), Blank)),
             ["reconnect.interrupted"] = P(() => Interrupted(EdgeEnd("r-lines"), Blank)),
 
@@ -482,6 +483,15 @@ internal static class MatrixRunner
             ["controls.fit"] = P(() => Control("PART_Fit")),
             ["controls.lock"] = P(() => Control("PART_Lock")),
             ["minimap.node-click"] = P(() => Click(OnMap("orders"))),
+            ["minimap.wheel"] = new Play(async () =>
+            {
+                MoveTo(Center(_map));
+                await Task.Delay(150);
+                Wheel(120);
+                await Task.Delay(500);
+            }, Verify: () => Math.Abs(F.Viewport.Zoom - ViewportMath.WheelZoomFactor(-120)) < 1e-6
+                ? Leftover()
+                : $"zoom {F.Viewport.Zoom} : un cran sur la minimap doit zoomer comme sur la surface"),
             ["resizer.drag"] = P(() => DragBy(Center(Find<NodeResizer>(Host("box")).First().GetThumb(ResizeDirection.BottomRight)!), 40, 20),
                 () => Select("box")),
             ["resize-control.drag"] = P(() => DragBy(Center(Find<NodeResizeControl>(Host("grip")).First()), 40, 20)),

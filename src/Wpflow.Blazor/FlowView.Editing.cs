@@ -67,13 +67,12 @@ public partial class FlowView
         await ReportBoundSelection();
     }
 
-    /// <summary>Sélectionne uniquement ce node et/ou cet edge ; <c>null</c>, <c>null</c> efface la sélection.</summary>
-    public async Task SelectOnly(string? nodeId, string? edgeId)
-    {
-        var (nodeChanges, edgeChanges) = SelectionOps.Select(Nodes, Edges, nodeId == null ? [] : [nodeId], edgeId == null ? [] : [edgeId], false);
-        await ApplyNodeChanges(nodeChanges);
-        await ApplyEdgeChanges(edgeChanges);
-    }
+    /// <summary>
+    ///     Sélectionne uniquement ce node et/ou cet edge ; <c>null</c>, <c>null</c> efface la sélection. Sans
+    ///     <see cref="ElementsSelectable" />, on ne peut que désélectionner.
+    /// </summary>
+    public Task SelectOnly(string? nodeId, string? edgeId) =>
+        SelectElements(nodeId == null ? [] : [nodeId], edgeId == null ? [] : [edgeId], false);
 
     public Task ClearSelection() => SelectOnly(null, null);
 
