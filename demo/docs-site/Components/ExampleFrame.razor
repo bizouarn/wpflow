@@ -1,0 +1,48 @@
+@* Un exemple en marche, son code (celui du fichier compilé) et un bouton pour repartir de zéro. *@
+@if (_example == null)
+{
+    <div class="note"><p>Exemple inconnu : <code>@Id</code>.</p></div>
+}
+else
+{
+    <section class="example" data-example="@_example.Id" aria-label="@($"Exemple : {_example.Title}")">
+        <div class="example-bar">
+            <div class="example-tabs" role="tablist">
+                <button role="tab" aria-selected="@(_code ? "false" : "true")" @onclick="() => _code = false">Aperçu</button>
+                <button role="tab" aria-selected="@(_code ? "true" : "false")" @onclick="() => _code = true">Code</button>
+            </div>
+            <span class="example-title">@_example.Title <em>Blazor</em></span>
+            <button class="example-reset" @onclick="() => _run++">Réinitialiser</button>
+            @if (Compact)
+            {
+                <a class="example-open" href="@($"exemples/{_example.Id}")">Ouvrir en grand →</a>
+            }
+        </div>
+        @* Masqué plutôt que retiré : regarder le code ne perd pas l'état du graphe. *@
+        <div class="example-stage @(Compact ? "compact" : "")" hidden="@_code">
+            <DynamicComponent @key="@($"{_example.Id}:{_run}")" Type="_example.Component" />
+        </div>
+        @if (_code)
+        {
+            <pre class="example-code"><code>@_example.Source</code></pre>
+        }
+    </section>
+}
+
+@code {
+    private Example? _example;
+    private bool _code;
+    private int _run;
+
+    [Parameter, EditorRequired] public string Id { get; set; } = "";
+
+    /// <summary>Inséré dans une page de documentation.</summary>
+    [Parameter] public bool Compact { get; set; }
+
+    protected override void OnParametersSet()
+    {
+        if (_example?.Id == Id) return;
+        _example = ExampleCatalog.Find(Id);
+        _code = false;
+    }
+}

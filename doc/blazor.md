@@ -38,9 +38,13 @@ Le script du pont JS (`_content/Wpflow.Blazor/wpflow.js`) est chargé par le com
 
 Le conteneur doit avoir une hauteur (la vue remplit son parent). `@bind-Nodes` / `@bind-Edges` / `@bind-Viewport` publient l'état après chaque interaction.
 
+<!-- exemple-blazor: premier-graphe -->
+
 ## État : les changes
 
 Comme dans React Flow, une interaction ne modifie jamais les listes : elle produit des `NodeChange` / `EdgeChange`, publiés par `OnNodesChange` / `OnEdgesChange` puis appliqués (`AutoApplyChanges`, vrai par défaut) avec `Changes.Apply`. Avec `AutoApplyChanges="false"` (mode contrôlé), vous appliquez les changes vous-même. `ApplyNodeChanges` / `ApplyEdgeChanges` permettent d'en injecter.
+
+<!-- exemple-blazor: etat-controle -->
 
 ## Contenu des nodes
 
@@ -63,6 +67,8 @@ Types intégrés : `input`, `output`, `default`, `group` (`<FlowDefaultNode Node
 ```
 
 Les contrôles HTML (`input`, `button`, `select`…) et tout élément de classe `nodrag` ne font pas glisser le node ; `nopan` empêche le défilement de la vue, `nowheel` laisse la molette à l'élément. `Node.DragHandle` restreint le glisser à un sélecteur CSS (`.poignee`).
+
+<!-- exemple-blazor: nodes-personnalises -->
 
 ## FlowView
 
@@ -90,6 +96,8 @@ Clavier : Suppr / Retour arrière supprime, Ctrl+A tout sélectionner, Ctrl+C / 
 ### Connexions
 
 `ConnectionMode` (`Strict` / `Loose`), `IsValidConnection`, `ConnectionRadius` (20 px), `ReconnectRadius` (24 px), `ConnectOnClick` (clic sur un handle puis sur un autre), `ConnectionLineType`, `ConnectionLineTemplate` (reçoit l'état de la connexion, avec le tracé du fil dans `Path`), `AutoConnect` (ajoute l'edge), `DefaultEdgeType`, `DefaultEdgeOptions` (`edge => edge with { Animated = true }`). Reconnexion : tirez l'extrémité d'un edge vers un autre handle (relâcher dans le vide la laisse en place) ; un simple clic près d'une extrémité reste un clic sur l'edge. Comme en WPF, elle lève `OnConnectStart` (`IsReconnection`), `OnReconnectStart`, puis `OnReconnect` si elle aboutit, `OnReconnectEnd` et `OnConnectEnd`. `FlowHandle` : `Type`, `Position`, `HandleId`, `Offset`, `IsConnectable`, `IsConnectableStart`, `IsConnectableEnd`, `IsValidConnection`, `OnConnected`. `CurrentConnection` expose la connexion en cours (`useConnection`).
+
+<!-- exemple-blazor: connexions -->
 
 ### Rendu
 
@@ -148,6 +156,8 @@ Viewport : `SetViewport(viewport, duration)`, `SetCenter`, `FitBounds`, `FitView
 
 Variables CSS sur `.wf-flow` : `--wf-bg`, `--wf-dot`, `--wf-node-bg`, `--wf-node-border`, `--wf-node-text`, `--wf-node-selected`, `--wf-edge`, `--wf-edge-selected`, `--wf-handle`, `--wf-handle-bg`, `--wf-connect`, `--wf-panel-bg`, `--wf-panel-border`, `--wf-minimap-mask`, `--wf-resize-accent`. `Dark="true"` applique le thème sombre.
 
+<!-- exemple-blazor: theme -->
+
 ## MVVM
 
 Comme en WPF ([MVVM](learn/13-mvvm.md)), la vue peut travailler sur **vos ViewModels** au lieu de listes de `record` : mêmes mappages, mêmes règles de réécriture, de refus et d'annulation (la logique est commune, dans le noyau).
@@ -190,6 +200,8 @@ Deux points propres à Blazor :
 
 - **Rendu** : les modèles de nodes sont mémorisés. Un `PropertyChanged`, même d'une propriété non mappée (un titre), redessine le node concerné. En revanche, une collection **à l'intérieur** d'un ViewModel (les colonnes d'une table) doit être signalée par le ViewModel : `Columns.CollectionChanged += (_, _) => OnPropertyChanged(nameof(Columns));`.
 - **Threads** : modifiez les ViewModels sur le contexte de rendu du composant (`InvokeAsync` depuis une minuterie ou une tâche de fond). Les changements d'une même rafale ne donnent qu'un rendu.
+
+<!-- exemple-blazor: mvvm -->
 
 ## Différences avec la version WPF
 

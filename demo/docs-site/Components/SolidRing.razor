@@ -1,0 +1,38 @@
+@* L'anneau de solides du rendu, en SVG ; l'animation est en CSS (site.css), sans aller-retour avec .NET. *@
+<svg class="ring" viewBox="-200 -100 400 200" role="img"
+     aria-label="@($"Anneau de {(Pyramids ? "pyramides" : "cubes")}")" style="@($"--ring:{Color}")">
+    <g style="@($"transform:scale({F(0.55 + Zoom / 160d)})")">
+        @for (var i = 0; i < Count; i++)
+        {
+            var angle = 2 * Math.PI * i / Count;
+            // Les solides de devant (en bas de l'ellipse) sont plus grands ; dessinés dans l'ordre, ils passent devant.
+            var depth = (Math.Sin(angle) + 1) / 2;
+            <g transform="@($"translate({F(Math.Cos(angle) * 140)} {F(Math.Sin(angle) * 58)}) scale({F(0.65 + depth * 0.55)})")">
+                <g class="solid" style="@($"animation-delay:-{F(i * 0.37)}s")">
+                    @if (Pyramids)
+                    {
+                        <polygon class="face-top" points="0,-13 13,9 0,3" />
+                        <polygon class="face-left" points="0,-13 0,3 -13,9" />
+                        <polygon class="face-right" points="-13,9 0,3 13,9 0,14" />
+                    }
+                    else
+                    {
+                        <polygon class="face-top" points="0,-12 11,-6 0,0 -11,-6" />
+                        <polygon class="face-left" points="-11,-6 0,0 0,12 -11,6" />
+                        <polygon class="face-right" points="11,-6 0,0 0,12 11,6" />
+                    }
+                </g>
+            </g>
+        }
+    </g>
+</svg>
+
+@code {
+    private const int Count = 22;
+
+    [Parameter, EditorRequired] public string Color { get; set; } = "";
+    [Parameter] public bool Pyramids { get; set; }
+    [Parameter] public int Zoom { get; set; }
+
+    private static string F(double value) => value.ToString("0.##", CultureInfo.InvariantCulture);
+}

@@ -1,0 +1,19 @@
+@using Wpflow.Blazor
+@using Wpflow.Core
+
+<div style="height: 100%">
+    <FlowView @bind-Nodes="_nodes" @bind-Edges="_edges" FitViewPadding="0.4">
+        <FlowMiniMap />
+        <FlowControls />
+    </FlowView>
+</div>
+
+@code {
+    private IReadOnlyList<Node> _nodes =
+    [
+        new Node("1", new XYPosition(0, 0), "input", "Entrée"),
+        new Node("2", new XYPosition(0, 120), "output", "Sortie")
+    ];
+
+    private IReadOnlyList<Edge> _edges = [new Edge("e1-2", "1", "2", Animated: true, MarkerEnd: EdgeMarker.ArrowClosed)];
+}

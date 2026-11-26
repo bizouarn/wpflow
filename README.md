@@ -8,12 +8,15 @@
 | `Wpflow.Wpf` | Contrôles WPF |
 | `Wpflow.Blazor` | Composants Blazor (HTML/SVG + petit pont JS) |
 
+**[Documentation et exemples interactifs](https://bizouarn.github.io/wpflow/)** : les guides de [`doc/`](doc/README.md) et des exemples `Wpflow.Blazor` qui s'exécutent dans le navigateur (WebAssembly).
+
 ![Démo](work-doc/screenshots/demo.png)
 
 ```bash
 dotnet run --project demo/wpf        # démo d'accueil ; « Parcourir les exemples » ouvre les autres cas
 ASPNETCORE_ENVIRONMENT=Development dotnet run --project demo/blazor --urls http://localhost:5189   # démo Blazor Server
 dotnet run --project demo/blazor-wasm --urls http://localhost:5190                                 # démo Blazor WebAssembly
+dotnet run --project demo/docs-site                  # le site de documentation, sur http://localhost:5191
 dotnet test tests/Wpflow.Core.Tests
 ```
 
@@ -26,6 +29,7 @@ dotnet test tests/Wpflow.Core.Tests
 | `src/Wpflow.Blazor` (net8.0) | Composants Blazor : `FlowView`, `FlowHandle`, `NodeResizer`, `NodeRotator`, `NodeToolbar`, `FlowMiniMap`, `FlowControls`, `FlowPanel`, pont JS (mesure, molette, pointeur, export d'image). Testés avec bUnit et dans un vrai Chrome (Playwright). |
 | `demo/wpf` | Démo d'accueil (un rendu 3D réglé par trois nodes) et fenêtre d'exemples. |
 | `demo/blazor`, `demo/blazor-wasm`, `demo/blazor-shared` | Démo Blazor (hôtes Server et WebAssembly, composant `Demo` partagé). |
+| `demo/docs-site` | Site de documentation (Blazor WebAssembly statique) : affiche `doc/` avec des exemples interactifs, publié sur GitHub Pages par `.github/workflows/pages.yml`. |
 
 ## Démarrage rapide
 

@@ -1,0 +1,57 @@
+@using Wpflow.Blazor
+@using Wpflow.Core
+
+<div class="ex-flow">
+    <FlowView @ref="_flow" @bind-Nodes="_nodes" @bind-Edges="_edges" NodeTemplates="_templates">
+        <FlowControls />
+    </FlowView>
+</div>
+
+@code {
+    private FlowView? _flow;
+    private Dictionary<string, RenderFragment<Node>> _templates = default!;
+
+    // L'état d'un node vit dans Node.Data : un modèle n'est refait que quand son node change.
+    private sealed record Card(string Title, int Level);
+
+    private IReadOnlyList<Node> _nodes =
+    [
+        new Node("reglage", new XYPosition(0, 40), "card", new Card("Intensité", 40)),
+        new Node("libre", new XYPosition(300, 0), "resizable", "Redimensionnez et tournez-moi", FixedWidth: 200, FixedHeight: 90),
+        new Node("poignee", new XYPosition(300, 190), "grip", "Seule la barre déplace ce node", DragHandle: ".ex-grip")
+    ];
+
+    private IReadOnlyList<Edge> _edges =
+    [
+        new Edge("a", "reglage", "libre", Animated: true),
+        new Edge("b", "reglage", "poignee", Type: "smoothstep")
+    ];
+
+    protected override void OnInitialized() => _templates = new()
+    {
+        ["card"] = n => @<div class="ex-card">
+            <NodeToolbar><button @onclick="() => _flow!.DeleteElements([n.Id])">Supprimer</button></NodeToolbar>
+            <strong>@(((Card)n.Data!).Title) : @(((Card)n.Data!).Level) %</strong>
+            @* « nodrag » : le curseur se règle sans déplacer le node. *@
+            <input class="nodrag" type="range" min="0" max="100" aria-label="Intensité" value="@(((Card)n.Data!).Level)"
+                   @oninput="e => SetLevel(n.Id, e.Value)" />
+            <FlowHandle Type="HandleType.Source" Position="Position.Right" />
+        </div>,
+        ["resizable"] = n => @<div class="ex-card ex-fill">
+            <NodeResizer NodeMinWidth="140" NodeMinHeight="60" />
+            <NodeRotator />
+            <span>@n.Data</span>
+            <FlowHandle Type="HandleType.Target" Position="Position.Left" />
+        </div>,
+        ["grip"] = n => @<div class="ex-card">
+            <div class="ex-grip">⠿ glisser ici</div>
+            <span>@n.Data</span>
+            <FlowHandle Type="HandleType.Target" Position="Position.Left" />
+        </div>
+    };
+
+    private Task SetLevel(string id, object? value) =>
+        int.TryParse(value?.ToString(), out var level)
+            ? _flow!.UpdateNodeData(id, data => ((Card)data!) with { Level = level })
+            : Task.CompletedTask;
+}

@@ -1,0 +1,27 @@
+@using Wpflow.Blazor
+@using Wpflow.Core
+
+<div class="ex-flow">
+    <FlowView @bind-Nodes="_nodes" @bind-Edges="_edges">
+        <FlowMiniMap />
+        <FlowControls />
+    </FlowView>
+</div>
+
+@code {
+    // La position d'un enfant est relative à son parent ; ExtentParent le garde à l'intérieur.
+    // Supprimer le groupe supprime aussi ses enfants.
+    private IReadOnlyList<Node> _nodes =
+    [
+        new Node("groupe", new XYPosition(0, 0), "group", "Groupe", FixedWidth: 360, FixedHeight: 240),
+        new Node("a", new XYPosition(30, 50), "input", "Enfant A", ParentId: "groupe", ExtentParent: true),
+        new Node("b", new XYPosition(170, 160), "default", "Enfant B", ParentId: "groupe", ExtentParent: true),
+        new Node("dehors", new XYPosition(460, 90), "output", "Hors du groupe", TargetPosition: Position.Left)
+    ];
+
+    private IReadOnlyList<Edge> _edges =
+    [
+        new Edge("a-b", "a", "b"),
+        new Edge("b-dehors", "b", "dehors", Animated: true)
+    ];
+}

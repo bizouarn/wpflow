@@ -1,0 +1,59 @@
+@using Wpflow.Blazor
+@using Wpflow.Core
+
+<div class="ex">
+    <div class="ex-toolbar">
+        <label>
+            Thème
+            <select @bind="_theme">
+                <option value="clair">Clair (par défaut)</option>
+                <option value="sombre">Sombre (Dark)</option>
+                <option value="ambre">Ambre (variables CSS)</option>
+            </select>
+        </label>
+        <label>
+            Fond
+            <select @bind="_variant">
+                <option value="@BackgroundVariant.Dots">Points</option>
+                <option value="@BackgroundVariant.Lines">Lignes</option>
+                <option value="@BackgroundVariant.Cross">Croix</option>
+            </select>
+        </label>
+    </div>
+    <div class="ex-flow">
+        @* La classe « lib-theme » demande à ce site de ne pas appliquer ses propres couleurs au graphe.
+           « theme-ambre » redéfinit les variables --wf-* (voir ci-dessous). *@
+        <FlowView @bind-Nodes="_nodes" @bind-Edges="_edges" Dark="@(_theme == "sombre")" BackgroundVariant="_variant"
+                  Class="@($"lib-theme theme-{_theme}")">
+            <FlowMiniMap />
+            <FlowControls />
+        </FlowView>
+    </div>
+</div>
+
+<style>
+    .wf-flow.theme-ambre {
+        --wf-bg: #1d1608; --wf-dot: #6b5320; --wf-node-bg: #2d220c; --wf-node-text: #ffe9b8;
+        --wf-node-border: #b88a2a; --wf-node-selected: #ffd36b; --wf-edge: #ffb627; --wf-handle: #ffd36b;
+        --wf-handle-bg: #1d1608; --wf-panel-bg: #2d220c; --wf-panel-border: #5a4418;
+        --wf-minimap-bg: #2d220c; --wf-minimap-node: #8a6a22; --wf-minimap-mask: rgba(20, 14, 4, .6);
+    }
+</style>
+
+@code {
+    private string _theme = "ambre";
+    private BackgroundVariant _variant = BackgroundVariant.Dots;
+
+    private IReadOnlyList<Node> _nodes =
+    [
+        new Node("1", new XYPosition(0, 0), "input", "Capteur"),
+        new Node("2", new XYPosition(180, 100), "default", "Moyenne"),
+        new Node("3", new XYPosition(40, 220), "output", "Alerte")
+    ];
+
+    private IReadOnlyList<Edge> _edges =
+    [
+        new Edge("1-2", "1", "2", Animated: true),
+        new Edge("2-3", "2", "3", MarkerEnd: EdgeMarker.ArrowClosed)
+    ];
+}

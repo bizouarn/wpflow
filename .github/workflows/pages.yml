@@ -1,0 +1,70 @@
+name: Site de documentation
+
+# Construit demo/docs-site (Blazor WebAssembly, entièrement statique) et le publie sur GitHub Pages.
+# Réglage à faire une fois dans le dépôt : Settings → Pages → Build and deployment → Source : « GitHub Actions ».
+on:
+  push:
+    branches: [main]
+    # Seulement ce qui change le site.
+    paths:
+      - 'demo/docs-site/**'
+      - 'doc/**'
+      - 'src/Wpflow.Core/**'
+      - 'src/Wpflow.Blazor/**'
+      - 'assets/logo.svg'
+      - 'work-doc/screenshots/demo.png'
+      - 'Directory.Build.props'
+      - '.github/workflows/pages.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# Une publication à la fois ; celle en cours va à son terme.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      pages: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: |
+            8.0.x
+            10.0.x
+
+      # Donne le chemin du site : « /wpflow », ou vide avec un domaine personnalisé.
+      - name: Configuration de Pages
+        id: pages
+        uses: actions/configure-pages@v5
+
+      # La publication écrit aussi le base href, 404.html et .nojekyll (voir docs-site.csproj).
+      - name: Publication du site
+        run: dotnet publish demo/docs-site -c Release -p:SiteBaseHref="${{ steps.pages.outputs.base_path }}/" -o publish
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: publish/wwwroot
+
+  deploy:
+    needs: build
+    # Uniquement depuis main, y compris pour un lancement manuel.
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write      # publier sur Pages
+      id-token: write   # jeton OIDC vérifié par deploy-pages
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

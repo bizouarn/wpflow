@@ -1,0 +1,84 @@
+@using System.Globalization
+@using Wpflow.Blazor
+@using Wpflow.Core
+
+<div class="ex-flow">
+    <FlowView @bind-Nodes="_nodes" Edges="_edges" EdgesChanged="OnEdges" NodeTemplates="_templates">
+        <FlowControls />
+    </FlowView>
+</div>
+
+@code {
+    private Dictionary<string, RenderFragment<Node>> _templates = default!;
+
+    private IReadOnlyList<Node> _nodes =
+    [
+        new Node("a", new XYPosition(0, 0), "valeur", 3d),
+        new Node("b", new XYPosition(0, 150), "valeur", 4d),
+        new Node("somme", new XYPosition(260, 20), "calcul", "+"),
+        new Node("produit", new XYPosition(260, 150), "calcul", "×"),
+        new Node("total", new XYPosition(520, 90), "calcul", "+")
+    ];
+
+    private IReadOnlyList<Edge> _edges =
+    [
+        Link("a", "somme"), Link("b", "somme"), Link("a", "produit"), Link("b", "produit"),
+        Link("somme", "total"), Link("produit", "total")
+    ];
+
+    private static Edge Link(string source, string target) => new($"{source}-{target}", source, target, Animated: true);
+
+    protected override void OnInitialized() => _templates = new()
+    {
+        ["valeur"] = n => @<div class="ex-card">
+            <label>Valeur
+                <input class="nodrag" type="number" value="@(((double)n.Data!).ToString(CultureInfo.InvariantCulture))"
+                       @oninput="e => SetValue(n.Id, e.Value)" />
+            </label>
+            <FlowHandle Type="HandleType.Source" Position="Position.Right" />
+        </div>,
+        ["calcul"] = n => @<div class="ex-card">
+            <FlowHandle Type="HandleType.Target" Position="Position.Left" />
+            <strong>@(n.Data is Result r ? $"{r.Operator} = {r.Value}" : "")</strong>
+            <FlowHandle Type="HandleType.Source" Position="Position.Right" />
+        </div>
+    };
+
+    private sealed record Result(string Operator, double Value);
+
+    // Un modèle de node ne voit que son node : le résultat est donc écrit dans Node.Data.
+    protected override void OnParametersSet() => Recompute();
+
+    private void OnEdges(IReadOnlyList<Edge> edges)
+    {
+        _edges = edges;
+        Recompute();
+    }
+
+    private void SetValue(string id, object? text)
+    {
+        if (!double.TryParse(text?.ToString(), CultureInfo.InvariantCulture, out var value)) return;
+        _nodes = _nodes.Select(n => n.Id == id ? n with { Data = value } : n).ToList();
+        Recompute();
+    }
+
+    private void Recompute()
+    {
+        double Evaluate(string id, HashSet<string> path)
+        {
+            var node = _nodes.First(n => n.Id == id);
+            if (node.Data is double constant) return constant;
+            if (!path.Add(id)) return 0; // une boucle ne se calcule pas
+
+            var inputs = _edges.Where(e => e.Target == id).Select(e => Evaluate(e.Source, path)).ToList();
+            path.Remove(id);
+            return Symbol(node) == "×" && inputs.Count > 0 ? inputs.Aggregate(1d, (x, y) => x * y) : inputs.Sum();
+        }
+
+        _nodes = _nodes.Select(n => n.Type == "calcul"
+            ? n with { Data = new Result(Symbol(n), Evaluate(n.Id, [])) }
+            : n).ToList();
+    }
+
+    private static string Symbol(Node node) => node.Data is Result r ? r.Operator : (string)node.Data!;
+}

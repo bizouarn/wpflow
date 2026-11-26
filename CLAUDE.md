@@ -10,6 +10,8 @@ The WPF demo has its own identity and must **not** imitate the reactflow.dev hom
 
 User documentation lives in `doc/` (Learn / API Reference / Examples, in French, mirroring reactflow.dev); keep it in sync when changing the public API. Link check: every relative link in `doc/**/*.md` must resolve.
 
+The documentation website is `demo/docs-site/` (static Blazor WebAssembly, same identity as the WPF demo), published to GitHub Pages (`https://bizouarn.github.io/wpflow/`) by `.github/workflows/pages.yml` on pushes to `main` that touch it, `doc/`, Core or Blazor. It has no content of its own for the docs: it embeds `doc/**/*.md` and renders them (Markdig, GitHub anchors); the menu comes from the folders, the order of links in `doc/README.md` and each file's first heading. Relative links to `doc/` pages become routes, other repository paths become GitHub links; an image outside `doc/` must be added as an `EmbeddedResource` in `docs-site.csproj`. A line `<!-- exemple-blazor: id -->` (invisible on GitHub) inserts a live example there. Examples are one file each in `Examples/`, registered in `Components/ExampleCatalog.cs` (which also links them to doc pages); the « Code » tab shows the compiled file itself, and `Examples/FirstGraph.razor` mirrors the first graph of `doc/blazor.md`. Only Blazor runs in the browser; pages written for WPF get a notice (`Components/PlatformNote.razor`). Keep the `<base href="/" />` line of `wwwroot/index.html` as is: publishing rewrites it from `SiteBaseHref` and adds `404.html` (deep links) and `.nojekyll`. No automated test covers the site: after changing it or `doc/` links, publish it and check it in a browser under `/wpflow/`.
+
 Solution `wpflow.sln`, Windows only:
 
 - `src/Wpflow.Core` (net8.0, **no WPF dependency**) — logic ported from `@xyflow/system`: immutable model (`Node`, `Edge`, `HandleInfo`), viewport math, edge path generation (SVG path strings), bounds/handle helpers, and `Changes.Apply` (NodeChange/EdgeChange). New logic goes here first, with tests.
@@ -24,6 +26,8 @@ Solution `wpflow.sln`, Windows only:
 ```bash
 dotnet build wpflow.sln
 dotnet run --project demo/wpf
+dotnet run --project demo/docs-site            # documentation site on http://localhost:5191 (without the .NET 8 runtime: DOTNET_ROLL_FORWARD=Major)
+dotnet publish demo/docs-site -c Release -p:SiteBaseHref=/wpflow/ -o artifacts/site   # as on GitHub Pages (use PowerShell: Git Bash rewrites /wpflow/)
 dotnet test tests/Wpflow.Core.Tests
 dotnet test tests/Wpflow.Wpf.Tests
 dotnet test tests/Wpflow.Core.Tests --filter "FullyQualifiedName~EdgePathsTests"   # one test class

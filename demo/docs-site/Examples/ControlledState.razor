@@ -1,0 +1,95 @@
+@using Wpflow.Blazor
+@using Wpflow.Core
+
+<div class="ex">
+    <div class="ex-toolbar">
+        <label><input type="checkbox" @bind="_protect" /> Refuser la suppression du node « Protégé »</label>
+        <button @onclick="Add">Ajouter un node</button>
+    </div>
+    <div class="ex-split">
+        <div class="ex-flow">
+            @* Mode contrôlé : la vue ne modifie rien, elle demande. *@
+            <FlowView @ref="_flow" Nodes="_nodes" Edges="_edges" AutoApplyChanges="false"
+                      OnNodesChange="OnNodesChange" OnEdgesChange="OnEdgesChange" OnConnect="OnConnect">
+                <FlowControls />
+            </FlowView>
+        </div>
+        <ol class="ex-log" aria-label="Changes reçus">
+            @foreach (var line in _log)
+            {
+                <li>@line</li>
+            }
+        </ol>
+    </div>
+</div>
+
+@code {
+    private FlowView? _flow;
+    private bool _protect = true;
+    private int _next = 3;
+    private readonly List<string> _log = ["Déplacez, sélectionnez, supprimez (Suppr)."];
+
+    private IReadOnlyList<Node> _nodes =
+    [
+        new Node("1", new XYPosition(0, 0), "input", "Libre"),
+        new Node("2", new XYPosition(60, 140), "output", "Protégé")
+    ];
+
+    private IReadOnlyList<Edge> _edges = [new Edge("e1-2", "1", "2")];
+
+    private void OnNodesChange(IReadOnlyList<NodeChange> changes)
+    {
+        // L'application filtre ce qu'elle refuse, puis applique le reste avec Changes.Apply.
+        var accepted = changes.Where(c => !(_protect && c is NodeRemoveChange { Id: "2" })).ToList();
+        foreach (var change in changes.Where(c => c is not NodeDimensionsChange))
+            Log((accepted.Contains(change) ? "" : "REFUSÉ : ") + Describe(change));
+        _nodes = Changes.Apply(accepted, _nodes);
+    }
+
+    private void OnEdgesChange(IReadOnlyList<EdgeChange> changes)
+    {
+        // Le lien vers un node protégé reste, lui aussi.
+        var accepted = changes.Where(c => !(_protect && c is EdgeRemoveChange { Id: "e1-2" })).ToList();
+        foreach (var change in changes)
+            Log((accepted.Contains(change) ? "" : "REFUSÉ : ") + Describe(change));
+        _edges = Changes.Apply(accepted, _edges);
+    }
+
+    private void OnConnect(Connection c)
+    {
+        var edge = new Edge($"e{c.Source}-{c.Target}-{_edges.Count}", c.Source, c.Target, c.SourceHandle, c.TargetHandle);
+        _edges = Changes.Apply([new EdgeAddChange(edge)], _edges);
+        Log($"Connexion {c.Source} → {c.Target}");
+    }
+
+    private Task Add()
+    {
+        var id = _next++.ToString();
+        // ApplyNodeChanges injecte des changes : ils repassent par OnNodesChange.
+        return _flow!.ApplyNodeChanges([new NodeAddChange(new Node(id, new XYPosition(220, 40 * (_next % 5)), Data: $"Node {id}"))]);
+    }
+
+    private static string Describe(NodeChange change) => change switch
+    {
+        NodePositionChange c => $"position {c.Id} → ({c.Position.X:0} ; {c.Position.Y:0})",
+        NodeSelectChange c => $"sélection {c.Id} : {(c.Selected ? "oui" : "non")}",
+        NodeInteractionChange c => $"geste sur {c.Id}",
+        NodeAddChange c => $"ajout du node {c.Item.Id}",
+        NodeRemoveChange c => $"suppression du node {c.Id}",
+        _ => change.GetType().Name
+    };
+
+    private static string Describe(EdgeChange change) => change switch
+    {
+        EdgeSelectChange c => $"sélection du lien {c.Id} : {(c.Selected ? "oui" : "non")}",
+        EdgeAddChange c => $"ajout du lien {c.Item.Id}",
+        EdgeRemoveChange c => $"suppression du lien {c.Id}",
+        _ => change.GetType().Name
+    };
+
+    private void Log(string line)
+    {
+        _log.Insert(0, line);
+        if (_log.Count > 30) _log.RemoveAt(_log.Count - 1);
+    }
+}

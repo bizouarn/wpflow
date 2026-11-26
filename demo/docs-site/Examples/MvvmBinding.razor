@@ -1,0 +1,105 @@
+@using System.Collections.ObjectModel
+@using System.ComponentModel
+@using System.Runtime.CompilerServices
+@using Wpflow.Blazor
+@using Wpflow.Core
+@implements IDisposable
+
+<div class="ex">
+    <div class="ex-toolbar">
+        <button @onclick="Add">Ajouter une tâche (depuis le ViewModel)</button>
+        <span>Glissez, sélectionnez, supprimez : les ViewModels suivent.</span>
+    </div>
+    <div class="ex-split">
+        <div class="ex-flow">
+            <FlowView NodesSource="_tasks" EdgesSource="_links" NodeMapping="_mapping"
+                      EdgeFactory="@(e => new LinkVm(e.Id, e.Source, e.Target))" NodeTemplates="_templates">
+                <FlowControls />
+            </FlowView>
+        </div>
+        <div class="ex-table">
+            <table>
+                <caption>État des ViewModels</caption>
+                <thead><tr><th>Titre</th><th>X</th><th>Y</th><th>Choisi</th></tr></thead>
+                <tbody>
+                    @foreach (var task in _tasks)
+                    {
+                        <tr>
+                            <td><input aria-label="@($"Titre de la tâche {task.Id}")" value="@task.Title" @oninput="e => task.Title = e.Value?.ToString() ?? string.Empty" /></td>
+                            <td>@task.X.ToString("0")</td>
+                            <td>@task.Y.ToString("0")</td>
+                            <td>@(task.IsSelected ? "oui" : "non")</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+            <p>@_links.Count lien(s)</p>
+        </div>
+    </div>
+</div>
+
+@code {
+    public sealed class TaskVm : INotifyPropertyChanged
+    {
+        private string _title = "";
+        private double _x, _y;
+        private bool _selected;
+
+        public string Id { get; init; } = "";
+        public string Title { get => _title; set => Set(ref _title, value); }
+        public double X { get => _x; set => Set(ref _x, value); }
+        public double Y { get => _y; set => Set(ref _y, value); }
+        public bool IsSelected { get => _selected; set => Set(ref _selected, value); }
+
+        public event PropertyChangedEventHandler? PropertyChanged;
+
+        private void Set<T>(ref T field, T value, [CallerMemberName] string? name = null)
+        {
+            if (Equals(field, value)) return;
+            field = value;
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
+        }
+    }
+
+    public sealed record LinkVm(string Id, string Source, string Target);
+
+    // Dans un champ : un mappage écrit dans le balisage serait recréé à chaque rendu.
+    private readonly NodeMapping _mapping = new() { SelectedPath = nameof(TaskVm.IsSelected) };
+
+    private readonly ObservableCollection<TaskVm> _tasks = [];
+    private readonly ObservableCollection<LinkVm> _links = [new("1-2", "1", "2")];
+
+    private readonly Dictionary<string, RenderFragment<Node>> _templates = new()
+    {
+        // Node.Data est le ViewModel.
+        ["default"] = n => @<div class="ex-card">
+            <FlowHandle Type="HandleType.Target" Position="Position.Left" />
+            <strong>@(((TaskVm)n.Data!).Title)</strong>
+            <FlowHandle Type="HandleType.Source" Position="Position.Right" />
+        </div>
+    };
+
+    protected override void OnInitialized()
+    {
+        AddTask("Écrire", 0, 0);
+        AddTask("Relire", 240, 110);
+    }
+
+    private void Add() => AddTask($"Tâche {_tasks.Count + 1}", 40 * _tasks.Count, 200);
+
+    private void AddTask(string title, double x, double y)
+    {
+        var id = (_tasks.Count == 0 ? 1 : _tasks.Max(t => int.Parse(t.Id)) + 1).ToString();
+        var task = new TaskVm { Id = id, Title = title, X = x, Y = y };
+        task.PropertyChanged += OnTaskChanged;
+        _tasks.Add(task);
+    }
+
+    // La vue écrit dans les ViewModels ; le tableau, lui, doit être prévenu pour se redessiner.
+    private void OnTaskChanged(object? sender, PropertyChangedEventArgs e) => InvokeAsync(StateHasChanged);
+
+    public void Dispose()
+    {
+        foreach (var task in _tasks) task.PropertyChanged -= OnTaskChanged;
+    }
+}

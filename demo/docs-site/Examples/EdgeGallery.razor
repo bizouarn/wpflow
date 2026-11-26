@@ -1,0 +1,35 @@
+@using Wpflow.Blazor
+@using Wpflow.Core
+
+<div class="ex-flow">
+    <FlowView @bind-Nodes="_nodes" @bind-Edges="_edges" EdgeTypes="_types">
+        <FlowControls />
+    </FlowView>
+</div>
+
+@code {
+    // Un type d'edge à soi : un IEdgePathProvider, qui renvoie un chemin SVG et la place du label.
+    private readonly Dictionary<string, IEdgePathProvider> _types = new()
+    {
+        ["vague"] = new DelegateEdgePathProvider(g =>
+        {
+            var (s, t) = (g.Source, g.Target);
+            var path = FormattableString.Invariant(
+                $"M {s.X},{s.Y} C {s.X + 90},{s.Y - 80} {t.X - 90},{t.Y + 80} {t.X},{t.Y}");
+            return new EdgePath(path, (s.X + t.X) / 2, (s.Y + t.Y) / 2, 0, 0);
+        })
+    };
+
+    private static readonly string[] Kinds = ["default", "straight", "step", "smoothstep", "vague"];
+
+    private IReadOnlyList<Node> _nodes = Kinds.SelectMany((kind, i) => new[]
+    {
+        new Node($"s{i}", new XYPosition(0, i * 90), "input", kind, SourcePosition: Position.Right),
+        new Node($"t{i}", new XYPosition(360, i * 90 + 40), "output", "arrivée", TargetPosition: Position.Left)
+    }).ToList();
+
+    private IReadOnlyList<Edge> _edges = Kinds.Select((kind, i) => new Edge($"e{i}", $"s{i}", $"t{i}", Type: kind,
+        Label: i % 2 == 0 ? kind : null,
+        Animated: kind is "straight" or "vague",
+        MarkerEnd: kind == "step" ? EdgeMarker.Arrow : EdgeMarker.ArrowClosed)).ToList();
+}

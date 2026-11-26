@@ -1,0 +1,54 @@
+<Project Sdk="Microsoft.NET.Sdk.BlazorWebAssembly">
+
+  <!-- Site de documentation (statique, publié sur GitHub Pages par .github/workflows/pages.yml).
+       Les pages viennent de doc/**/*.md, embarquées telles quelles : rien n'est recopié ici. -->
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>DocsSite</RootNamespace>
+    <IsPackable>false</IsPackable>
+    <!-- Chemin sous lequel le site est servi, appliqué à la publication : -p:SiteBaseHref=/wpflow/ -->
+    <SiteBaseHref>/</SiteBaseHref>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Markdig" Version="1.*" />
+    <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly" Version="8.0.*" />
+    <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.DevServer" Version="8.0.*" PrivateAssets="all" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../../src/Wpflow.Blazor/Wpflow.Blazor.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- La documentation : la source de vérité reste doc/. -->
+    <EmbeddedResource Include="../../doc/**/*.md" LogicalName="repo/doc/%(RecursiveDir)%(Filename)%(Extension)" />
+    <!-- Images citées par la documentation hors de doc/. -->
+    <EmbeddedResource Include="../../work-doc/screenshots/demo.png" LogicalName="repo/work-doc/screenshots/demo.png" />
+    <!-- Le code affiché sous chaque exemple est celui qui s'exécute. -->
+    <EmbeddedResource Include="Examples/*.razor" LogicalName="source/%(Filename)%(Extension)" />
+    <!-- Le logo, servi à la racine du site sans en garder une copie dans le dépôt. -->
+    <Content Include="../../assets/logo.svg" Link="wwwroot/logo.svg" />
+  </ItemGroup>
+
+  <!-- GitHub Pages : base href du dépôt, 404.html identique à index.html (les adresses profondes sont rendues par le
+       routeur Blazor) et .nojekyll (sans quoi Jekyll ignore _framework et _content). -->
+  <Target Name="PreparePagesOutput" AfterTargets="Publish">
+    <PropertyGroup>
+      <_SiteRoot>$(PublishDir)wwwroot/</_SiteRoot>
+      <_Index>$([System.IO.File]::ReadAllText('$(_SiteRoot)index.html'))</_Index>
+    </PropertyGroup>
+    <Error Condition="!$(_Index.Contains('&lt;base href=&quot;/&quot; /&gt;'))" Text="index.html : la balise base attendue est introuvable." />
+    <PropertyGroup>
+      <_Index>$(_Index.Replace('&lt;base href=&quot;/&quot; /&gt;', '&lt;base href=&quot;$(SiteBaseHref)&quot; /&gt;'))</_Index>
+    </PropertyGroup>
+    <WriteLinesToFile File="$(_SiteRoot)index.html" Lines="$([MSBuild]::Escape($(_Index)))" Overwrite="true" />
+    <!-- Les versions compressées de l'ancien index.html ne correspondent plus. -->
+    <Delete Files="$(_SiteRoot)index.html.br;$(_SiteRoot)index.html.gz" />
+    <Copy SourceFiles="$(_SiteRoot)index.html" DestinationFiles="$(_SiteRoot)404.html" />
+    <Touch Files="$(_SiteRoot).nojekyll" AlwaysCreate="true" />
+  </Target>
+
+</Project>

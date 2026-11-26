@@ -1,0 +1,51 @@
+@page "/"
+
+<PageTitle>wpflow · Branchez. Réglez. Regardez.</PageTitle>
+
+<div class="home">
+    <section class="hero">
+        <div>
+            <h1>Branchez. Réglez. <span>Regardez.</span></h1>
+        </div>
+        <div class="hero-side">
+            <p>L'éditeur de graphes à nodes pour WPF et Blazor. Débranchez un câble : le rendu réagit aussitôt.</p>
+            <a class="button" href="exemples">Parcourir les exemples →</a>
+            <a class="button quiet" href="doc">Lire la documentation</a>
+        </div>
+    </section>
+
+    <HeroFlow />
+
+    <p class="hero-note">
+        Ce graphe est un vrai <code>FlowView</code> Blazor qui s'exécute dans votre navigateur, en WebAssembly. Sélectionnez
+        un câble puis appuyez sur <kbd>Suppr</kbd> ; tirez un nouveau fil entre les deux mêmes points pour le rebrancher.
+    </p>
+
+    <section class="packages" aria-label="Paquets">
+        <article>
+            <h2>Wpflow.Blazor</h2>
+            <p>Pour Blazor Server et WebAssembly. C'est la version que ce site exécute.</p>
+            <pre><code>dotnet add package Wpflow.Blazor</code></pre>
+            <a href="doc/blazor">Guide Blazor →</a>
+        </article>
+        <article>
+            <h2>Wpflow.Wpf</h2>
+            <p>Les contrôles WPF, avec les mêmes gestes et les mêmes évènements. Windows seulement : rien à essayer ici.</p>
+            <pre><code>dotnet add package Wpflow.Wpf</code></pre>
+            <a href="doc/learn/01-quickstart">Démarrage rapide WPF →</a>
+        </article>
+        <article>
+            <h2>Wpflow.Core</h2>
+            <p>Le noyau commun, sans interface : modèle immuable, changes, chemins d'edges, JSON, disposition.</p>
+            <pre><code>dotnet add package Wpflow.Core</code></pre>
+            <a href="doc/reference/utils">Utilitaires →</a>
+        </article>
+    </section>
+
+    <footer>
+        <p>
+            Porté de <a href="https://github.com/xyflow/xyflow">xyflow</a> (React Flow). Licence
+            <a href="@($"{DocLibrary.Repository}/blob/main/LICENSE")">MIT</a>.
+        </p>
+    </footer>
+</div>

@@ -1,0 +1,36 @@
+@* La documentation vient du dépôt, où une grande partie décrit WPF : on le dit en tête de page. *@
+@if (Page.File != "doc/blazor.md")
+{
+    var related = ExampleCatalog.ForDoc(Page.File);
+    <div class="note" role="note">
+        @if (SharedPages.Contains(Page.File))
+        {
+            <p><strong>Noyau commun.</strong> <code>Wpflow.Core</code> sert à WPF comme à Blazor : les types et les fonctions décrits ici valent pour les deux.</p>
+        }
+        else
+        {
+            <p>
+                <strong>Page écrite d'abord pour la version WPF.</strong> WPF ne tourne pas dans un navigateur : les
+                exemples interactifs de ce site sont en <strong>Blazor</strong>. Les concepts sont les mêmes ; pour les
+                noms propres à Blazor, voyez <a href="doc/blazor">Wpflow.Blazor</a>.
+            </p>
+        }
+        @if (related.Count > 0)
+        {
+            <p class="note-links">
+                <span>À essayer en Blazor :</span>
+                @foreach (var example in related)
+                {
+                    <a class="chip" href="@($"exemples/{example.Id}")">@example.Title</a>
+                }
+            </p>
+        }
+    </div>
+}
+
+@code {
+    private static readonly string[] SharedPages =
+        ["doc/reference/types.md", "doc/reference/changes.md", "doc/reference/utils.md"];
+
+    [Parameter, EditorRequired] public DocPage Page { get; set; } = default!;
+}

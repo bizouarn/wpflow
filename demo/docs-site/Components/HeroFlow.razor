@@ -1,0 +1,130 @@
+@* Le montage de l'accueil, comme dans la démo WPF : un rendu en haut, nourri par trois réglages à travers des câbles.
+   Un réglage n'agit que si son câble existe. *@
+
+<div class="hero-flow">
+    <FlowView @bind-Nodes="_nodes" Edges="_edges" EdgesChanged="OnEdges" NodeTemplates="_templates" Dark="true"
+              BackgroundVariant="BackgroundVariant.Cross" BackgroundGap="32" ConnectionLineType="ConnectionLineType.SmoothStep"
+              IsValidConnection="@(c => c.Target == "rendu" && c.TargetHandle == c.Source)"
+              DefaultEdgeOptions="@(e => Cable(e.Source))" MinZoom="0.3" MaxZoom="2" FitViewPadding="0.04"
+              ZoomOnScroll="false" PreventScrolling="false" ZoomOnDoubleClick="false" HistoryEnabled="false">
+        <FlowControls Horizontal="true" ShowInteractive="false" />
+    </FlowView>
+    @if (_edges.Count < Settings.Length)
+    {
+        <button class="hero-reconnect" @onclick="@(() => OnEdges(Settings.Select(Cable).ToList()))">Tout rebrancher</button>
+    }
+</div>
+
+@code {
+    private const string DefaultColor = "#90ADCB";
+    private const int DefaultZoom = 50;
+
+    private static readonly string[] Settings = ["color", "shape", "zoom"];
+    private static readonly string[] Presets = ["#57DFA9", "#5FBDF8", "#1B96E6", "#F6C453", "#F47C9C"];
+
+    private string _color = "#57DFA9";
+    private bool _pyramids;
+    private int _zoom = 70;
+
+    private sealed record Render(string Color, bool Pyramids, int Zoom);
+
+    private sealed record ColorCard(string Color);
+
+    private sealed record ShapeCard(bool Pyramids);
+
+    private sealed record ZoomCard(int Zoom);
+
+    private Dictionary<string, RenderFragment<Node>> _templates = default!;
+    private IReadOnlyList<Node> _nodes = [];
+    private IReadOnlyList<Edge> _edges = Settings.Select(Cable).ToList();
+
+    private static Edge Cable(string setting) =>
+        new($"c-{setting}", setting, "rendu", TargetHandle: setting, Type: "smoothstep", Animated: true,
+            Reconnectable: false);
+
+    protected override void OnInitialized()
+    {
+        _nodes =
+        [
+            Fixed("rendu", new XYPosition(145, 0), "render"),
+            Fixed("color", new XYPosition(0, 330), "color"),
+            Fixed("shape", new XYPosition(253, 330), "shape"),
+            Fixed("zoom", new XYPosition(506, 330), "zoom")
+        ];
+        Refresh();
+
+        _templates = new()
+        {
+            ["render"] = n => @<div class="hero-card hero-render">
+                <header><i class="mint"></i>RENDU</header>
+                @if (n.Data is Render r)
+                {
+                    <SolidRing Color="@r.Color" Pyramids="r.Pyramids" Zoom="r.Zoom" />
+                }
+                <div class="hero-inputs"><span>couleur</span><span>forme</span><span>zoom</span></div>
+                <FlowHandle Type="HandleType.Target" Position="Position.Bottom" HandleId="color" Offset="138" />
+                <FlowHandle Type="HandleType.Target" Position="Position.Bottom" HandleId="shape" Offset="198" />
+                <FlowHandle Type="HandleType.Target" Position="Position.Bottom" HandleId="zoom" Offset="258" />
+            </div>,
+            ["color"] = n => @<div class="hero-card">
+                <header><i></i>COULEUR</header>
+                <div class="hero-body">
+                    @foreach (var preset in Presets)
+                    {
+                        <button class="nodrag swatch" style="@($"background:{preset}")" aria-label="@($"Couleur {preset}")"
+                                aria-pressed="@(((ColorCard)n.Data!).Color == preset ? "true" : "false")"
+                                @onclick="() => { _color = preset; Refresh(); }"></button>
+                    }
+                </div>
+                <FlowHandle Type="HandleType.Source" Position="Position.Top" />
+            </div>,
+            ["shape"] = n => @<div class="hero-card">
+                <header><i></i>FORME</header>
+                <div class="hero-body segments">
+                    <button class="nodrag" aria-pressed="@(((ShapeCard)n.Data!).Pyramids ? "false" : "true")"
+                            @onclick="() => { _pyramids = false; Refresh(); }">cubes</button>
+                    <button class="nodrag" aria-pressed="@(((ShapeCard)n.Data!).Pyramids ? "true" : "false")"
+                            @onclick="() => { _pyramids = true; Refresh(); }">pyramides</button>
+                </div>
+                <FlowHandle Type="HandleType.Source" Position="Position.Top" />
+            </div>,
+            ["zoom"] = n => @<div class="hero-card">
+                <header><i></i>ZOOM<output>@(((ZoomCard)n.Data!).Zoom) %</output></header>
+                <div class="hero-body">
+                    <input class="nodrag" type="range" min="0" max="100" aria-label="Zoom du rendu" value="@(((ZoomCard)n.Data!).Zoom)"
+                           @oninput="e => { if (int.TryParse(e.Value?.ToString(), out var v)) { _zoom = v; Refresh(); } }" />
+                </div>
+                <FlowHandle Type="HandleType.Source" Position="Position.Top" />
+            </div>
+        };
+    }
+
+    private static Node Fixed(string id, XYPosition position, string type) => new(id, position, type, Deletable: false);
+
+    private void OnEdges(IReadOnlyList<Edge> edges)
+    {
+        // Un seul câble par entrée : le dernier branché l'emporte.
+        _edges = edges.GroupBy(e => e.TargetHandle).Select(g => g.Last()).ToList();
+        Refresh();
+    }
+
+    // Un modèle de node ne se redessine que quand son node change : tout son état passe par Node.Data.
+    private void Refresh()
+    {
+        bool Wired(string setting) => _edges.Any(e => e.Source == setting);
+
+        var render = new Render(Wired("color") ? _color : DefaultColor, Wired("shape") && _pyramids,
+            Wired("zoom") ? _zoom : DefaultZoom);
+
+        _nodes = _nodes.Select(n => n with
+        {
+            Data = n.Type switch
+            {
+                "render" => render,
+                "color" => new ColorCard(_color),
+                "shape" => new ShapeCard(_pyramids),
+                _ => new ZoomCard(_zoom)
+            }
+        }).ToList();
+    }
+}

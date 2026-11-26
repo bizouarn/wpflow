@@ -1,0 +1,44 @@
+@using Wpflow.Blazor
+@using Wpflow.Core
+
+<div class="ex">
+    <div class="ex-toolbar">
+        <label><input type="checkbox" @bind="_loose" /> Mode libre (tout handle vers tout handle)</label>
+        <label><input type="checkbox" @bind="_clickConnect" /> Connexion en deux clics</label>
+        <label><input type="checkbox" @bind="_refuse" /> Refuser les liens vers « D »</label>
+    </div>
+    <div class="ex-flow">
+        <FlowView @bind-Nodes="_nodes" @bind-Edges="_edges"
+                  ConnectionMode="@(_loose ? ConnectionMode.Loose : ConnectionMode.Strict)"
+                  ConnectOnClick="_clickConnect" IsValidConnection="IsValid"
+                  DefaultEdgeOptions="@(edge => edge with { MarkerEnd = EdgeMarker.ArrowClosed })"
+                  OnConnectEnd="OnConnectEnd" OnReconnect="@(r => _message = $"Lien déplacé : {r.NewConnection.Source} → {r.NewConnection.Target}")">
+            <FlowControls />
+        </FlowView>
+    </div>
+    <p class="ex-status" role="status">@_message</p>
+</div>
+
+@code {
+    private bool _loose;
+    private bool _clickConnect = true;
+    private bool _refuse = true;
+    private string _message = "Tirez un fil d'un point à un autre ; tirez l'extrémité d'un lien pour le rebrancher.";
+
+    private IReadOnlyList<Node> _nodes =
+    [
+        new Node("A", new XYPosition(0, 0), Data: "A"),
+        new Node("B", new XYPosition(260, 20), Data: "B"),
+        new Node("C", new XYPosition(0, 180), Data: "C"),
+        new Node("D", new XYPosition(260, 200), Data: "D")
+    ];
+
+    private IReadOnlyList<Edge> _edges = [new Edge("A-C", "A", "C", MarkerEnd: EdgeMarker.ArrowClosed)];
+
+    private bool IsValid(Connection c) => c.Source != c.Target && !(_refuse && c.Target == "D");
+
+    private void OnConnectEnd(ConnectEndEventArgs e) =>
+        _message = e is { Connection: { } c, IsValid: true }
+            ? $"Connexion {c.Source} → {c.Target}"
+            : "Aucune connexion : relâché dans le vide, ou refusé.";
+}

@@ -1,0 +1,47 @@
+@using Wpflow.Blazor
+@using Wpflow.Core
+
+<div class="ex">
+    <div class="ex-toolbar">
+        @foreach (var size in new[] { 200, 1000, 3000 })
+        {
+            <button aria-pressed="@(_count == size ? "true" : "false")" @onclick="() => Load(size)">@size nodes</button>
+        }
+        <label><input type="checkbox" @bind="_virtualize" /> Virtualisation (OnlyRenderVisibleElements)</label>
+    </div>
+    <div class="ex-flow">
+        <FlowView @key="@($"{_count}-{_virtualize}")" @bind-Nodes="_nodes" @bind-Edges="_edges"
+                  OnlyRenderVisibleElements="_virtualize" MinZoom="0.05"
+                  FitViewOptions="new FitViewOptions(MinZoom: 0.6, MaxZoom: 0.6)">
+            <FlowMiniMap />
+            <FlowControls />
+        </FlowView>
+    </div>
+    <p class="ex-status">
+        La virtualisation prend effet après le premier cadrage ; ensuite, seuls les nodes proches de la vue sont rendus.
+        Créer des milliers de nodes prend plusieurs secondes : le navigateur exécute tout sur un seul fil.
+    </p>
+</div>
+
+@code {
+    private int _count = 200;
+    private bool _virtualize = true;
+    private IReadOnlyList<Node> _nodes = [];
+    private IReadOnlyList<Edge> _edges = [];
+
+    protected override void OnInitialized() => Load(_count);
+
+    private void Load(int count)
+    {
+        _count = count;
+        var columns = (int)Math.Ceiling(Math.Sqrt(count));
+        _nodes = Enumerable.Range(0, count)
+            .Select(i => new Node($"{i}", new XYPosition(i % columns * 200, i / columns * 110), Data: $"Node {i}",
+                InitialWidth: 150, InitialHeight: 38))
+            .ToList();
+        _edges = Enumerable.Range(1, count - 1)
+            .Where(i => i % columns != 0)
+            .Select(i => new Edge($"e{i}", $"{i - 1}", $"{i}"))
+            .ToList();
+    }
+}

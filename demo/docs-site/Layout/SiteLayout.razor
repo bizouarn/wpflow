@@ -1,0 +1,18 @@
+@inherits LayoutComponentBase
+
+<header class="site-bar">
+    <a class="brand" href="">
+        <span class="brand-logo"><img src="logo.svg" alt="" width="26" height="26" /></span>
+        <span class="brand-name">wpflow</span>
+    </a>
+    <nav aria-label="Principale">
+        <NavLink href="" Match="NavLinkMatch.All">Accueil</NavLink>
+        <NavLink href="doc">Documentation</NavLink>
+        <NavLink href="exemples">Exemples</NavLink>
+        <a href="@DocLibrary.Repository">GitHub</a>
+    </nav>
+</header>
+
+<main>
+    @Body
+</main>

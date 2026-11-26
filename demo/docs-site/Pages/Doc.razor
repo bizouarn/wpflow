@@ -1,0 +1,96 @@
+@page "/doc"
+@page "/doc/{*Path}"
+@implements IDisposable
+@inject DocLibrary Library
+@inject NavigationManager Navigation
+@inject IJSRuntime Js
+
+@if (_page == null)
+{
+    <Missing />
+}
+else
+{
+    <PageTitle>@_page.Title · wpflow</PageTitle>
+
+    <div class="doc">
+        <aside class="side doc-nav">
+            <button class="side-toggle" aria-expanded="@(_menu ? "true" : "false")" @onclick="() => _menu = !_menu">Sommaire</button>
+            <nav class="side-content @(_menu ? "open" : "")" aria-label="Documentation">
+                @foreach (var group in Library.Navigation)
+                {
+                    <h2>@group.Title</h2>
+                    <ul>
+                        @foreach (var item in group.Pages)
+                        {
+                            <li><a href="@item.Route" class="@(item == _page ? "active" : null)">@item.Title</a></li>
+                        }
+                    </ul>
+                }
+            </nav>
+        </aside>
+
+        <article class="doc-body">
+            <PlatformNote Page="_page" />
+            @* Une clé par page : les exemples de la page précédente ne sont pas réutilisés. *@
+            @for (var i = 0; i < _page.Segments.Count; i++)
+            {
+                var segment = _page.Segments[i];
+                <div @key="@($"{_page.Route}#{i}")">
+                    <div class="markdown">@((MarkupString)segment.Html)</div>
+                    @if (segment.ExampleId is { } id)
+                    {
+                        <ExampleFrame Id="@id" Compact="true" />
+                    }
+                </div>
+            }
+        </article>
+
+        <aside class="doc-toc">
+            @if (_page.Headings.Any(h => h.Level == 2))
+            {
+                <h2>Sur cette page</h2>
+                <ul>
+                    @foreach (var heading in _page.Headings.Where(h => h.Level is 2 or 3))
+                    {
+                        <li class="level-@heading.Level"><a href="@($"{_page.Route}#{heading.Id}")">@heading.Text</a></li>
+                    }
+                </ul>
+            }
+        </aside>
+    </div>
+}
+
+@code {
+    private DocPage? _page;
+    private bool _menu;
+    private bool _scroll = true;
+
+    [Parameter] public string? Path { get; set; }
+
+    protected override void OnInitialized() => Navigation.LocationChanged += OnLocationChanged;
+
+    protected override void OnParametersSet()
+    {
+        _page = Library.Find(string.IsNullOrEmpty(Path) ? "doc" : "doc/" + Path);
+        _scroll = true;
+    }
+
+    // Un changement d'ancre dans la même page ne modifie pas les paramètres.
+    private void OnLocationChanged(object? sender, LocationChangedEventArgs e)
+    {
+        _scroll = true;
+        _menu = false;
+        StateHasChanged();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!_scroll || _page == null) return;
+        _scroll = false;
+        var fragment = new Uri(Navigation.Uri).Fragment.TrimStart('#');
+        await Js.InvokeVoidAsync("wpsite.scrollTo", Uri.UnescapeDataString(fragment));
+    }
+
+    public void Dispose() => Navigation.LocationChanged -= OnLocationChanged;
+}

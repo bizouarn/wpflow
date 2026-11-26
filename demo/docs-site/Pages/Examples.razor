@@ -1,0 +1,59 @@
+@page "/exemples"
+@page "/exemples/{Id}"
+@inject DocLibrary Library
+
+@{
+    var current = Id == null ? ExampleCatalog.All[0] : ExampleCatalog.Find(Id);
+}
+
+@if (current == null)
+{
+    <Missing />
+}
+else
+{
+    <PageTitle>@current.Title · Exemples wpflow</PageTitle>
+
+    <div class="examples">
+        <aside class="side examples-nav">
+            <button class="side-toggle" aria-expanded="@(_menu ? "true" : "false")" @onclick="() => _menu = !_menu">Liste des exemples</button>
+            <nav class="side-content @(_menu ? "open" : "")" aria-label="Exemples interactifs">
+                <h2>Exemples Blazor</h2>
+                <ul>
+                    @foreach (var example in ExampleCatalog.All)
+                    {
+                        <li><a href="@($"exemples/{example.Id}")" class="@(example == current ? "active" : null)">@example.Title</a></li>
+                    }
+                </ul>
+            </nav>
+        </aside>
+        <div class="examples-body">
+            <h1>@current.Title</h1>
+            <p class="lead">@current.Summary</p>
+            <p class="hint">
+                Tout s'exécute dans votre navigateur, avec <code>Wpflow.Blazor</code> en WebAssembly. La version WPF ne
+                tourne pas dans un navigateur : ses <a href="doc/examples">exemples</a> se lancent sous Windows.
+            </p>
+            <ExampleFrame Id="@current.Id" />
+            <p class="note-links">
+                <span>Documentation :</span>
+                <a class="chip" href="doc/blazor">Wpflow.Blazor</a>
+                @foreach (var file in current.Docs)
+                {
+                    if (Library.FindFile(file) is { } related)
+                    {
+                        <a class="chip" href="@related.Route">@related.Title</a>
+                    }
+                }
+            </p>
+        </div>
+    </div>
+}
+
+@code {
+    private bool _menu;
+
+    [Parameter] public string? Id { get; set; }
+
+    protected override void OnParametersSet() => _menu = false;
+}
