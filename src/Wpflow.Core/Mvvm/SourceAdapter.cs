@@ -9,6 +9,7 @@ namespace Wpflow.Core;
 ///     <c>record</c> immuables d'une vue, et écrit dans le ViewModel les changes appliqués par la vue (position, taille,
 ///     sélection, suppression…). Les records qui n'ont pas changé gardent leur référence : la vue ne retraite que ce qui a
 ///     bougé. Commun aux vues WPF et Blazor ; à utiliser sur le thread (ou le contexte de rendu) de la vue.
+///     La source ne retient pas l'adaptateur : gardez-en une référence tant qu'il doit la suivre.
 /// </summary>
 public abstract class SourceAdapter<T> : IDisposable where T : class
 {
@@ -17,6 +18,7 @@ public abstract class SourceAdapter<T> : IDisposable where T : class
     private readonly HashSet<string> _paths;
     private readonly Func<IReadOnlyList<T>> _current;
     private readonly Action<IReadOnlyList<T>> _push;
+    private readonly WeakListener _listener;
     private readonly Dictionary<string, object> _modelById = new();
     private readonly Dictionary<string, object> _removed = new(); // ViewModels retirés par la vue : un Undo les remet tels quels
     private int _writing; // > 0 pendant l'écriture vers le ViewModel : ses PropertyChanged ne sont pas des changements à relire
@@ -37,6 +39,7 @@ public abstract class SourceAdapter<T> : IDisposable where T : class
         _current = current;
         _push = push;
         _paths = [];
+        _listener = new WeakListener(this);
     }
 
     /// <summary>
@@ -64,16 +67,16 @@ public abstract class SourceAdapter<T> : IDisposable where T : class
         _paths.Add(idPath);
         if (dataPath != null) _paths.Add(dataPath);
         foreach (var binding in bindings) _paths.Add(binding.Path);
-        if (_source is INotifyCollectionChanged changed) changed.CollectionChanged += OnCollectionChanged;
+        if (_source is INotifyCollectionChanged changed) changed.CollectionChanged += _listener.CollectionChanged;
         Rebuild();
     }
 
     public void Dispose()
     {
-        if (_source is INotifyCollectionChanged changed) changed.CollectionChanged -= OnCollectionChanged;
+        if (_source is INotifyCollectionChanged changed) changed.CollectionChanged -= _listener.CollectionChanged;
         foreach (var model in _idByModel.Keys)
             if (model is INotifyPropertyChanged inpc)
-                inpc.PropertyChanged -= OnItemChanged;
+                inpc.PropertyChanged -= _listener.ItemChanged;
         _idByModel.Clear();
         _modelById.Clear();
         GC.SuppressFinalize(this);
@@ -147,6 +150,28 @@ public abstract class SourceAdapter<T> : IDisposable where T : class
         _push(list);
     }
 
+    /// <summary>
+    ///     L'abonnement à la source et aux ViewModels, qui vivent souvent plus longtemps que la vue (document rouvert) : il ne
+    ///     retient pas l'adaptateur, donc ni la vue qui le tient. Un abonnement devenu inutile se retire à la notification
+    ///     suivante.
+    /// </summary>
+    private sealed class WeakListener(SourceAdapter<T> adapter)
+    {
+        private readonly WeakReference<SourceAdapter<T>> _adapter = new(adapter);
+
+        public void CollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
+        {
+            if (_adapter.TryGetTarget(out var target)) target.OnCollectionChanged(sender, e);
+            else if (sender is INotifyCollectionChanged source) source.CollectionChanged -= CollectionChanged;
+        }
+
+        public void ItemChanged(object? sender, PropertyChangedEventArgs e)
+        {
+            if (_adapter.TryGetTarget(out var target)) target.OnItemChanged(sender, e);
+            else if (sender is INotifyPropertyChanged item) item.PropertyChanged -= ItemChanged;
+        }
+    }
+
     private T? RecordOf(object model) =>
         _idByModel.TryGetValue(model, out var id) ? _current().FirstOrDefault(r => IdOfRecord(r) == id) : null;
 
@@ -181,7 +206,7 @@ public abstract class SourceAdapter<T> : IDisposable where T : class
         var known = new HashSet<object>(models, ReferenceEqualityComparer.Instance);
         foreach (var gone in _idByModel.Keys.Where(m => !known.Contains(m)).ToList())
         {
-            if (gone is INotifyPropertyChanged inpc) inpc.PropertyChanged -= OnItemChanged;
+            if (gone is INotifyPropertyChanged inpc) inpc.PropertyChanged -= _listener.ItemChanged;
             _idByModel.Remove(gone);
         }
 
@@ -193,7 +218,7 @@ public abstract class SourceAdapter<T> : IDisposable where T : class
             var id = IdOf(model);
             if (!seen.Add(id)) continue; // id en double : le premier gagne, comme dans Changes.Apply
 
-            if (!_idByModel.ContainsKey(model) && model is INotifyPropertyChanged inpc) inpc.PropertyChanged += OnItemChanged;
+            if (!_idByModel.ContainsKey(model) && model is INotifyPropertyChanged inpc) inpc.PropertyChanged += _listener.ItemChanged;
             _idByModel[model] = id;
             _modelById[id] = model;
 

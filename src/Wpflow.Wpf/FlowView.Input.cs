@@ -386,15 +386,23 @@ public partial class FlowView
         _mode = Mode.None;
 
         HandleRef? armed = null;
-        if (wasConnect)
+        Core.Rect? box;
+        try
         {
-            if (ConnectOnClick && !moved && _reconnecting == null && _connectFrom != null) armed = _connectFrom;
-            else FinishConnection(flow);
+            if (wasConnect)
+            {
+                if (ConnectOnClick && !moved && _reconnecting == null && _connectFrom != null) armed = _connectFrom;
+                else FinishConnection(flow);
+            }
+
+            box = wasSelect ? SelectionArea(pos) : null;
+        }
+        finally
+        {
+            // Même si un gestionnaire de l'application lève une exception : la capture est rendue, la vue reste utilisable.
+            EndMode();
         }
 
-        var box = wasSelect ? SelectionArea(pos) : (Core.Rect?)null;
-        EndMode();
-        StopAutoPan();
         if (armed != null)
         {
             _clickConnect = armed;

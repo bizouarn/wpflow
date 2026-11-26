@@ -192,6 +192,16 @@ public partial class FlowView : ComponentBase, IAsyncDisposable
 
     // ---------- Callbacks du pont JS ----------
 
+    private double _scaleX = 1, _scaleY = 1;
+
+    /// <summary>Échelle imposée par les parents (<c>transform: scale()</c>), signalée par le pont JS avant la position.</summary>
+    [JSInvokable]
+    public Task OnRootScale(double scaleX, double scaleY) => InvokeAsync(() =>
+    {
+        _scaleX = scaleX > 0 ? scaleX : 1;
+        _scaleY = scaleY > 0 ? scaleY : 1;
+    });
+
     [JSInvokable]
     public Task OnRootRect(double left, double top, double width, double height) => InvokeAsync(async () =>
     {
@@ -301,7 +311,8 @@ public partial class FlowView : ComponentBase, IAsyncDisposable
         if (!ZoomOnPinch) return;
         var p = Rel(clientX, clientY);
         var v = ViewportMath.ZoomAt(Viewport, p, Viewport.Zoom * factor, MinZoom, MaxZoom);
-        await SetViewport(ViewportMath.PanBy(v, dx, dy));
+        var pan = Unscale(dx, dy);
+        await SetViewport(ViewportMath.PanBy(v, pan.X, pan.Y));
     });
 
     private async Task TryFitOnInit()
@@ -313,7 +324,11 @@ public partial class FlowView : ComponentBase, IAsyncDisposable
 
     // ---------- Coordonnées ----------
 
-    private XYPosition Rel(double clientX, double clientY) => new(clientX - _left, clientY - _top);
+    // Pixels de mise en page, relatifs au conteneur : les coordonnées de la page sont ramenées à l'échelle des parents.
+    private XYPosition Rel(double clientX, double clientY) => new((clientX - _left) / _scaleX, (clientY - _top) / _scaleY);
+
+    /// <summary>Un déplacement ou une longueur de la page, en pixels de mise en page de la vue.</summary>
+    internal XYPosition Unscale(double dx, double dy) => new(dx / _scaleX, dy / _scaleY);
 
     public XYPosition ScreenToFlow(XYPosition container) => ViewportMath.ScreenToFlow(Viewport, container);
 

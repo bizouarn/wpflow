@@ -369,6 +369,15 @@ public partial class FlowView
         }
     }
 
+    /// <summary>
+    ///     Le pont JS n'a pas eu de réponse à un relâchement (connexion coupée) : le geste resté en cours est abandonné.
+    ///     Sans effet si le relâchement est bien arrivé.
+    /// </summary>
+    [JSInvokable]
+    public Task OnGestureLost() => _mode == Mode.None
+        ? Task.CompletedTask
+        : OnPointerUp(_left + _pointer.X * _scaleX, _top + _pointer.Y * _scaleY, false, true);
+
     [JSInvokable]
     public Task OnPointerUp(double clientX, double clientY, bool shift, bool cancelled) => InvokeAsync(async () =>
     {

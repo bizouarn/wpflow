@@ -32,32 +32,21 @@ Les tailles sont relatives (S, M, L).
 
 ### Lot 4 — Conditions d'intégration hostiles (L)
 
+En place, à la vraie souris : `HostileRunner.cs` (WPF, auto-test `hostile`), `HostileTests.cs` et `ServerNetworkTests.cs` (Blazor Server et WebAssembly), `DelayProxy.cs` (latence et coupure). Il reste :
+
 WPF :
 
-- [ ] DPI 100, 150 et 200 %, deux écrans de DPI différents, fenêtre déplacée d'un écran à l'autre.
-- [ ] `FlowView` dans un `TabControl` (déchargement puis rechargement), un `ScrollViewer`, un `Popup`, un `Expander` fermé, un `Viewbox` et une fenêtre secondaire.
-- [ ] Parent avec `LayoutTransform` ou `RenderTransform` : les clics visent toujours juste.
-- [ ] Deux `FlowView` dans la même fenêtre : sélection, clavier, presse-papier et raccourcis indépendants.
-- [ ] Styles implicites agressifs dans l'application (`Button`, `Control`, `TextBlock`), thème changé à chaud.
-- [ ] Cinquante ouvertures et fermetures : vues et ViewModels libérés (références faibles), minuteries arrêtées.
-- [ ] Exception levée dans un gestionnaire de l'application : capture relâchée, vue utilisable.
-- [ ] Bureau à distance et rendu logiciel.
+- [ ] DPI 100, 150 et 200 %, deux écrans de DPI différents, fenêtre déplacée d'un écran à l'autre (le Bac à sable n'a qu'un écran à une seule échelle).
+- [ ] Bureau à distance (le rendu logiciel est essayé).
+- [ ] Minuteries : arrêtées à la fermeture d'une vue, vérifiées seulement par la libération de celle-ci.
 
-Blazor :
+Blazor (ce que les tests ne font qu'imiter) :
 
-- [ ] Page défilée, `FlowView` dans un conteneur défilant, mise en page qui change au-dessus du graphe : les clics visent toujours juste.
-- [ ] Parent avec `transform: scale()`, zoom du navigateur à 67 % et 150 %, `deviceScaleFactor` 2.
-- [ ] `FlowView` dans un onglet masqué, une boîte de dialogue ou un conteneur de taille nulle, puis affiché.
-- [ ] Deux `FlowView` sur la même page : gestes, clavier, marqueurs SVG et identifiants indépendants.
-- [ ] CSS global agressif (Bootstrap, `* { box-sizing }`, styles sur `button` et `svg`).
-- [ ] 50 allers-retours de navigation : écouteurs JS, minuteries et références .NET libérés, mémoire stable.
-- [ ] Server avec 100 et 300 ms de latence : pas de saut au glisser, ordre des évènements respecté, double-clic toujours reconnu.
-- [ ] Coupure puis reprise du circuit SignalR ; fermeture de la page pendant un geste (pas de `JSDisconnectedException`).
-- [ ] Exception levée dans un gestionnaire de l'application : le geste se termine et la vue reste utilisable.
-
-Commun :
-
-- [ ] Culture `fr-FR` (virgule décimale) : tracés, styles, JSON, export et liaisons restent valides.
+- [ ] Zoom du navigateur : imité par la taille de la page et `deviceScaleFactor`, pas par la commande de zoom.
+- [ ] CSS global : des règles écrites à la manière de Bootstrap et de Tailwind, pas leurs vraies feuilles.
+- [ ] `FlowView` dans un `<dialog>` (sont essayés : onglet masqué, conteneur invisible ou de largeur nulle).
+- [ ] Navigation entre pages : le test monte et démonte le composant 25 fois ; la mémoire JS n'est pas mesurée (les écouteurs, les éléments et les références .NET le sont).
+- [ ] Parent tourné ou incliné (`rotate`, `skew`) : seule la mise à l'échelle est prise en compte.
 
 ### Lot 5 — Navigateurs, périphériques et tactile (M)
 

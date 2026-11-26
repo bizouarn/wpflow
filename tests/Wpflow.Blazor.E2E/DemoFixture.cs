@@ -101,20 +101,38 @@ public abstract class DemoFixture : IAsyncLifetime
     }
 
     /// <summary>Ouvre la démo (taille fixe) et attend qu'elle soit interactive et mesurée (les edges sont tracés).</summary>
-    public async Task<IPage> OpenAsync(bool touch = false, string query = "")
+    /// <param name="configure">Réglages du contexte du navigateur (échelle de l'appareil, langue…).</param>
+    /// <param name="beforeLoad">Script exécuté dans la page avant son chargement.</param>
+    /// <param name="url">Une autre adresse que celle de l'application (relais qui retarde le réseau).</param>
+    /// <param name="ready">Condition JavaScript qui dit que la page est prête (par défaut, les edges sont tracés).</param>
+    public async Task<IPage> OpenAsync(bool touch = false, string query = "", Action<BrowserNewContextOptions>? configure = null,
+        string? beforeLoad = null, string? url = null, string? ready = null)
     {
-        var context = await Browser.NewContextAsync(new BrowserNewContextOptions
+        var options = new BrowserNewContextOptions
         {
             ViewportSize = new ViewportSize { Width = 1280, Height = 800 },
             HasTouch = touch,
             AcceptDownloads = true
-        });
+        };
+        configure?.Invoke(options);
+        var context = await Browser.NewContextAsync(options);
         var page = await context.NewPageAsync();
-        await page.GotoAsync(Url + query);
+        if (beforeLoad != null) await page.AddInitScriptAsync(beforeLoad);
+        await page.GotoAsync((url ?? Url) + query);
         // WebAssembly télécharge d'abord le runtime : délai large.
-        await page.WaitForFunctionAsync("document.querySelectorAll('.wf-edge-path').length >= " + ReadyEdges, null, new PageWaitForFunctionOptions { Timeout = 60000 });
+        await page.WaitForFunctionAsync(ready ?? "document.querySelectorAll('.wf-edge-path').length >= " + ReadyEdges, null,
+            new PageWaitForFunctionOptions { Timeout = 60000 });
         await page.WaitForTimeoutAsync(300); // cadrage initial
         return page;
+    }
+
+    /// <summary>Ce que le serveur a écrit jusqu'ici : une exception d'un circuit Blazor Server n'apparaît que là.</summary>
+    public string ServerLog
+    {
+        get
+        {
+            lock (_log) return string.Join("\n", _log);
+        }
     }
 }
 

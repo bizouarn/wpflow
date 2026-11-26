@@ -230,8 +230,9 @@ public partial class FlowView
 
     private void OnHistoryChanged(IFlowHistory? old, IFlowHistory? current)
     {
-        if (old is INotifyPropertyChanged o) o.PropertyChanged -= OnHistoryPropertyChanged;
-        if (current is INotifyPropertyChanged c) c.PropertyChanged += OnHistoryPropertyChanged;
+        // Abonnement faible : l'historique du ViewModel vit souvent plus longtemps que la vue.
+        if (old is INotifyPropertyChanged o) PropertyChangedEventManager.RemoveHandler(o, OnHistoryPropertyChanged, string.Empty);
+        if (current is INotifyPropertyChanged c) PropertyChangedEventManager.AddHandler(c, OnHistoryPropertyChanged, string.Empty);
         UpdateHistoryState();
     }
 

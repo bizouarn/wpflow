@@ -212,6 +212,7 @@ Les deux vues ont les mêmes évènements et les mêmes réglages, ce qu'un test
 | Double-clic sur le fond : `PaneClick`, début du zoom, `PaneClick` | `PaneClick`, `PaneClick`, puis le zoom (le navigateur envoie son `dblclick` après le second clic) |
 | `BeforeDelete` (évènement) | `OnBeforeDelete` (fonction qui répond) |
 | Glisser le fond efface la sélection à l'appui | Glisser le fond la garde ; un clic l'efface |
+| Presse-papier commun à toutes les vues de l'application | Presse-papier propre à chaque vue |
 
 - **Édition à la souris** : mêmes gestes ; le pont JS (`wpflow.js`) mesure les nodes et les handles et suit le pointeur pendant un geste.
 - **Export d'image** : `SaveImage` capture le rendu du navigateur (le calque est cloné avec ses styles calculés puis rastérisé) ; le contenu non sérialisable en SVG (canvas, vidéo, images d'une autre origine) n'y apparaît pas. `vector: true` ou `ExportSvg()` donnent un dessin simplifié (rectangle + `Node.Data`).
@@ -219,5 +220,6 @@ Les deux vues ont les mêmes évènements et les mêmes réglages, ce qu'un test
 - **Virtualisation** : avec `OnlyRenderVisibleElements`, les nodes jamais mesurés et hors de la vue ne sont pas créés ; le cadrage initial se fait avant. Sans elle, un pas de pan ne refait ni les nodes ni les edges (couche mémorisée), un node ne se rend que s'il a changé et le tracé d'un edge est mis en cache : un graphe de 1 500 nodes reste fluide.
 - **Modèles de nodes mémorisés** : un modèle (`NodeTemplate`) ne se rend que quand son node change, comme un composant React mémorisé ; un modèle qui lit l'état du parent doit recevoir cet état par le `Node` (`Node.Data`) ou être redéclaré (un délégué neuf redessine). Un état propre à l'affichage d'un node (champ en cours de renommage, case cochée) va dans un **composant enfant** rendu par le modèle, qui se redessine lui-même ; les handles qu'il déplace sont remesurés.
 - **Champs dans un node** : les touches tapées dans un champ ne sont pas traitées par le graphe (Suppr, flèches, Ctrl+A, Ctrl+Z restent au champ), et vos `@onkeydown` les reçoivent. Ajoutez `class="nodrag"` au champ.
+- **Conteneurs** : la vue peut être sous un parent en `transform: scale()`, dans une page ou un conteneur défilé, ou dans un onglet masqué puis affiché ; un parent tourné ou incliné (`rotate`, `skew`) n'est pas pris en compte.
 - **Charger un autre document** : appelez `ClearHistory()` après avoir remplacé `Nodes` et `Edges`, sinon « annuler » ramène le document précédent.
 - **Blazor Server et gros graphes** : les mesures sont découpées en messages de moins de 32 Ko, la limite par défaut de SignalR n'a pas à être augmentée.

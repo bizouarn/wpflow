@@ -74,8 +74,11 @@
     }
 
     // Les coordonnées d'un clic sont relatives à l'élément cible : on les ramène à la minimap grâce à son origine mesurée.
-    private XYPosition ToFlow(PointerEventArgs e, Rect view) =>
-        new(view.X + (e.ClientX - _origin.X) / Width * view.Width, view.Y + (e.ClientY - _origin.Y) / Height * view.Height);
+    private XYPosition ToFlow(PointerEventArgs e, Rect view)
+    {
+        var d = Flow!.Unscale(e.ClientX - _origin.X, e.ClientY - _origin.Y);
+        return new(view.X + d.X / Width * view.Width, view.Y + d.Y / Height * view.Height);
+    }
 
     private async Task Down(PointerEventArgs e, Rect view)
     {

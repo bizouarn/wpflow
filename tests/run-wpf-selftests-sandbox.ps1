@@ -4,7 +4,7 @@
 # reduit ne recoit plus de saisie.
 #
 #   ./tests/run-wpf-selftests-sandbox.ps1                  # tous les auto-tests
-#   ./tests/run-wpf-selftests-sandbox.ps1 -Only matrix     # un seul (demo, examples, perf, scenarios, matrix)
+#   ./tests/run-wpf-selftests-sandbox.ps1 -Only matrix     # un seul (demo, examples, perf, scenarios, matrix, hostile)
 #
 # Demande la fonctionnalite « Bac a sable Windows » et la commande wsb (Windows 11 24H2). Le bac a sable est coupe du
 # reseau et ne voit que trois dossiers : les binaires copies et le runtime .NET (lecture seule), et le dossier des journaux.

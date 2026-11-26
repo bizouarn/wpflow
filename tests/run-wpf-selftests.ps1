@@ -1,4 +1,4 @@
-# Auto-tests WPF a la vraie souris : demo principale, fenetre d'exemples, spike de performance, editeur de schema temoin, matrice des gestes.
+# Auto-tests WPF a la vraie souris : demo principale, fenetre d'exemples, spike de performance, editeur de schema temoin, matrice des gestes, conditions hostiles.
 # Demande un bureau interactif et deverrouille ; ne pas toucher la souris ni le clavier pendant l'execution.
 # Code de sortie : 0 si tout passe ; 1 si un run echoue (ligne ECHEC, exception, delai, code de sortie non nul, journal vide).
 param(
@@ -6,7 +6,7 @@ param(
     [string]$Output = (Join-Path $PSScriptRoot '..\artifacts\selftest'),
     [int]$PerfNodes = 500,
     [switch]$NoBuild,
-    [string[]]$Only    # noms des runs a executer (demo, examples, perf, scenarios, matrix) ; tous par defaut
+    [string[]]$Only    # noms des runs a executer (demo, examples, perf, scenarios, matrix, hostile) ; tous par defaut
 )
 
 $ErrorActionPreference = 'Stop'
@@ -30,9 +30,10 @@ $runs = @(
     @{ Name = 'perf';     Log = 'perf.perf.log';   TimeoutSeconds = 240; Env = @{ WPFLOW_PERF = "$PerfNodes" } }
     @{ Name = 'scenarios'; Log = 'scenarios.log';  TimeoutSeconds = 600; Env = @{ WPFLOW_SCENARIOS = (Join-Path $Output 'scenarios.log') }; Exe = $scenariosExe }
     @{ Name = 'matrix';    Log = 'matrix.log';     TimeoutSeconds = 600; Env = @{ WPFLOW_MATRIX = (Join-Path $Output 'matrix.log') }; Exe = $scenariosExe }
+    @{ Name = 'hostile';    Log = 'hostile.log';    TimeoutSeconds = 600; Env = @{ WPFLOW_HOSTILE = (Join-Path $Output 'hostile.log') }; Exe = $scenariosExe }
 )
 # Les variables qui choisissent un auto-test : une seule doit etre definie a la fois.
-$modes = 'WPFLOW_SELFTEST', 'WPFLOW_EXAMPLES', 'WPFLOW_PERF', 'WPFLOW_SCENARIOS', 'WPFLOW_MATRIX'
+$modes = 'WPFLOW_SELFTEST', 'WPFLOW_EXAMPLES', 'WPFLOW_PERF', 'WPFLOW_SCENARIOS', 'WPFLOW_MATRIX', 'WPFLOW_HOSTILE'
 function Clear-Variables([string[]]$names) { foreach ($v in $names) { Remove-Item "Env:$v" -ErrorAction SilentlyContinue } }
 
 $failed = @()

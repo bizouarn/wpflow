@@ -21,6 +21,7 @@ export function attach(root, dotnet) {
         mutations: new Map(),  // id -> observateur du contenu du node
         raf: 0,
         rect: null,
+        scale: [1, 1], // échelle imposée par les parents
         pointerId: null,
         moveRaf: 0,
         lastMove: null,
@@ -34,9 +35,16 @@ export function attach(root, dotnet) {
     const listen = (target, type, handler, options = {}) =>
         target.addEventListener(type, handler, { ...options, signal: s.listeners.signal });
 
+    // Position à l'écran et taille de mise en page : un parent en `transform: scale()` change la première, pas la seconde.
     const sendRect = (force) => {
         const r = root.getBoundingClientRect();
-        const next = [r.left, r.top, r.width, r.height];
+        const scaleX = ancestorScale(r.width, root.offsetWidth), scaleY = ancestorScale(r.height, root.offsetHeight);
+        const next = [r.left, r.top, r.width / scaleX, r.height / scaleY];
+        if (Math.abs(scaleX - s.scale[0]) > 0.0001 || Math.abs(scaleY - s.scale[1]) > 0.0001) {
+            s.scale = [scaleX, scaleY];
+            dotnet.invokeMethodAsync('OnRootScale', scaleX, scaleY);
+            force = true;
+        }
         if (!force && s.rect && next.every((v, i) => Math.abs(v - s.rect[i]) < 0.5)) return;
         s.rect = next;
         dotnet.invokeMethodAsync('OnRootRect', ...next);
@@ -56,6 +64,9 @@ export function attach(root, dotnet) {
     const onScroll = () => sendRect(false);
     listen(window, 'scroll', onScroll, { capture: true });
     listen(window, 'resize', onScroll);
+    // La vue peut se déplacer sans changer de taille (contenu inséré au-dessus, parent transformé) : sa position est relue
+    // quand le pointeur y revient et pendant un glisser-déposer, avant les évènements de Blazor, qui s'en servent.
+    for (const type of ['pointerenter', 'dragenter', 'drop']) listen(root, type, onScroll, { capture: true });
 
     // Molette : écoutée ici car preventDefault doit être appelé par un écouteur non passif.
     const onWheel = (e) => {
@@ -77,6 +88,19 @@ export function attach(root, dotnet) {
     };
     listen(root, 'wheel', onWheel, { passive: false });
 
+    // L'élément qui a le focus peut disparaître (node supprimé au clavier ou par sa barre d'outils) : le navigateur le rend
+    // alors à la page, et Ctrl+Z ne parviendrait plus à la vue. La racine le reprend.
+    let focused = null;
+    listen(root, 'focusin', (e) => { focused = e.target; });
+    listen(window, 'pointerdown', (e) => { if (!root.contains(e.target)) focused = null; }, { capture: true });
+    listen(window, 'focusin', (e) => { if (!root.contains(e.target)) focused = null; }, { capture: true });
+    s.focus = new MutationObserver(() => {
+        if (!focused || focused.isConnected) return;
+        focused = null;
+        if (!document.activeElement || document.activeElement === document.body) root.focus({ preventScroll: true });
+    });
+    s.focus.observe(root, { childList: true, subtree: true });
+
     // Dépôt : sans « dragover » annulé, le navigateur ne lève jamais « drop ». Fait ici : l'attribut preventDefault de
     // Blazor reste sans effet quand aucun gestionnaire n'écoute cet évènement, et en écouter un enverrait un message
     // par mouvement sur Blazor Server.
@@ -87,6 +111,7 @@ export function attach(root, dotnet) {
 
     // Début de geste : tourne avant le dispatcher d'évènements de Blazor (plus haut dans l'arbre).
     const onDown = (e) => {
+        flushLostRelease(); // un nouvel appui ne doit pas précéder la fin du geste précédent
         s.pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
         if (s.pointers.size >= 2 && s.options.pinch) {
             // Un second doigt : le geste en cours est annulé, on passe en pincement.
@@ -164,11 +189,32 @@ export function attach(root, dotnet) {
         if (e.pointerId !== s.pointerId) return;
         finish(e, e.type === 'pointercancel');
     };
+    // Connexion Blazor Server coupée : le relâchement se perd sans que la promesse échoue, et le geste resterait en cours
+    // côté serveur. Tant que .NET ne l'a pas pris en compte, la fin du geste est redemandée ; sans effet s'il l'a reçu.
+    const flushLostRelease = () => {
+        if (!s.release) return;
+        const release = s.release;
+        const done = () => { if (s.release === release) forgetRelease(); };
+        dotnet.invokeMethodAsync('OnGestureLost').then(done, () => { /* toujours coupé : nouvel essai plus tard */ });
+    };
+    const forgetRelease = () => {
+        clearInterval(s.release?.timer);
+        s.release = null;
+    };
+    const awaitRelease = (call) => {
+        forgetRelease();
+        const release = {};
+        s.release = release;
+        let tries = 0;
+        release.timer = setInterval(() => { if (++tries > 90) forgetRelease(); else flushLostRelease(); }, 2000);
+        // Seule une réponse efface la demande ; un rejet (connexion coupée, exception de l'application) reste signalé.
+        call.then(() => { if (s.release === release) forgetRelease(); });
+    };
     const finish = (e, cancelled) => {
         s.pointerId = null;
         if (s.moveRaf) { cancelAnimationFrame(s.moveRaf); s.moveRaf = 0; }
         try { root.releasePointerCapture(e.pointerId); } catch { /* ignoré */ }
-        dotnet.invokeMethodAsync('OnPointerUp', e.clientX, e.clientY, e.shiftKey, cancelled);
+        awaitRelease(dotnet.invokeMethodAsync('OnPointerUp', e.clientX, e.clientY, e.shiftKey, cancelled));
     };
     listen(root, 'pointerdown', onDown);
     // Seul « mousedown » porte le nombre de clics ; il suit « pointerdown », donc arrive après l'appui dans la vue.
@@ -194,6 +240,11 @@ export function attach(root, dotnet) {
     sendRect(true);
 }
 
+/** L'échelle d'un axe : `offsetWidth` est arrondi au pixel et ignore les transformations. */
+function ancestorScale(shown, layout) {
+    return !shown || !layout || Math.abs(shown - layout) <= 1 ? 1 : shown / layout;
+}
+
 export function setOptions(root, options) {
     const s = roots.get(root);
     if (s) Object.assign(s.options, options);
@@ -203,8 +254,10 @@ export function detach(root) {
     const s = roots.get(root);
     if (!s) return;
     s.ro.disconnect();
+    s.focus.disconnect();
     for (const m of s.mutations.values()) m.disconnect();
     s.listeners.abort();
+    clearInterval(s.release?.timer);
     if (s.raf) cancelAnimationFrame(s.raf);
     roots.delete(root);
 }

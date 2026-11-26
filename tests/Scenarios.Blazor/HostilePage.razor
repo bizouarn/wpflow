@@ -1,0 +1,105 @@
+@* Conditions d'intégration hostiles (ROADMAP-TESTS, lot 4) : deux vues sur la même page (?hostile=two), vue montée et
+   démontée à répétition (?hostile=mount), application dont les gestionnaires lèvent une exception (?hostile=throw). *@
+
+<div class="bar">
+    <button id="toggle" @onclick="() => _shown = !_shown">afficher / retirer</button>
+    <button id="count-alive" @onclick="CountAlive">vues vivantes</button>
+    <button id="arm" @onclick="() => _armed = !_armed">@(_armed ? "exceptions armées" : "armer les exceptions")</button>
+    <button id="banner" @onclick="() => _banner = !_banner">bandeau</button>
+</div>
+<div class="status">
+    <span id="alive">@_alive</span> |
+    <span id="log">@_log</span> |
+    <span id="drops">@_drop</span> |
+    <span id="thrown">@_thrown</span> |
+    <span id="culture">@(1.5.ToString())</span>
+</div>
+
+@if (_banner)
+{
+    <div id="inserted" style="height:120px">bandeau inséré au-dessus du graphe</div>
+}
+
+<div class="graph hostile-graphs" style="display:flex;gap:8px">
+    @foreach (var side in Sides)
+    {
+        if (!_shown) break;
+        <div id="@side.Name" style="flex:1;height:100%;position:relative">
+            <FlowView @key="side" @ref="side.Flow" @bind-Nodes="side.Nodes" @bind-Edges="side.Edges" FitViewOnInit="true" MaxZoom="1"
+                      OnNodeClick='a => { _log = $"{side.Name} clic {a.Node.Id}"; Throw("clic"); }'
+                      OnPaneClick='a => _log = $"{side.Name} fond"'
+                      OnNodeDragStart='_ => Throw("début")'
+                      OnNodeDragStop='a => { _log = $"{side.Name} glissé {a.Node.Id}"; Throw("fin"); }'
+                      OnConnectEnd='_ => Throw("connexion")'
+                      OnDrop='a => _drop = FormattableString.Invariant($"{a.Position.X:0};{a.Position.Y:0}")'>
+                <FlowControls />
+                <FlowMiniMap Pannable="true" />
+            </FlowView>
+        </div>
+    }
+</div>
+<div id="palette-item" draggable="true" style="position:fixed;right:8px;top:4px;border:1px solid #999;padding:2px 8px">palette</div>
+
+@code {
+    [Parameter] public string Mode { get; set; } = "two";
+
+    private sealed class Side(string name)
+    {
+        public string Name { get; } = name;
+        public FlowView? Flow;
+
+        public IReadOnlyList<Node> Nodes = new[]
+        {
+            new Node("a", new XYPosition(0, 0), "input", Data: "A"),
+            new Node("b", new XYPosition(0, 150), Data: "B"),
+            new Node("c", new XYPosition(250, 80), "output", Data: "C")
+        };
+
+        public IReadOnlyList<Edge> Edges = new[] { new Edge("e", "a", "b") { MarkerEnd = EdgeMarker.ArrowClosed } };
+    }
+
+    // Les vues montées au fil de la page : une vue retirée doit pouvoir être libérée par le ramasse-miettes.
+    private static readonly List<WeakReference<FlowView>> Mounted = new();
+
+    private readonly List<Side> _sides = new();
+    private IEnumerable<Side> Sides => _sides;
+    private bool _shown = true, _armed, _banner;
+    private string _log = "", _drop = "", _thrown = "";
+    private string _alive = "";
+
+    protected override void OnInitialized()
+    {
+        _sides.Add(new Side("left"));
+        if (Mode == "two") _sides.Add(new Side("right"));
+    }
+
+    protected override void OnAfterRender(bool firstRender)
+    {
+        if (Mode != "mount") return;
+        foreach (var side in _sides)
+        {
+            if (!_shown) side.Flow = null; // l'application ne garde pas la vue retirée
+            else if (side.Flow is { } flow && !Mounted.Any(w => w.TryGetTarget(out var f) && f == flow)) Mounted.Add(new WeakReference<FlowView>(flow));
+        }
+    }
+
+    private void Throw(string where)
+    {
+        if (!_armed) return;
+        _thrown += where + " ";
+        throw new InvalidOperationException("Exception de l'application : " + where);
+    }
+
+    private async Task CountAlive()
+    {
+        for (var i = 0; i < 3; i++)
+        {
+            await Task.Delay(50);
+            GC.Collect();
+            GC.WaitForPendingFinalizers();
+        }
+
+        lock (Mounted)
+            _alive = $"{Mounted.Count(w => w.TryGetTarget(out _))}/{Mounted.Count}";
+    }
+}

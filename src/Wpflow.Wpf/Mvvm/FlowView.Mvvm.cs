@@ -332,9 +332,10 @@ internal sealed class SelectionMirror
     private void Watch(INotifyCollectionChanged? collection)
     {
         if (ReferenceEquals(collection, _watched)) return;
-        if (_watched != null) _watched.CollectionChanged -= OnCollectionChanged;
+        // Abonnement faible : la collection liée vit souvent plus longtemps que la vue.
+        if (_watched != null) CollectionChangedEventManager.RemoveHandler(_watched, OnCollectionChanged);
         _watched = collection;
-        if (_watched != null) _watched.CollectionChanged += OnCollectionChanged;
+        if (_watched != null) CollectionChangedEventManager.AddHandler(_watched, OnCollectionChanged);
     }
 
     private void OnCollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)

@@ -1,9 +1,14 @@
-@* La page des applications témoins : l'éditeur de schéma (lot 2), ou la matrice des évènements (?matrix=geste, lot 3). *@
+@* La page des applications témoins : l'éditeur de schéma (lot 2), la matrice des évènements (?matrix=geste, lot 3) ou les
+   conditions hostiles (?hostile=mode, lot 4). *@
 @inject NavigationManager Navigation
 
-@if (Gesture is { } gesture)
+@if (Value("matrix") is { } gesture)
 {
     <MatrixEditor GestureName="@gesture" />
+}
+else if (Value("hostile") is { } mode)
+{
+    <HostilePage Mode="@mode" />
 }
 else
 {
@@ -11,13 +16,10 @@ else
 }
 
 @code {
-    private string? Gesture
+    private string? Value(string key)
     {
-        get
-        {
-            var query = new Uri(Navigation.Uri).Query.TrimStart('?').Split('&');
-            var found = query.FirstOrDefault(p => p.StartsWith("matrix="));
-            return found == null ? null : Uri.UnescapeDataString(found["matrix=".Length..]);
-        }
+        var query = new Uri(Navigation.Uri).Query.TrimStart('?').Split('&');
+        var found = query.FirstOrDefault(p => p.StartsWith(key + "="));
+        return found == null ? null : Uri.UnescapeDataString(found[(key.Length + 1)..]);
     }
 }
