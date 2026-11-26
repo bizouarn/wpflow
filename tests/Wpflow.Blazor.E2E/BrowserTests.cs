@@ -289,7 +289,8 @@ public abstract class BrowserTests(DemoFixture demo) : PagesTest(demo)
         Assert.Equal(before, await page.NodePosAsync("2")); // verrouillé
     }
 
-    [Fact]
+    // Ignoré : après le téléchargement, fermer le contexte arrête le pilote Playwright (voir work-doc/TESTS-E2E-IGNORES.md).
+    [Fact(Skip = "Plante le pilote Playwright 1.49 avec Edge : work-doc/TESTS-E2E-IGNORES.md")]
     public async Task The_png_export_downloads_a_real_image()
     {
         var page = await App.OpenAsync();
