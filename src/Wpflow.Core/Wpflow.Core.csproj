@@ -6,7 +6,7 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <RootNamespace>Wpflow.Core</RootNamespace>
     <PackageId>Wpflow.Core</PackageId>
-    <Description>Noyau sans UI de Wpflow : modèle de graphe, viewport, chemins d'edges, connexions, sérialisation JSON (port de @xyflow/system).</Description>
+    <Description>Noyau sans UI de Wpflow : modèle de graphe, viewport, chemins d'edges, connexions, sérialisation JSON.</Description>
   </PropertyGroup>
 
   <ItemGroup>

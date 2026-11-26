@@ -6,7 +6,7 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <RootNamespace>Wpflow.Blazor</RootNamespace>
     <PackageId>Wpflow.Blazor</PackageId>
-    <Description>Éditeur de graphes node/edge interactif pour Blazor, porté de xyflow (React Flow) au-dessus de Wpflow.Core.</Description>
+    <Description>Éditeur de graphes node/edge interactif pour Blazor au-dessus de Wpflow.Core.</Description>
     <PackageTags>blazor;diagram;graph;node-editor;flow;xyflow;reactflow</PackageTags>
   </PropertyGroup>
 

@@ -16,15 +16,16 @@
 </div>
 
 @code {
-    private const string DefaultColor = "#90ADCB";
+    private const string DefaultColor = "#5B7486";
     private const int DefaultZoom = 50;
 
     private static readonly string[] Settings = ["color", "shape", "zoom"];
-    private static readonly string[] Presets = ["#57DFA9", "#5FBDF8", "#1B96E6", "#F6C453", "#F47C9C"];
+    private static readonly string[] Presets =
+        ["#57DFA9", "#5FBDF8", "#818CF8", "#C084FC", "#FBBF24", "#FB923C", "#A3E635", "#E2E8F0"];
 
     private string _color = "#57DFA9";
     private bool _pyramids;
-    private int _zoom = 70;
+    private int _zoom = 50;
 
     private sealed record Render(string Color, bool Pyramids, int Zoom);
 
@@ -46,10 +47,10 @@
     {
         _nodes =
         [
-            Fixed("rendu", new XYPosition(145, 0), "render"),
-            Fixed("color", new XYPosition(0, 330), "color"),
-            Fixed("shape", new XYPosition(253, 330), "shape"),
-            Fixed("zoom", new XYPosition(506, 330), "zoom")
+            new Node("rendu", new XYPosition(140, 0), "render", Deletable: false, FixedWidth: 360, FixedHeight: 245),
+            Fixed("color", new XYPosition(0, 318), "color"),
+            Fixed("shape", new XYPosition(230, 318), "shape"),
+            Fixed("zoom", new XYPosition(460, 318), "zoom")
         ];
         Refresh();
 
@@ -61,10 +62,11 @@
                 {
                     <SolidRing Color="@r.Color" Pyramids="r.Pyramids" Zoom="r.Zoom" />
                 }
-                <div class="hero-inputs"><span>couleur</span><span>forme</span><span>zoom</span></div>
-                <FlowHandle Type="HandleType.Target" Position="Position.Bottom" HandleId="color" Offset="138" />
-                <FlowHandle Type="HandleType.Target" Position="Position.Bottom" HandleId="shape" Offset="198" />
-                <FlowHandle Type="HandleType.Target" Position="Position.Bottom" HandleId="zoom" Offset="258" />
+                <div class="hero-inputs" aria-hidden="true"><span>couleur</span><span>forme</span><span>zoom</span></div>
+                <NodeResizer NodeMinWidth="300" NodeMinHeight="160" />
+                <FlowHandle Type="HandleType.Target" Position="Position.Bottom" HandleId="color" Offset="120" />
+                <FlowHandle Type="HandleType.Target" Position="Position.Bottom" HandleId="shape" Offset="180" />
+                <FlowHandle Type="HandleType.Target" Position="Position.Bottom" HandleId="zoom" Offset="240" />
             </div>,
             ["color"] = n => @<div class="hero-card">
                 <header><i></i>COULEUR</header>

@@ -1,6 +1,6 @@
 # Documentation de Wpflow
 
-Wpflow porte [xyflow / React Flow](https://reactflow.dev/) vers WPF. Cette documentation suit l'organisation du site de React Flow : **Learn** (guides), **API Reference**, **Examples**. Quand un concept existe dans React Flow, la page indique son équivalent.
+Wpflow est un éditeur de graphes à nodes pour WPF et Blazor. Cette documentation suit l'organisation du site de React Flow : **Learn** (guides), **API Reference**, **Examples**. Quand un concept existe dans React Flow, la page indique son équivalent.
 
 Cette documentation est aussi [en ligne, avec des exemples Blazor interactifs](https://bizouarn.github.io/wpflow/) (le site est construit à partir de ces fichiers, voir [`demo/docs-site`](../demo/docs-site/)).
 

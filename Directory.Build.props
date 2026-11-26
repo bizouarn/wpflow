@@ -9,7 +9,7 @@
     <Authors>bizouarn</Authors>
     <Copyright>Copyright (c) bizouarn</Copyright>
     <Product>Wpflow</Product>
-    <Description>Éditeur de graphes node/edge interactif pour WPF, porté de xyflow (React Flow).</Description>
+    <Description>Éditeur de graphes node/edge interactif pour WPF.</Description>
     <PackageTags>wpf;diagram;graph;node-editor;flow;xyflow;reactflow</PackageTags>
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <!-- Icône de nuget.org, commune aux trois paquets : rendue en 256 × 256 depuis assets/logo.svg. -->

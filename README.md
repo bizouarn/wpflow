@@ -1,6 +1,6 @@
 # Wpflow
 
-Éditeur de graphes node/edge interactif pour **WPF** et pour **Blazor** (Server et WebAssembly), porté de [xyflow](https://github.com/xyflow/xyflow) (React Flow) : surface zoomable, nodes déplaçables dont le contenu est n'importe quel contrôle WPF, handles, connexions à la souris, edges (bézier, droits, à angles droits), minimap, contrôles, groupes, redimensionnement, thèmes clair/sombre, sérialisation JSON compatible React Flow. Les deux versions partagent le même noyau (`Wpflow.Core`) et la même logique d'interaction.
+Éditeur de graphes node/edge interactif pour **WPF** et pour **Blazor** (Server et WebAssembly), inspiré de [xyflow / React Flow](https://reactflow.dev/) : surface zoomable, nodes déplaçables dont le contenu est n'importe quel contrôle WPF, handles, connexions à la souris, edges (bézier, droits, à angles droits), minimap, contrôles, groupes, redimensionnement, thèmes clair/sombre, sérialisation JSON compatible React Flow. Les deux versions partagent le même noyau (`Wpflow.Core`) et la même logique d'interaction.
 
 | Paquet NuGet | Contenu |
 |---|---|
