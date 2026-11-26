@@ -19,10 +19,13 @@
             var ox = ((Viewport.X + layer.Offset.GetValueOrDefault().X * Viewport.Zoom) % gap + gap) % gap;
             var oy = ((Viewport.Y + layer.Offset.GetValueOrDefault().Y * Viewport.Zoom) % gap + gap) % gap;
             var dot = Math.Max(0.5, (layer.Size ?? 1) * Viewport.Zoom);
-            var arm = (layer.Size ?? 6) * Viewport.Zoom;
+            var arm = (layer.Size ?? 3) * Viewport.Zoom;
             var color = layer.Color ?? "var(--wf-dot)";
+            // Le motif est rogné à sa tuile : la croix est tracée au centre, et la tuile reculée d'une demi-case (comme en WPF).
+            var half = gap / 2;
+            var shift = layer.Variant == BackgroundVariant.Cross ? half : 0;
             <svg class="wf-background" aria-hidden="true">
-                <pattern id="wf-bg-@(_uid)-@bgId" x="@F(ox)" y="@F(oy)" width="@F(gap)" height="@F(gap)" patternUnits="userSpaceOnUse">
+                <pattern id="wf-bg-@(_uid)-@bgId" x="@F(ox - shift)" y="@F(oy - shift)" width="@F(gap)" height="@F(gap)" patternUnits="userSpaceOnUse">
                     @switch (layer.Variant)
                     {
                         case BackgroundVariant.Dots:
@@ -35,7 +38,7 @@
                             <path d="M0 0H@(F(gap))M0 0V@(F(gap))" stroke="@color" stroke-width="@F(layer.LineWidth)" opacity=".4" />
                             break;
                         case BackgroundVariant.Cross:
-                            <path d="M@(F(-arm)) 0H@(F(arm))M0 @(F(-arm))V@(F(arm))" stroke="@color" stroke-width="@F(layer.LineWidth)" />
+                            <path d="M@(F(half - arm)) @(F(half))H@(F(half + arm))M@(F(half)) @(F(half - arm))V@(F(half + arm))" stroke="@color" stroke-width="@F(layer.LineWidth)" />
                             break;
                     }
                 </pattern>

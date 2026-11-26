@@ -364,13 +364,18 @@ public partial class FlowView : ComponentBase, IAsyncDisposable
         _mode == Mode.Pan && _moved ? "wf-panning" : PanOnDrag ? "wf-pannable" : null, Class
     }.Where(s => s != null));
 
+    /// <summary>
+    ///     Virtualisation active dès que la taille de la vue est connue. Avec <see cref="FitViewOnInit" />, elle attend le
+    ///     cadrage initial, qui a besoin que tous les nodes soient rendus pour être mesurés.
+    /// </summary>
+    private bool Virtualizes => OnlyRenderVisibleElements && _width > 0 && (_didFit || !FitViewOnInit);
+
     /// <summary>Calcule les nodes à rendre (virtualisation) ; appelé une fois par rendu.</summary>
     private List<Node> PrepareRender()
     {
         _renderNodes.Clear();
-        var virtualize = OnlyRenderVisibleElements && _didFit && _width > 0;
         Rect? zone = null;
-        if (virtualize)
+        if (Virtualizes)
         {
             zone = Virtualization.Zones(ViewportMath.GetVisibleRect(Viewport, _width, _height), Viewport.Zoom).Show;
         }
@@ -455,7 +460,7 @@ public partial class FlowView : ComponentBase, IAsyncDisposable
         _rawLookup ??= id => _nodeIndex.GetValueOrDefault(id);
         _absoluteLookup ??= id => _absNodes.GetValueOrDefault(id);
         _handleLookup ??= id => _handles.GetValueOrDefault(id);
-        var virtualize = OnlyRenderVisibleElements && _didFit && _width > 0;
+        var virtualize = Virtualizes;
         var visible = virtualize ? ViewportMath.GetVisibleRect(Viewport, _width, _height) : default;
         _edgeContexts.Clear();
         var ordered = Edges.OrderBy(e => EdgeZOrder.Compute(e, ElevateEdgesOnSelect));
@@ -471,7 +476,8 @@ public partial class FlowView : ComponentBase, IAsyncDisposable
             // Résolution partagée avec la vue WPF : handles mesurés, handles annoncés, sinon milieu du côté.
             if (EdgeEndpoints.Resolve(e, _absoluteLookup, _handleLookup, Position.Bottom, Position.Top) is not { } ends)
                 continue;
-            if (virtualize && _absNodes[e.Source].Rect is { } sr && _absNodes[e.Target].Rect is { } tr && !GraphUtils.IsEdgeVisible(sr, tr, visible))
+            // Un node jamais mesuré a une taille supposée, comme en WPF : sinon les edges des nodes absents resteraient tous.
+            if (virtualize && !GraphUtils.IsEdgeVisible(ViewRect(e.Source), ViewRect(e.Target), visible))
                 continue;
 
             // Un edge dont l'edge lui-même, les extrémités et les réglages n'ont pas changé garde son tracé (déplacer un node
@@ -495,6 +501,8 @@ public partial class FlowView : ComponentBase, IAsyncDisposable
             yield return view;
         }
     }
+
+    private Rect ViewRect(string id) => _absNodes[id].Rect ?? Virtualization.AssumedRect(_absNodes[id]);
 
     private void ReportError(string code, string message)
     {

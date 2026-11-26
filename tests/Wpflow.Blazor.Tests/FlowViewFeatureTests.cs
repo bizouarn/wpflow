@@ -1242,17 +1242,56 @@ public sealed class FlowViewFeatureTests : FlowViewTestContext
     }
 
     [Fact]
-    public async Task Virtualisation_drops_far_nodes_but_keeps_their_edges_resolvable()
+    public async Task Virtualisation_works_without_FitViewOnInit()
     {
         var far = new Node("far", new XYPosition(5000, 5000), Data: "F");
         var h = Render([A, B, far], [AB, new Edge("e-far", "b", "far")], p => p.Add(f => f.OnlyRenderVisibleElements, true), fit: false);
-        await Measure(h);
-        Assert.Equal(3, h.Cut.FindAll(".wf-node").Count); // avant le premier cadrage tout est rendu
+        await Measure(h, "a", "b");
 
-        await h.Cut.InvokeAsync(() => h.Flow.FitView(new FitViewOptions(NodeIds: ["a", "b"])));
-        await h.Cut.InvokeAsync(() => h.Flow.OnRootRect(0, 0, 800, 600)); // force un rendu
-        // le cadrage sur a et b exclut far ; la virtualisation n'est active qu'après le cadrage initial
-        Assert.NotEmpty(h.Cut.FindAll("[data-node-id='a']"));
+        Assert.Equal(["a", "b"], h.Cut.FindAll(".wf-node").Select(n => n.GetAttribute("data-node-id")!).Order());
+
+        // La vue arrive près du node lointain : il est rendu, et a et b ne le sont plus.
+        await h.Cut.InvokeAsync(() => h.Flow.SetViewport(new Viewport(-4800, -4800, 1)));
+        Assert.Equal(["far"], h.Cut.FindAll(".wf-node").Select(n => n.GetAttribute("data-node-id")!));
+    }
+
+    [Fact]
+    public async Task Virtualisation_without_FitViewOnInit_culls_edges_between_unmeasured_nodes()
+    {
+        // La taille annoncée permet de tracer un edge avant toute mesure : sa visibilité doit quand même être testée.
+        Node Sized(string id, double x) => new(id, new XYPosition(x, 5000), Data: id, InitialWidth: 100, InitialHeight: 40);
+        var h = Render([A, B, Sized("c", 5000), Sized("d", 5300)], [AB, new Edge("e-cd", "c", "d")],
+            p => p.Add(f => f.OnlyRenderVisibleElements, true), fit: false);
+        await Measure(h, "a", "b");
+
+        Assert.Single(h.Cut.FindAll("g.wf-edge"));
+    }
+
+    [Fact]
+    public async Task Virtualisation_waits_for_the_initial_fit()
+    {
+        var far = new Node("far", new XYPosition(5000, 5000), Data: "F");
+        var h = Render([A, B, far], [AB], p => p.Add(f => f.OnlyRenderVisibleElements, true)
+            .Add(f => f.MinZoom, 1).Add(f => f.MaxZoom, 1), fit: true);
+
+        await Measure(h, "a", "b");
+        Assert.Equal(3, h.Cut.FindAll(".wf-node").Count); // tant que le cadrage attend une mesure, tout est rendu
+
+        await Measure(h);
+        Assert.True(h.Cut.FindAll(".wf-node").Count < 3);
+    }
+
+    [Fact]
+    public async Task Cross_background_draws_a_whole_cross_inside_its_tile()
+    {
+        var h = Render(configure: p => p.Add(f => f.BackgroundVariant, BackgroundVariant.Cross).Add(f => f.BackgroundGap, 20.0));
+        await Measure(h);
+
+        var pattern = h.Cut.Find("svg.wf-background pattern");
+        // Centre de la tuile (10,10), bras de 3 comme en WPF ; la tuile est reculée d'une demi-case.
+        Assert.Equal("-10", pattern.GetAttribute("x"));
+        Assert.Equal("-10", pattern.GetAttribute("y"));
+        Assert.Equal("M7 10H13M10 7V13", pattern.QuerySelector("path")!.GetAttribute("d"));
     }
 
     [Fact]

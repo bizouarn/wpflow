@@ -14,6 +14,11 @@ Les trois paquets (`Wpflow.Core`, `Wpflow.Wpf`, `Wpflow.Blazor`) partagent le m�
 - WPF et Blazor : les edges ne suivaient pas un node tourné (`Node.Rotation`). Leur extrémité, la direction d'où ils partent, le fil d'une connexion en cours et la recherche du handle visé tiennent désormais compte de la rotation. `GraphUtils.GetHandlePosition` et `GetHandleCenter` rendent le point tel qu'il est affiché ; les `HandleInfo` restent exprimés dans le node non tourné.
 - Blazor : les handles d'un node tourné étaient mesurés d'après son rectangle englobant, donc à une place fausse.
 
+### Correctifs (fond et virtualisation Blazor)
+
+- Blazor : le fond `BackgroundVariant.Cross` ne montrait que des coins (┌), la tuile du motif rognant les croix. La demi-longueur par défaut des croix passe de 6 à 3, comme en WPF.
+- Blazor : avec `FitViewOnInit="false"`, `OnlyRenderVisibleElements` ne s'activait jamais. La virtualisation prend désormais effet dès que la taille de la vue est connue ; un edge entre des nodes jamais mesurés est écarté d'après leur taille supposée, comme en WPF.
+
 ### Correctifs (conditions d'intégration hostiles)
 
 - Blazor : sous un parent en `transform: scale()`, les clics, le glisser, le pan, le pincement, la minimap et le cadrage visaient à côté. Le pont JS donne désormais la taille de mise en page de la vue et l'échelle de ses parents (`OnRootScale`).
