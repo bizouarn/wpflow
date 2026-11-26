@@ -7,7 +7,7 @@
     <Window.Resources>
         <!-- Label d'edge personnalisé (équivalent d'EdgeLabelRenderer) -->
         <DataTemplate x:Key="PillLabel">
-            <Border x:Name="pill" Background="#FF0071" CornerRadius="9" Padding="8,2">
+            <Border x:Name="pill" Background="#1B86D6" CornerRadius="9" Padding="8,2">
                 <TextBlock Text="{Binding Label}" Foreground="White" FontSize="10" FontWeight="SemiBold" />
             </Border>
             <DataTemplate.Triggers>
@@ -59,7 +59,7 @@
                            EdgeLabelTemplate="{StaticResource PillLabel}">
                 <flow:FlowView.Resources>
                     <!-- Surcharge locale d'une clé du thème : elle doit rester prioritaire. -->
-                    <SolidColorBrush x:Key="Flow.Edge" Color="#FF0071" />
+                    <SolidColorBrush x:Key="Flow.Edge" Color="#1B86D6" />
                 </flow:FlowView.Resources>
                 <flow:FlowPanel PanelPosition="TopLeft">
                     <TextBlock Text="straight · bezier · step · smoothstep · marqueurs · edges animés · labels personnalisés"

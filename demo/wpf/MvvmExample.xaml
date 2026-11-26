@@ -46,7 +46,7 @@
         <!-- Ligne d'état à hauteur fixe : un texte qui s'allonge ne doit pas faire passer la barre d'outils sur deux lignes (la vue se décalerait). -->
         <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Height="22" Margin="8,0,8,4">
             <TextBlock Text="{Binding Summary}" VerticalAlignment="Center" />
-            <TextBlock Text="{Binding Hint}" VerticalAlignment="Center" Margin="16,0,0,0" Foreground="#FF0071" />
+            <TextBlock Text="{Binding Hint}" VerticalAlignment="Center" Margin="16,0,0,0" Foreground="#1B86D6" />
             <TextBlock x:Name="Connecting" Text="connexion en cours…" VerticalAlignment="Center" Margin="12,0,0,0"
                        Foreground="Gray">
                 <TextBlock.Style>

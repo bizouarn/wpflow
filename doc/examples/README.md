@@ -6,7 +6,7 @@ Tous les exemples sont dans le dossier `demo/` et se lancent avec :
 dotnet run --project demo/wpf
 ```
 
-La page d'accueil reproduit la démo de [reactflow.dev](https://reactflow.dev/) ; son bouton **« Exemples »** ouvre la fenêtre d'exemples (un onglet par cas). Chaque exemple est vérifié par un auto-test qui pilote la vraie souris et le vrai clavier (voir `CLAUDE.md`).
+La page d'accueil (« Branchez. Réglez. Regardez. ») montre trois réglages câblés à un rendu ; son bouton **« Parcourir les exemples »** ouvre la fenêtre d'exemples (un onglet par cas). Chaque exemple est vérifié par un auto-test qui pilote la vraie souris et le vrai clavier (voir `CLAUDE.md`).
 
 ![Page d'accueil](../../work-doc/screenshots/demo.png)
 
@@ -16,10 +16,10 @@ La page d'accueil reproduit la démo de [reactflow.dev](https://reactflow.dev/) 
 
 La page est pilotée par un ViewModel (`HomeViewModel.cs` : nodes, liens et viewport liés, aucune logique dans la vue) — voir [MVVM](../learn/13-mvvm.md).
 
-Trois nodes d'entrée (sélecteur de couleur, forme, zoom) reliés par des edges animés à un node de sortie qui dessine un nuage de solides **3D animés**. Chaque entrée n'agit que si son edge existe : supprimez l'edge du zoom, il retombe à sa valeur par défaut ; reconnectez-le, le curseur reprend la main (le zoom suit avec une inertie).
+Trois nodes de réglage (couleur, forme, zoom) en rangée, reliés par des câbles animés à angles arrondis (`smoothstep`) au node « rendu » placé au-dessus, qui dessine un anneau de solides **3D animés**. Chaque réglage n'agit que si son câble existe : supprimez celui du zoom, le zoom retombe à sa valeur par défaut ; reconnectez-le, le curseur reprend la main (le zoom suit avec une inertie). La vue montre aussi un thème propre (clés `Flow.*` redéfinies dans `FlowView.Resources`), un fond en croix et des handles stylés.
 
 - Le sélecteur de couleur est un vrai `Popup` (pastilles + curseur de teinte) ; la couleur change aussi à la saisie d'un code hexadécimal.
-- Le node de sortie est redimensionnable (`NodeResizer`).
+- Le node « rendu » est redimensionnable (`NodeResizer`).
 
 Guide détaillé : [Calculer avec un flow](../learn/10-computing-flows.md).
 
@@ -27,7 +27,7 @@ Guide détaillé : [Calculer avec un flow](../learn/10-computing-flows.md).
 
 *Onglet « Types d'edges » — `ExamplesWindow.xaml.cs`, `BuildEdgeTypes`.*
 
-`default`, `straight`, `step`, `smoothstep` ; flèches (`MarkerEnd` / `MarkerStart`), edge animé, labels sous forme de pastilles (`EdgeLabelTemplate`), et un edge qui part du bas d'un node pour arriver à gauche d'un autre. Les edges sont roses grâce à une surcharge locale de `Flow.Edge`.
+`default`, `straight`, `step`, `smoothstep` ; flèches (`MarkerEnd` / `MarkerStart`), edge animé, labels sous forme de pastilles (`EdgeLabelTemplate`), et un edge qui part du bas d'un node pour arriver à gauche d'un autre. Les edges sont bleus grâce à une surcharge locale de `Flow.Edge`.
 
 Guide : [Edges](../learn/05-edges.md).
 

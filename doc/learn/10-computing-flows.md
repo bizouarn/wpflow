@@ -1,14 +1,14 @@
 # 10. Calculer avec un flow
 
-*Équivalent React Flow : Computing Flows — c'est la démo de la page d'accueil de reactflow.dev.*
+*Équivalent React Flow : Computing Flows.*
 
-Un flow peut servir à **calculer** : des nodes produisent des valeurs, d'autres les consomment le long des edges. La démo de Wpflow (`dotnet run --project demo/wpf`) reproduit celle de React Flow :
+Un flow peut servir à **calculer** : des nodes produisent des valeurs, d'autres les consomment le long des edges. La démo de Wpflow (`dotnet run --project demo/wpf`) le montre :
 
-- trois nodes d'entrée — **shape color** (un vrai sélecteur de couleur), **shape type** (cube ou pyramide), **zoom level** (un curseur) ;
-- un node **output** qui affiche un nuage de solides 3D animés ;
-- trois edges, un par entrée, vers trois handles distincts de l'output.
+- trois nodes de réglage — **couleur** (un vrai sélecteur de couleur), **forme** (cubes ou pyramides), **zoom** (un curseur) ;
+- un node **rendu** qui affiche un anneau de solides 3D animés ;
+- trois edges, un par réglage, vers trois handles distincts du node de rendu.
 
-Le point clé : **le node output n'utilise une valeur que si l'edge correspondant existe.** Supprimez l'edge du zoom (sélectionnez-le, Suppr) : le zoom retombe à sa valeur par défaut ; reconnectez-le : le curseur reprend la main.
+Le point clé : **le node de rendu n'utilise une valeur que si l'edge correspondant existe.** Supprimez l'edge du zoom (sélectionnez-le, Suppr) : le zoom retombe à sa valeur par défaut ; reconnectez-le : le curseur reprend la main. (Dans le code, ce node a le type `output`.)
 
 ## Le principe
 

@@ -5,8 +5,8 @@ using System.Windows.Media;
 namespace demo;
 
 /// <summary>
-///     Nuage de cubes/pyramides en 3D (projection orthographique, faces triées et ombrées), animé en continu :
-///     le nuage tourne sur lui-même et chaque solide pivote et flotte. Remplace la scène WebGL de la démo React Flow.
+///     Anneau de cubes/pyramides en 3D (projection orthographique, faces triées, ombrées et cernées), animé en continu :
+///     l'anneau tourne dans son plan et chaque solide pivote et flotte.
 ///     La couleur, la forme et le zoom viennent de <see cref="DemoState" /> (valeurs « effectives », donc seulement si
 ///     les nodes correspondants sont reliés).
 /// </summary>
@@ -16,7 +16,7 @@ public sealed class CubeField : FrameworkElement
         nameof(State), typeof(DemoState), typeof(CubeField),
         new FrameworkPropertyMetadata(null, FrameworkPropertyMetadataOptions.AffectsRender, OnStateChanged));
 
-    private const int Count = 64;
+    private const int Count = 72;
 
     private readonly (double X, double Y, double Z, double Phase, double Speed, double Size)[] _solids;
     private readonly DateTime _start = DateTime.UtcNow;
@@ -28,7 +28,7 @@ public sealed class CubeField : FrameworkElement
         var rng = new Random(11);
         _solids = Enumerable.Range(0, Count).Select(_ =>
         {
-            // Point uniforme dans une sphère de rayon 1.
+            // Point d'une boule de rayon 1 : l'écart du solide autour du cercle porteur.
             double x, y, z;
             do
             {
@@ -90,6 +90,16 @@ public sealed class CubeField : FrameworkElement
             (byte)Math.Clamp(c.R * factor, 0, 255), (byte)Math.Clamp(c.G * factor, 0, 255),
             (byte)Math.Clamp(c.B * factor, 0, 255)));
 
+    // Arête sombre (la couleur du fond) : les solides restent lisibles quand ils se recouvrent.
+    private static readonly Pen Outline = CreateOutline();
+
+    private static Pen CreateOutline()
+    {
+        var pen = new Pen(new SolidColorBrush(Color.FromRgb(0x0b, 0x1a, 0x2b)), 0.7) { LineJoin = PenLineJoin.Round };
+        pen.Freeze();
+        return pen;
+    }
+
     private readonly record struct V(double X, double Y, double Z)
     {
         public static V operator +(V a, V b) => new(a.X + b.X, a.Y + b.Y, a.Z + b.Z);
@@ -131,17 +141,20 @@ public sealed class CubeField : FrameworkElement
         // Le zoom joue sur l'échelle de la « caméra » : nuage et solides grossissent ensemble.
         var scale = Math.Min(ActualWidth, ActualHeight) * (0.10 + _zoom * 0.34);
         var cx = ActualWidth / 2;
-        var cy = ActualHeight / 2 + 6;
+        var cy = ActualHeight / 2 - 2;
         var spin = t * 0.45;
-        const double tilt = 0.45;
+        const double tilt = 0.75; // l'anneau est vu de trois quarts
         var light = new V(-0.4, 0.8, 0.6);
         var lightLen = Math.Sqrt(light.Dot(light));
         light = light * (1 / lightLen);
 
-        // Position monde de chaque solide : rotation du nuage + légère flottaison verticale.
-        var items = _solids.Select(s =>
+        // Position monde de chaque solide : sur un anneau épais, en rotation, avec une légère flottaison verticale.
+        var items = _solids.Select((s, index) =>
         {
-            var p = new V(s.X * 2.1, s.Y * 1.6 + Math.Sin(t * s.Speed + s.Phase) * 0.12, s.Z * 2.1);
+            var around = index * Math.PI * 2 / Count;
+            var radius = 2.0 + s.X * 0.4;
+            var p = new V(Math.Cos(around) * radius, s.Y * 0.4 + Math.Sin(t * s.Speed + s.Phase) * 0.12,
+                Math.Sin(around) * radius + s.Z * 0.2);
             p = p.RotY(spin).RotX(tilt);
             return (S: s, P: p);
         }).OrderBy(i => i.P.Z); // les plus lointains d'abord
@@ -149,7 +162,7 @@ public sealed class CubeField : FrameworkElement
         foreach (var (s, p) in items)
         {
             var own = t * s.Speed + s.Phase;
-            var size = s.Size * 1.6;
+            var size = s.Size * 1.5;
             // Sommets : rotation propre, puis celle du nuage, puis translation.
             var world = verts.Select(v => (v * size).RotY(own).RotZ(own * 0.6).RotY(spin).RotX(tilt) + p * 1).ToArray();
 
@@ -173,7 +186,7 @@ public sealed class CubeField : FrameworkElement
                 }
 
                 geo.Freeze();
-                dc.DrawGeometry(Shade(color, brightness), null, geo);
+                dc.DrawGeometry(Shade(color, brightness), Outline, geo);
             }
         }
     }

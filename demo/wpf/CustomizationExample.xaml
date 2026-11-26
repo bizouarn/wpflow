@@ -10,9 +10,9 @@
             <DataTemplate x:Key="wpflow-node-default">
                 <Grid>
                     <Border Tag="custom-default" Background="{DynamicResource Flow.NodeBackground}" CornerRadius="0"
-                            BorderBrush="#FF0071" BorderThickness="1" Padding="0" MinWidth="130">
+                            BorderBrush="#1B86D6" BorderThickness="1" Padding="0" MinWidth="130">
                         <StackPanel Orientation="Horizontal">
-                            <Border Width="8" Background="#FF0071" CornerRadius="0" />
+                            <Border Width="8" Background="#1B86D6" CornerRadius="0" />
                             <TextBlock Text="{Binding Data}" Margin="12,10" FontWeight="SemiBold"
                                        Foreground="{DynamicResource Flow.NodeText}" />
                         </StackPanel>
@@ -29,7 +29,7 @@
                 <Setter Property="Template">
                     <Setter.Value>
                         <ControlTemplate TargetType="flow:Handle">
-                            <Rectangle Fill="#FF0071" Stroke="White" StrokeThickness="1.5" RenderTransformOrigin="0.5,0.5">
+                            <Rectangle Fill="#1B86D6" Stroke="White" StrokeThickness="1.5" RenderTransformOrigin="0.5,0.5">
                                 <Rectangle.RenderTransform>
                                     <RotateTransform Angle="45" />
                                 </Rectangle.RenderTransform>
@@ -61,14 +61,14 @@
             <Geometry x:Key="wpflow-marker-diamond">M-12,0 L-6,-5 L0,0 L-6,5 Z</Geometry>
 
             <!-- Aperçu de la connexion en cours. -->
-            <Style x:Key="PinkConnectionLine" TargetType="Path">
-                <Setter Property="Stroke" Value="#FF0071" />
+            <Style x:Key="AccentConnectionLine" TargetType="Path">
+                <Setter Property="Stroke" Value="#1B86D6" />
                 <Setter Property="StrokeThickness" Value="2.5" />
                 <Setter Property="StrokeDashArray" Value="2,3" />
             </Style>
         </flow:FlowView.Resources>
         <flow:FlowView.ConnectionLineStyle>
-            <StaticResource ResourceKey="PinkConnectionLine" />
+            <StaticResource ResourceKey="AccentConnectionLine" />
         </flow:FlowView.ConnectionLineStyle>
 
         <Grid>

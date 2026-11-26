@@ -67,6 +67,9 @@ public sealed class HomeLinkVm : Observable
     }
 
     public bool Animated { get; init; } = true;
+
+    /// <summary>Tracé du câble : angles droits arrondis.</summary>
+    public string Type => "smoothstep";
 }
 
 /// <summary>
@@ -75,16 +78,19 @@ public sealed class HomeLinkVm : Observable
 /// </summary>
 public sealed class HomeViewModel : Observable
 {
-    private Viewport _viewport = new(560, 150, 1.1);
+    /// <summary>Cadrage de départ : le rendu au centre sous le bandeau, les trois réglages en rangée en dessous.</summary>
+    public static readonly Viewport InitialViewport = new(592, 178, 1.1);
+
+    private Viewport _viewport = InitialViewport;
 
     public HomeViewModel()
     {
         Nodes =
         [
-            new HomeNodeVm { Id = "color", Kind = "color", State = State, X = 0, Y = 0 },
-            new HomeNodeVm { Id = "shape", Kind = "shape", State = State, X = -35, Y = 85 },
-            new HomeNodeVm { Id = "zoom", Kind = "zoom", State = State, X = -10, Y = 190 },
-            new HomeNodeVm { Id = "output", Kind = "output", State = State, X = 215, Y = 25, Width = 300, Height = 250 }
+            new HomeNodeVm { Id = "color", Kind = "color", State = State, X = -320, Y = 318 },
+            new HomeNodeVm { Id = "shape", Kind = "shape", State = State, X = -90, Y = 318 },
+            new HomeNodeVm { Id = "zoom", Kind = "zoom", State = State, X = 140, Y = 318 },
+            new HomeNodeVm { Id = "output", Kind = "output", State = State, X = -180, Y = 0, Width = 360, Height = 245 }
         ];
         Links =
         [

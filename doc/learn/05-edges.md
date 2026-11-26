@@ -45,7 +45,7 @@ Définissez un `DataTemplate` dont le `DataContext` est l'`Edge` et affectez-le 
 
 ```xml
 <DataTemplate x:Key="PillLabel">
-    <Border x:Name="pill" Background="#FF0071" CornerRadius="9" Padding="8,2">
+    <Border x:Name="pill" Background="#1B86D6" CornerRadius="9" Padding="8,2">
         <TextBlock Text="{Binding Label}" Foreground="White" FontSize="10" />
     </Border>
     <DataTemplate.Triggers>

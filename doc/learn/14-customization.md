@@ -48,7 +48,7 @@ Un `Handle` se dessine lui-même (8 × 8, disque). Pour le changer, un style imp
     <Setter Property="Template">
         <Setter.Value>
             <ControlTemplate TargetType="flow:Handle">
-                <Rectangle Fill="#FF0071" Stroke="White" StrokeThickness="1.5" RenderTransformOrigin="0.5,0.5">
+                <Rectangle Fill="#1B86D6" Stroke="White" StrokeThickness="1.5" RenderTransformOrigin="0.5,0.5">
                     <Rectangle.RenderTransform><RotateTransform Angle="45" /></Rectangle.RenderTransform>
                 </Rectangle>
             </ControlTemplate>

@@ -11,6 +11,11 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <!-- L'icône des paquets sert aussi de marque dans la démo. -->
+    <Resource Include="..\..\assets\icon.png" Link="icon.png" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\..\src\Wpflow.Wpf\Wpflow.Wpf.csproj" />
   </ItemGroup>
 

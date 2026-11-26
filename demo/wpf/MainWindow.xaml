@@ -3,52 +3,79 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:flow="clr-namespace:Wpflow.Wpf;assembly=Wpflow.Wpf"
         xmlns:demo="clr-namespace:demo"
-        Title="WPFlow" Height="720" Width="1200" Background="White"
+        Title="wpflow" Height="720" Width="1200" Background="#0B1A2B" Icon="icon.png"
         FontFamily="Segoe UI">
     <Window.DataContext>
         <demo:HomeViewModel />
     </Window.DataContext>
     <Window.Resources>
-        <SolidColorBrush x:Key="Pink" Color="#FF0071" />
-        <DropShadowEffect x:Key="CardShadow" BlurRadius="14" ShadowDepth="2" Direction="270" Opacity="0.12" />
+        <!-- Identité de la démo : marine, menthe (signal) et bleu ciel (réglage), les couleurs du logo. -->
+        <SolidColorBrush x:Key="Ink" Color="#0B1A2B" />
+        <SolidColorBrush x:Key="Panel" Color="#10263F" />
+        <SolidColorBrush x:Key="PanelBorder" Color="#1F456B" />
+        <SolidColorBrush x:Key="Text" Color="#EAF3FC" />
+        <SolidColorBrush x:Key="Muted" Color="#90ADCB" />
+        <SolidColorBrush x:Key="Mint" Color="#57DFA9" />
+        <SolidColorBrush x:Key="Sky" Color="#5FBDF8" />
+        <FontFamily x:Key="Display">Bahnschrift, Segoe UI</FontFamily>
+        <FontFamily x:Key="Mono">Cascadia Mono, Consolas</FontFamily>
+        <DropShadowEffect x:Key="CardShadow" BlurRadius="18" ShadowDepth="4" Direction="270" Opacity="0.35" />
 
         <Style x:Key="Card" TargetType="Border">
-            <Setter Property="Background" Value="White" />
-            <Setter Property="CornerRadius" Value="0" />
-            <Setter Property="Padding" Value="12,10,12,12" />
-            <Setter Property="BorderBrush" Value="#EEEEF2" />
+            <Setter Property="Background" Value="{StaticResource Panel}" />
+            <Setter Property="CornerRadius" Value="10" />
+            <Setter Property="BorderBrush" Value="{StaticResource PanelBorder}" />
             <Setter Property="BorderThickness" Value="1" />
             <Setter Property="Effect" Value="{StaticResource CardShadow}" />
         </Style>
 
         <Style x:Key="CardTitle" TargetType="TextBlock">
-            <Setter Property="FontSize" Value="9" />
+            <Setter Property="FontFamily" Value="{StaticResource Display}" />
+            <Setter Property="FontSize" Value="10" />
             <Setter Property="FontWeight" Value="SemiBold" />
-            <Setter Property="Foreground" Value="#111" />
+            <Setter Property="Foreground" Value="{StaticResource Text}" />
+            <Setter Property="VerticalAlignment" Value="Center" />
         </Style>
 
-        <Style x:Key="PinkSlider" TargetType="Slider">
+        <!-- Bandeau de titre d'une carte : un voyant puis le nom. -->
+        <Style x:Key="CardHeader" TargetType="Border">
+            <Setter Property="BorderBrush" Value="{StaticResource PanelBorder}" />
+            <Setter Property="BorderThickness" Value="0,0,0,1" />
+            <Setter Property="Padding" Value="12,7" />
+        </Style>
+
+        <!-- Les points de connexion : des douilles (anneau menthe). -->
+        <Style TargetType="flow:Handle">
+            <Setter Property="Width" Value="11" />
+            <Setter Property="Height" Value="11" />
+            <Setter Property="Background" Value="{StaticResource Ink}" />
+            <Setter Property="BorderBrush" Value="{StaticResource Mint}" />
+            <Setter Property="BorderThickness" Value="2.5" />
+        </Style>
+
+        <Style x:Key="AccentSlider" TargetType="Slider">
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="Slider">
                         <Grid Height="16" Background="Transparent">
-                            <Border Height="4" CornerRadius="2" Background="#E5E7EB" VerticalAlignment="Center" />
+                            <Border Height="4" CornerRadius="2" Background="{StaticResource PanelBorder}" VerticalAlignment="Center" />
                             <Track x:Name="PART_Track">
                                 <Track.DecreaseRepeatButton>
                                     <RepeatButton Command="Slider.DecreaseLarge" Focusable="False">
                                         <RepeatButton.Template>
                                             <ControlTemplate TargetType="RepeatButton">
-                                                <Border Height="4" CornerRadius="2" Background="{StaticResource Pink}"
+                                                <Border Height="4" CornerRadius="2" Background="{StaticResource Mint}"
                                                         VerticalAlignment="Center" />
                                             </ControlTemplate>
                                         </RepeatButton.Template>
                                     </RepeatButton>
                                 </Track.DecreaseRepeatButton>
                                 <Track.Thumb>
-                                    <Thumb Width="12" Height="12" Focusable="False">
+                                    <Thumb Width="10" Height="16" Focusable="False">
                                         <Thumb.Template>
                                             <ControlTemplate TargetType="Thumb">
-                                                <Ellipse Fill="{StaticResource Pink}" Stroke="White" StrokeThickness="1.5" />
+                                                <Border CornerRadius="3" Background="{StaticResource Sky}" BorderBrush="{StaticResource Ink}"
+                                                        BorderThickness="1.5" />
                                             </ControlTemplate>
                                         </Thumb.Template>
                                     </Thumb>
@@ -69,27 +96,22 @@
             </Setter>
         </Style>
 
-        <Style x:Key="PinkRadio" TargetType="RadioButton">
-            <Setter Property="FontSize" Value="9" />
-            <Setter Property="Foreground" Value="#444" />
-            <Setter Property="Margin" Value="0,6,0,0" />
+        <!-- Choix de la forme : des RadioButton présentés en segments. -->
+        <Style x:Key="Segment" TargetType="RadioButton">
+            <Setter Property="FontSize" Value="10" />
+            <Setter Property="Foreground" Value="{StaticResource Muted}" />
+            <Setter Property="Cursor" Value="Hand" />
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="RadioButton">
-                        <StackPanel Orientation="Horizontal" Background="Transparent">
-                            <Grid Width="12" Height="12" VerticalAlignment="Center">
-                                <Ellipse Stroke="#9CA3AF" StrokeThickness="1" Fill="White" />
-                                <Ellipse x:Name="dot" Width="6" Height="6" Fill="{StaticResource Pink}"
-                                         Visibility="Collapsed" />
-                                <Ellipse x:Name="ring" Stroke="{StaticResource Pink}" StrokeThickness="1.2"
-                                         Visibility="Collapsed" />
-                            </Grid>
-                            <TextBlock Text="{TemplateBinding Content}" Margin="7,0,0,0" VerticalAlignment="Center" />
-                        </StackPanel>
+                        <Border x:Name="bd" CornerRadius="5" Padding="0,5" Background="Transparent">
+                            <ContentPresenter HorizontalAlignment="Center" />
+                        </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsChecked" Value="True">
-                                <Setter TargetName="dot" Property="Visibility" Value="Visible" />
-                                <Setter TargetName="ring" Property="Visibility" Value="Visible" />
+                                <Setter TargetName="bd" Property="Background" Value="{StaticResource Mint}" />
+                                <Setter Property="Foreground" Value="{StaticResource Ink}" />
+                                <Setter Property="FontWeight" Value="SemiBold" />
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
@@ -100,24 +122,28 @@
         <!-- Les clés « wpflow-node-{type} » sont résolues par chaque node selon Node.Type. -->
         <DataTemplate x:Key="wpflow-node-color">
             <Grid>
-                <Border Style="{StaticResource Card}" Width="150">
-                    <StackPanel>
-                        <TextBlock Text="shape color" Style="{StaticResource CardTitle}" />
-                        <StackPanel Orientation="Horizontal" Margin="0,9,0,0">
-                            <ToggleButton x:Name="swatch" Width="15" Height="15" Cursor="Hand" Focusable="False"
+                <Border Style="{StaticResource Card}" Width="180" Height="82">
+                    <DockPanel>
+                        <Border DockPanel.Dock="Top" Style="{StaticResource CardHeader}">
+                            <StackPanel Orientation="Horizontal">
+                                <Ellipse Width="6" Height="6" Fill="{StaticResource Sky}" Margin="0,0,7,0" />
+                                <TextBlock Text="COULEUR" Style="{StaticResource CardTitle}" />
+                            </StackPanel>
+                        </Border>
+                        <StackPanel Orientation="Horizontal" Margin="12,0" VerticalAlignment="Center">
+                            <ToggleButton x:Name="swatch" Width="26" Height="26" Cursor="Hand" Focusable="False"
                                           ToolTip="Choisir la couleur">
                                 <ToggleButton.Template>
                                     <ControlTemplate TargetType="ToggleButton">
-                                        <Border CornerRadius="3" Background="{Binding Data.Brush}" BorderBrush="#DDD"
-                                                BorderThickness="1" />
+                                        <Border CornerRadius="13" Background="{Binding Data.Brush}"
+                                                BorderBrush="{StaticResource Text}" BorderThickness="1.5" />
                                     </ControlTemplate>
                                 </ToggleButton.Template>
                             </ToggleButton>
                             <Popup IsOpen="{Binding IsChecked, ElementName=swatch, Mode=TwoWay}" StaysOpen="False"
-                                   PlacementTarget="{Binding ElementName=swatch}" Placement="Bottom" AllowsTransparency="True"
-                                   VerticalOffset="6">
-                                <Border Background="White" CornerRadius="8" Padding="10" Margin="8" BorderBrush="#EEEEF2"
-                                        BorderThickness="1" Effect="{StaticResource CardShadow}">
+                                   PlacementTarget="{Binding ElementName=swatch}" Placement="Top" AllowsTransparency="True"
+                                   VerticalOffset="-2">
+                                <Border Style="{StaticResource Card}" Padding="10" Margin="8">
                                     <StackPanel Width="132">
                                         <ItemsControl ItemsSource="{Binding Data.Presets}">
                                             <ItemsControl.ItemsPanel>
@@ -125,12 +151,12 @@
                                             </ItemsControl.ItemsPanel>
                                             <ItemsControl.ItemTemplate>
                                                 <DataTemplate>
-                                                    <Button Width="22" Height="22" Margin="2" Cursor="Hand" Focusable="False"
+                                                    <Button Width="25" Height="25" Margin="4" Cursor="Hand" Focusable="False"
                                                             Command="{Binding DataContext.Data.SetColorCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
                                                             CommandParameter="{Binding}">
                                                         <Button.Template>
                                                             <ControlTemplate TargetType="Button">
-                                                                <Border CornerRadius="11" Background="{TemplateBinding Background}" />
+                                                                <Border CornerRadius="13" Background="{TemplateBinding Background}" />
                                                             </ControlTemplate>
                                                         </Button.Template>
                                                         <Button.Background>
@@ -140,105 +166,163 @@
                                                 </DataTemplate>
                                             </ItemsControl.ItemTemplate>
                                         </ItemsControl>
-                                        <TextBlock Text="teinte" Style="{StaticResource CardTitle}" Margin="0,8,0,4" />
+                                        <TextBlock Text="TEINTE" Style="{StaticResource CardTitle}" Margin="0,8,0,4" />
                                         <Slider Minimum="0" Maximum="359" Value="{Binding Data.Hue, Mode=TwoWay}"
-                                                Style="{StaticResource PinkSlider}" />
+                                                Style="{StaticResource AccentSlider}" />
                                     </StackPanel>
                                 </Border>
                             </Popup>
                             <TextBox Text="{Binding Data.ColorHex, UpdateSourceTrigger=PropertyChanged}"
-                                     Margin="8,0,0,0" Width="78" FontSize="9" BorderThickness="0" Padding="0"
-                                     VerticalAlignment="Center" Foreground="#444" />
+                                     Margin="12,0,0,0" Width="100" FontFamily="{StaticResource Mono}" FontSize="12"
+                                     Background="Transparent" BorderThickness="0" Padding="0" CaretBrush="{StaticResource Text}"
+                                     VerticalAlignment="Center" Foreground="{StaticResource Text}" />
                         </StackPanel>
-                    </StackPanel>
+                    </DockPanel>
                 </Border>
-                <flow:Handle Type="Source" Position="Right" />
+                <flow:Handle Type="Source" Position="Top" />
             </Grid>
         </DataTemplate>
 
         <DataTemplate x:Key="wpflow-node-shape">
             <Grid>
-                <Border Style="{StaticResource Card}" Width="150">
-                    <StackPanel>
-                        <TextBlock Text="shape type" Style="{StaticResource CardTitle}" />
-                        <RadioButton Content="cube" GroupName="shape" Style="{StaticResource PinkRadio}"
-                                     IsChecked="{Binding Data.IsCube, Mode=TwoWay}" />
-                        <RadioButton Content="pyramid" GroupName="shape" Style="{StaticResource PinkRadio}"
-                                     IsChecked="{Binding Data.IsPyramid, Mode=TwoWay}" />
-                    </StackPanel>
+                <Border Style="{StaticResource Card}" Width="180" Height="82">
+                    <DockPanel>
+                        <Border DockPanel.Dock="Top" Style="{StaticResource CardHeader}">
+                            <StackPanel Orientation="Horizontal">
+                                <Ellipse Width="6" Height="6" Fill="{StaticResource Sky}" Margin="0,0,7,0" />
+                                <TextBlock Text="FORME" Style="{StaticResource CardTitle}" />
+                            </StackPanel>
+                        </Border>
+                        <Border Margin="12,0" Padding="2" CornerRadius="7" Background="{StaticResource Ink}"
+                                VerticalAlignment="Center">
+                            <UniformGrid Columns="2">
+                                <RadioButton Content="cubes" GroupName="shape" Style="{StaticResource Segment}"
+                                             IsChecked="{Binding Data.IsCube, Mode=TwoWay}" />
+                                <RadioButton Content="pyramides" GroupName="shape" Style="{StaticResource Segment}"
+                                             IsChecked="{Binding Data.IsPyramid, Mode=TwoWay}" />
+                            </UniformGrid>
+                        </Border>
+                    </DockPanel>
                 </Border>
-                <flow:Handle Type="Source" Position="Right" />
+                <flow:Handle Type="Source" Position="Top" />
             </Grid>
         </DataTemplate>
 
         <DataTemplate x:Key="wpflow-node-zoom">
             <Grid>
-                <Border Style="{StaticResource Card}" Width="150">
-                    <StackPanel>
-                        <TextBlock Text="zoom level" Style="{StaticResource CardTitle}" />
+                <Border Style="{StaticResource Card}" Width="180" Height="82">
+                    <DockPanel>
+                        <Border DockPanel.Dock="Top" Style="{StaticResource CardHeader}">
+                            <Grid>
+                                <StackPanel Orientation="Horizontal">
+                                    <Ellipse Width="6" Height="6" Fill="{StaticResource Sky}" Margin="0,0,7,0" />
+                                    <TextBlock Text="ZOOM" Style="{StaticResource CardTitle}" />
+                                </StackPanel>
+                                <TextBlock Text="{Binding Data.Zoom, StringFormat={}{0:P0}}" HorizontalAlignment="Right"
+                                           FontFamily="{StaticResource Mono}" FontSize="10" Foreground="{StaticResource Muted}" />
+                            </Grid>
+                        </Border>
                         <Slider Minimum="0" Maximum="1" Value="{Binding Data.Zoom, Mode=TwoWay}"
-                                Style="{StaticResource PinkSlider}" Margin="0,10,0,0" />
-                    </StackPanel>
+                                Style="{StaticResource AccentSlider}" Margin="14,0" VerticalAlignment="Center" />
+                    </DockPanel>
                 </Border>
-                <flow:Handle Type="Source" Position="Right" />
+                <flow:Handle Type="Source" Position="Top" />
             </Grid>
         </DataTemplate>
 
         <DataTemplate x:Key="wpflow-node-output">
             <Grid>
                 <Border Style="{StaticResource Card}">
-                    <Grid>
-                        <TextBlock Text="output" Style="{StaticResource CardTitle}" VerticalAlignment="Top" />
-                        <demo:CubeField State="{Binding Data}" Margin="0,14,0,0" />
-                    </Grid>
+                    <DockPanel>
+                        <Border DockPanel.Dock="Top" Style="{StaticResource CardHeader}">
+                            <StackPanel Orientation="Horizontal">
+                                <Ellipse Width="6" Height="6" Fill="{StaticResource Mint}" Margin="0,0,7,0" />
+                                <TextBlock Text="RENDU" Style="{StaticResource CardTitle}" />
+                            </StackPanel>
+                        </Border>
+                        <!-- Le nom de chaque entrée, au-dessus de sa douille (mêmes décalages que les Handle). -->
+                        <Canvas DockPanel.Dock="Bottom" Height="18">
+                            <Canvas.Resources>
+                                <Style TargetType="TextBlock">
+                                    <Setter Property="Width" Value="60" />
+                                    <Setter Property="TextAlignment" Value="Center" />
+                                    <Setter Property="FontSize" Value="8" />
+                                    <Setter Property="Foreground" Value="{StaticResource Muted}" />
+                                </Style>
+                            </Canvas.Resources>
+                            <TextBlock Canvas.Left="89" Text="couleur" />
+                            <TextBlock Canvas.Left="149" Text="forme" />
+                            <TextBlock Canvas.Left="209" Text="zoom" />
+                        </Canvas>
+                        <demo:CubeField State="{Binding Data}" ClipToBounds="True" />
+                    </DockPanel>
                 </Border>
-                <flow:NodeResizer NodeMinWidth="180" NodeMinHeight="140" />
-                <flow:Handle Type="Target" Position="Left" HandleId="color" Offset="48" />
-                <flow:Handle Type="Target" Position="Left" HandleId="shape" Offset="62" />
-                <flow:Handle Type="Target" Position="Left" HandleId="zoom" Offset="76" />
+                <flow:NodeResizer NodeMinWidth="300" NodeMinHeight="160" />
+                <flow:Handle Type="Target" Position="Bottom" HandleId="color" Offset="120" />
+                <flow:Handle Type="Target" Position="Bottom" HandleId="shape" Offset="180" />
+                <flow:Handle Type="Target" Position="Bottom" HandleId="zoom" Offset="240" />
             </Grid>
         </DataTemplate>
     </Window.Resources>
 
-    <flow:FlowView x:Name="Flow" EdgeStroke="#A1A1AA" EdgeStrokeThickness="1.3" MinZoom="0.3" MaxZoom="2"
+    <flow:FlowView x:Name="Flow" ColorMode="Dark" BackgroundVariant="Cross" BackgroundGap="32"
+                   EdgeStrokeThickness="2" MinZoom="0.3" MaxZoom="2"
                    NodesSource="{Binding Nodes}" EdgesSource="{Binding Links}"
                    Viewport="{Binding Viewport, Mode=TwoWay}" EdgeFactory="{Binding LinkFactory}">
+        <flow:FlowView.Resources>
+            <SolidColorBrush x:Key="Flow.Background" Color="#0B1A2B" />
+            <SolidColorBrush x:Key="Flow.Dots" Color="#1C3D60" />
+            <SolidColorBrush x:Key="Flow.Edge" Color="#57DFA9" />
+            <SolidColorBrush x:Key="Flow.EdgeSelected" Color="#5FBDF8" />
+            <SolidColorBrush x:Key="Flow.NodeBorderSelected" Color="#5FBDF8" />
+            <SolidColorBrush x:Key="Flow.Outline" Color="#5FBDF8" />
+            <SolidColorBrush x:Key="Flow.MiniMapBackground" Color="#0E2137" />
+            <SolidColorBrush x:Key="Flow.MiniMapNode" Color="#2A5784" />
+            <SolidColorBrush x:Key="Flow.MiniMapNodeSelected" Color="#5FBDF8" />
+            <SolidColorBrush x:Key="Flow.MiniMapMask" Color="#B3061220" />
+            <SolidColorBrush x:Key="Flow.ControlsBackground" Color="#10263F" />
+            <SolidColorBrush x:Key="Flow.ControlsForeground" Color="#EAF3FC" />
+            <SolidColorBrush x:Key="Flow.ControlsBorder" Color="#1F456B" />
+            <SolidColorBrush x:Key="Flow.ControlsHover" Color="#18385A" />
+        </flow:FlowView.Resources>
         <flow:FlowView.NodeMapping>
             <flow:NodeMapping TypePath="Kind" DataPath="State" WidthPath="Width" HeightPath="Height" />
         </flow:FlowView.NodeMapping>
         <flow:FlowView.EdgeMapping>
-            <flow:EdgeMapping TargetHandlePath="TargetHandle" AnimatedPath="Animated" />
+            <flow:EdgeMapping TypePath="Type" TargetHandlePath="TargetHandle" AnimatedPath="Animated" />
         </flow:FlowView.EdgeMapping>
         <Grid>
-            <!-- Texte d'accueil façon reactflow.dev -->
-            <StackPanel HorizontalAlignment="Left" VerticalAlignment="Center" Margin="50,0,0,40"
-                        IsHitTestVisible="False">
-                <TextBlock Text="Wire your ideas" FontFamily="Segoe UI Black" FontSize="52" Foreground="Black"
-                           LineHeight="56" LineStackingStrategy="BlockLineHeight" />
-                <TextBlock FontFamily="Segoe UI Black" FontSize="52" LineHeight="56"
-                           LineStackingStrategy="BlockLineHeight">
-                    <Run Text="with " Foreground="Black" /><Run Text="WPFlow" Foreground="{StaticResource Pink}" />
+            <!-- Bandeau d'accueil : marque et accroche à gauche, explication et accès aux exemples à droite. -->
+            <StackPanel HorizontalAlignment="Left" VerticalAlignment="Top" Margin="36,24,0,0" IsHitTestVisible="False">
+                <StackPanel Orientation="Horizontal">
+                    <!-- Pastille claire : le carré marine du logo, transparent, se perdrait sur le fond. -->
+                    <Border Background="{StaticResource Text}" CornerRadius="8" Padding="3">
+                        <Image Source="icon.png" Width="30" Height="30" RenderOptions.BitmapScalingMode="HighQuality" />
+                    </Border>
+                    <TextBlock Text="wpflow" FontFamily="{StaticResource Display}" FontSize="21" Margin="10,0,0,0"
+                               VerticalAlignment="Center" Foreground="{StaticResource Muted}" />
+                </StackPanel>
+                <TextBlock Margin="0,14,0,0" FontFamily="{StaticResource Display}" FontSize="42" FontWeight="SemiBold">
+                    <Run Text="Branchez. Réglez. " Foreground="{StaticResource Text}" /><Run Text="Regardez." Foreground="{StaticResource Mint}" />
                 </TextBlock>
-                <TextBlock Margin="0,22,0,0" FontSize="17" Foreground="#222" TextWrapping="Wrap" Width="420"
-                           Text="A customizable WPF control for building node-based editors and interactive diagrams." />
             </StackPanel>
 
-            <Border HorizontalAlignment="Left" VerticalAlignment="Center" Margin="50,230,0,0" Background="{StaticResource Pink}"
-                    CornerRadius="22" Padding="22,10" Cursor="Hand">
-                <TextBlock Text="⚡ Quickstart" Foreground="White" FontWeight="SemiBold" FontSize="15" />
-            </Border>
-
-            <Border HorizontalAlignment="Left" VerticalAlignment="Center" Margin="208,230,0,0" Background="White"
-                    BorderBrush="{StaticResource Pink}" BorderThickness="1.5" CornerRadius="22" Padding="22,8.5" Cursor="Hand"
-                    >
-                <Border.InputBindings>
-                    <MouseBinding MouseAction="LeftClick" Command="{Binding OpenExamplesCommand}" />
-                </Border.InputBindings>
-                <TextBlock Text="✦ Exemples" Foreground="{StaticResource Pink}" FontWeight="SemiBold" FontSize="15" />
-            </Border>
+            <StackPanel HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,30,36,0" Width="290">
+                <TextBlock FontSize="13" LineHeight="19" TextWrapping="Wrap" TextAlignment="Right"
+                           Foreground="{StaticResource Muted}" IsHitTestVisible="False"
+                           Text="L'éditeur de graphes à nodes pour WPF et Blazor. Débranchez un câble : le rendu réagit aussitôt." />
+                <Border HorizontalAlignment="Right" Margin="0,14,0,0" Background="Transparent"
+                        BorderBrush="{StaticResource Sky}" BorderThickness="1.5" CornerRadius="6" Padding="16,7" Cursor="Hand">
+                    <Border.InputBindings>
+                        <MouseBinding MouseAction="LeftClick" Command="{Binding OpenExamplesCommand}" />
+                    </Border.InputBindings>
+                    <TextBlock Text="Parcourir les exemples  →" Foreground="{StaticResource Sky}"
+                               FontFamily="{StaticResource Display}" FontSize="14" />
+                </Border>
+            </StackPanel>
 
             <flow:MiniMap />
-            <flow:FlowControls />
+            <flow:FlowControls Orientation="Horizontal" />
         </Grid>
     </flow:FlowView>
 </Window>

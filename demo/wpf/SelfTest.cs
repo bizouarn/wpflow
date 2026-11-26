@@ -21,13 +21,13 @@ internal static class SelfTest
         static bool Near(double actual, double expected, double tolerance = 2) => Math.Abs(actual - expected) <= tolerance;
         await Task.Delay(1000);
 
-        // 1. Déplacement du node "shape" de (-80, +60) pixels écran.
+        // 1. Déplacement du node "shape" de (-40, +20) pixels écran (loin des bords, pour ne pas déclencher l'auto-pan).
         var shape = Find<NodeHost>(flow).First(h => h.Node?.Id == "shape");
         var before = flow.Nodes.First(n => n.Id == "shape").Position;
-        var center = Screen(shape, new Point(shape.ActualWidth / 2, 8));
-        await Drag(center, (center.X - 80, center.Y + 60));
+        var center = Screen(shape, new Point(30, 10)); // le bandeau du titre ; la douille est au milieu du bord haut
+        await Drag(center, (center.X - 40, center.Y + 20));
         var after = flow.Nodes.First(n => n.Id == "shape").Position;
-        Check("drag: le node suit la souris", Near(after.X - before.X, -80 / flow.Viewport.Zoom) && Near(after.Y - before.Y, 60 / flow.Viewport.Zoom),
+        Check("drag: le node suit la souris", Near(after.X - before.X, -40 / flow.Viewport.Zoom) && Near(after.Y - before.Y, 20 / flow.Viewport.Zoom),
             $"{before} -> {after} (zoom {flow.Viewport.Zoom})");
 
         // 2. Connexion color -> output (handle "zoom") : un 4e edge doit apparaître.
@@ -50,7 +50,7 @@ internal static class SelfTest
 
         // 4. Pan par glisser sur le fond.
         var vpBefore = flow.Viewport;
-        var empty = Screen(flow, new Point(300, 80));
+        var empty = Screen(flow, new Point(100, 300));
         await Drag(empty, (empty.X + 50, empty.Y + 30));
         Check("pan: la vue suit la souris sans zoomer",
             Near(flow.Viewport.X - vpBefore.X, 50) && Near(flow.Viewport.Y - vpBefore.Y, 30) && flow.Viewport.Zoom == vpBefore.Zoom,
@@ -58,7 +58,7 @@ internal static class SelfTest
 
         // 5. Sélection puis suppression avec la touche Suppr.
         var zoomNode = Find<NodeHost>(flow).First(h => h.Node?.Id == "zoom");
-        var zc = Screen(zoomNode, new Point(zoomNode.ActualWidth / 2, 8));
+        var zc = Screen(zoomNode, new Point(30, 10));
         await Drag(zc, (zc.X, zc.Y)); // simple clic
         Check("clic: le node est sélectionné", flow.Nodes.First(n => n.Id == "zoom").Selected);
 
@@ -67,8 +67,8 @@ internal static class SelfTest
         var shapeHandle = Find<Handle>(output).First(h => h.HandleId == "shape");
         var colorHandle = Find<Handle>(output).First(h => h.HandleId == "color");
         var zoomLevel = flow.Viewport.Zoom;
-        var grab = Screen(shapeHandle, new Point(0, shapeHandle.ActualHeight / 2));
-        grab = new Point(grab.X - 12 * zoomLevel, grab.Y);
+        var grab = Screen(shapeHandle, new Point(shapeHandle.ActualWidth / 2, shapeHandle.ActualHeight));
+        grab = new Point(grab.X, grab.Y + 12 * zoomLevel); // le câble arrive par le bas
         var drop = Screen(colorHandle, new Point(colorHandle.ActualWidth / 2, colorHandle.ActualHeight / 2));
         await Drag(grab, (drop.X, drop.Y));
         var reconnected = flow.Edges.First(e => e.Id == "e-shape");
@@ -88,7 +88,7 @@ internal static class SelfTest
         Check("rétablir: le déplacement", redonePosition == after, $"{redonePosition} (attendu {after})");
 
         // 8. Redimensionnement : on sélectionne "output" (clic sur son titre) puis on tire son coin bas-droit.
-        flow.Viewport = new Viewport(560, 150, 1.1); // le node doit être entièrement visible
+        flow.Viewport = HomeViewModel.InitialViewport; // le node doit être entièrement visible
         await Task.Delay(300);
         var outHost = Find<NodeHost>(flow).First(h => h.Node?.Id == "output");
         var oc = Screen(outHost, new Point(40, 10));
@@ -115,7 +115,7 @@ internal static class SelfTest
         Check("redimensionnement: le node reste sélectionné", s2.Selected);
 
         // 10. Animation des cubes : l'angle avance et l'image change d'une capture à l'autre.
-        flow.Viewport = new Viewport(560, 150, 1.1);
+        flow.Viewport = HomeViewModel.InitialViewport;
         await Task.Delay(300);
         var field = Find<demo.CubeField>(Find<NodeHost>(flow).First(h => h.Node?.Id == "output")).First();
         var angle0 = field.Angle;
@@ -175,7 +175,7 @@ internal static class SelfTest
         Check("sélecteur: un preset change la couleur des cubes", colorState.ColorHex != colorBefore,
             $"ColorHex {colorBefore} -> {colorState.ColorHex}, couleur effective {colorState.EffectiveColor}");
         var frameBlue = Snapshot(field);
-        colorState.ColorHex = "#ff0071";
+        colorState.ColorHex = DemoState.InitialColorHex;
         await Task.Delay(300);
         Check("sélecteur: les cubes sont redessinés", !frameBlue.SequenceEqual(Snapshot(field)));
 

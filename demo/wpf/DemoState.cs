@@ -5,11 +5,13 @@ using System.Windows.Media;
 
 namespace demo;
 
-/// <summary>État partagé par les nodes de la démo (couleur, forme, zoom), comme dans l'exemple de la page d'accueil de React Flow.</summary>
+/// <summary>État partagé par les nodes de la démo (couleur, forme, zoom).</summary>
 public sealed class DemoState : INotifyPropertyChanged
 {
-    private string _colorHex = "#ff0071";
-    private Color _color = Color.FromRgb(0xff, 0x00, 0x71);
+    public const string InitialColorHex = "#57dfa9";
+
+    private string _colorHex = InitialColorHex;
+    private Color _color = Color.FromRgb(0x57, 0xdf, 0xa9);
     private bool _isCube = true;
     private double _zoom = 0.5;
 
@@ -80,9 +82,9 @@ public sealed class DemoState : INotifyPropertyChanged
     /// <summary>Couleurs proposées par le sélecteur.</summary>
     public IReadOnlyList<Color> Presets { get; } =
     [
-        Color.FromRgb(0xff, 0x00, 0x71), Color.FromRgb(0xff, 0x7a, 0x00), Color.FromRgb(0xff, 0xc8, 0x00),
-        Color.FromRgb(0x2e, 0xcc, 0x71), Color.FromRgb(0x00, 0xb8, 0xd9), Color.FromRgb(0x3b, 0x82, 0xf6),
-        Color.FromRgb(0x8b, 0x5c, 0xf6), Color.FromRgb(0x11, 0x18, 0x27)
+        Color.FromRgb(0x57, 0xdf, 0xa9), Color.FromRgb(0x5f, 0xbd, 0xf8), Color.FromRgb(0x81, 0x8c, 0xf8),
+        Color.FromRgb(0xc0, 0x84, 0xfc), Color.FromRgb(0xfb, 0xbf, 0x24), Color.FromRgb(0xfb, 0x92, 0x3c),
+        Color.FromRgb(0xa3, 0xe6, 0x35), Color.FromRgb(0xe2, 0xe8, 0xf0)
     ];
 
     private ICommand? _setColor;
@@ -118,9 +120,9 @@ public sealed class DemoState : INotifyPropertyChanged
         }
     }
 
-    // Comme dans la démo de React Flow, le node « output » ne lit une valeur que si le node correspondant
+    // Le node « rendu » ne lit une valeur que si le node correspondant
     // lui est relié : sans edge, il retombe sur la valeur par défaut.
-    public static readonly Color DefaultColor = Color.FromRgb(0x9c, 0xa3, 0xaf);
+    public static readonly Color DefaultColor = Color.FromRgb(0x5b, 0x74, 0x86);
     public const double DefaultZoom = 0.5;
 
     private bool _useColor = true, _useShape = true, _useZoom = true;

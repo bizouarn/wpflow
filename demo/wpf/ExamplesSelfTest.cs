@@ -40,7 +40,7 @@ internal static class ExamplesSelfTest
         var overridden = (win.Edges.ThemeBrush("Flow.Edge") as SolidColorBrush)?.Color;
         var inherited = (win.Edges.ThemeBrush("Flow.Background") as SolidColorBrush)?.Color;
         Check("thème: la clé surchargée dans FlowView.Resources l'emporte, le reste vient du thème",
-            overridden == Color.FromRgb(0xff, 0x00, 0x71) && inherited == Colors.White, $"Flow.Edge={overridden}, Flow.Background={inherited}");
+            overridden == Color.FromRgb(0x1b, 0x86, 0xd6) && inherited == Colors.White, $"Flow.Edge={overridden}, Flow.Background={inherited}");
 
         await Groups();
         await Tools();

@@ -11,7 +11,7 @@
 ![Démo](work-doc/screenshots/demo.png)
 
 ```bash
-dotnet run --project demo/wpf        # page d'accueil façon reactflow.dev ; le bouton « Exemples » ouvre les autres cas
+dotnet run --project demo/wpf        # démo d'accueil ; « Parcourir les exemples » ouvre les autres cas
 ASPNETCORE_ENVIRONMENT=Development dotnet run --project demo/blazor --urls http://localhost:5189   # démo Blazor Server
 dotnet run --project demo/blazor-wasm --urls http://localhost:5190                                 # démo Blazor WebAssembly
 dotnet test tests/Wpflow.Core.Tests
@@ -24,7 +24,7 @@ dotnet test tests/Wpflow.Core.Tests
 | `src/Wpflow.Core` (net8.0) | Logique **sans UI**, portée de `@xyflow/system` : modèle immuable, viewport, chemins d'edges, connexions, nodes imbriqués, JSON, disposition automatique. Testée (`tests/`). |
 | `src/Wpflow.Wpf` (net8.0-windows) | Contrôles WPF : `FlowView`, `Handle`, `NodeResizer`, `NodeToolbar`, `MiniMap`, `FlowControls`, `FlowPanel`. |
 | `src/Wpflow.Blazor` (net8.0) | Composants Blazor : `FlowView`, `FlowHandle`, `NodeResizer`, `NodeRotator`, `NodeToolbar`, `FlowMiniMap`, `FlowControls`, `FlowPanel`, pont JS (mesure, molette, pointeur, export d'image). Testés avec bUnit et dans un vrai Chrome (Playwright). |
-| `demo/wpf` | Page d'accueil (réplique de reactflow.dev) et fenêtre d'exemples. |
+| `demo/wpf` | Démo d'accueil (un rendu 3D réglé par trois nodes) et fenêtre d'exemples. |
 | `demo/blazor`, `demo/blazor-wasm`, `demo/blazor-shared` | Démo Blazor (hôtes Server et WebAssembly, composant `Demo` partagé). |
 
 ## Démarrage rapide

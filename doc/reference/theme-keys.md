@@ -42,7 +42,7 @@ Brush brush = Flow.ThemeBrush("Flow.Edge");
 ```xml
 <flow:FlowView>
     <flow:FlowView.Resources>
-        <SolidColorBrush x:Key="Flow.Edge" Color="#FF0071" />
+        <SolidColorBrush x:Key="Flow.Edge" Color="#1B86D6" />
     </flow:FlowView.Resources>
 </flow:FlowView>
 ```

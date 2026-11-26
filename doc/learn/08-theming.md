@@ -21,7 +21,7 @@ Toutes les couleurs sont des ressources `Flow.*` ([liste complète](../reference
 ```xml
 <flow:FlowView>
     <flow:FlowView.Resources>
-        <SolidColorBrush x:Key="Flow.Edge" Color="#FF0071" />
+        <SolidColorBrush x:Key="Flow.Edge" Color="#1B86D6" />
         <SolidColorBrush x:Key="Flow.NodeBackground" Color="#FFF7FA" />
     </flow:FlowView.Resources>
 </flow:FlowView>

@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="355 48 660 660">
+  <title>wpflow</title>
+  <!-- Trois nodes en escalier, reliés par des edges à angles arrondis. Fond transparent.
+       Palette (celle de la démo) : marine #163C61, bleu #1B96E6, ciel #5FBDF8, menthe #57DFA9. -->
+
+  <!-- Edges : un par le haut, un par le bas, entre chaque paire de nodes. -->
+  <g fill="none" stroke-width="14" stroke-linejoin="round">
+    <path stroke="#1B96E6" d="M480 420 V359 Q480 339 500 339 H545"/>
+    <path stroke="#163C61" d="M592 580 H667 Q687 580 687 560 V528"/>
+    <path stroke="#57DFA9" d="M688 274 V209 Q688 189 708 189 H753"/>
+    <path stroke="#57DFA9" d="M797 433 H866 Q886 433 886 413 V385"/>
+  </g>
+  <path fill="#1B96E6" d="M539 317 L575 339 L539 361 Z"/>
+  <path fill="#163C61" d="M665 534 L687 498 L709 534 Z"/>
+  <path fill="#57DFA9" d="M747 167 L783 189 L747 211 Z"/>
+  <path fill="#57DFA9" d="M864 391 L886 355 L908 391 Z"/>
+
+  <!-- Nodes. -->
+  <rect x="363" y="415" width="234" height="234" fill="#163C61"/>
+  <rect x="573" y="269" width="230" height="230" fill="#5FBDF8"/>
+  <rect x="781" y="107" width="226" height="249" fill="#57DFA9"/>
+
+  <!-- Recouvrements. -->
+  <rect x="573" y="415" width="24" height="84" fill="#1B96E6"/>
+  <rect x="781" y="269" width="22" height="87" fill="#1B96E6"/>
+</svg>

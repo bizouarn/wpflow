@@ -4,7 +4,7 @@ Objectif : fournir en WPF l'équivalent de [xyflow](https://github.com/xyflow/xy
 
 ## Démo cible
 
-**La démo (`demo/`) doit rester proche de celle de la page d'accueil de [reactflow.dev](https://reactflow.dev/)** : fond en points, nodes à l'apparence React Flow, edges bézier avec flèches et edges animés, minimap, boutons de contrôle, pan/zoom fluides, drag, connexions à la souris, sélection. Capture de référence : `screenshots/demo.png`. Une fonctionnalité n'est « finie » que quand elle est visible dans la démo ou couverte par un auto-test (`WPFLOW_SELFTEST=1`, `WPFLOW_EXAMPLES=selftest`).
+**La démo (`demo/`) a sa propre identité** (elle ne copie plus la page d'accueil de reactflow.dev) : un « établi » sombre — marine, menthe, bleu ciel (les couleurs du logo) —, un bandeau d'accueil, et le même type d'exemple interactif : trois nodes de réglage à vrais contrôles WPF câblés (`smoothstep` animé) à un node de rendu, minimap, boutons de contrôle, pan/zoom, drag, connexions à la souris, sélection. Capture de référence : `screenshots/demo.png`. Une fonctionnalité n'est « finie » que quand elle est visible dans la démo ou couverte par un auto-test (`WPFLOW_SELFTEST=1`, `WPFLOW_EXAMPLES=selftest`).
 
 ## Reste à faire — impossible depuis cette machine
 

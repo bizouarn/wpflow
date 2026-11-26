@@ -4,6 +4,10 @@ Les trois paquets (`Wpflow.Core`, `Wpflow.Wpf`, `Wpflow.Blazor`) partagent le m�
 
 ## Non publié
 
+### Ajouts
+
+- Les trois paquets ont une icône (`PackageIcon`, source `assets/logo.svg`).
+
 ### Correctifs (conditions d'intégration hostiles)
 
 - Blazor : sous un parent en `transform: scale()`, les clics, le glisser, le pan, le pincement, la minimap et le cadrage visaient à côté. Le pont JS donne désormais la taille de mise en page de la vue et l'échelle de ses parents (`OnRootScale`).
