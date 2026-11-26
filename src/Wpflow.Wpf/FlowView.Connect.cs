@@ -28,16 +28,17 @@ public partial class FlowView
         bool? valid = target == null ? null : Validate(from, target, out _);
 
         var end = mouseFlow;
-        var endSide = ViewLogic.Opposite(from.Info.Position);
+        var startSide = GraphUtils.GetHandleSide(node, from.Info.Position);
+        var endSide = ViewLogic.Opposite(startSide);
         if (target != null && _nodeIndex.TryGetValue(target.NodeId, out var targetNode))
         {
             end = GraphUtils.GetHandleCenter(targetNode, target.Info); // le fil s'accroche au handle
-            endSide = target.Info.Position;
+            endSide = GraphUtils.GetHandleSide(targetNode, target.Info.Position);
         }
 
-        var path = ViewLogic.ConnectionLine(ConnectionLineType, start, from.Info.Position, end, endSide);
+        var path = ViewLogic.ConnectionLine(ConnectionLineType, start, startSide, end, endSide);
 
-        var state = new FlowConnectionState(from.NodeId, from.Info.Id, from.Info.Type, from.Info.Position, start, end,
+        var state = new FlowConnectionState(from.NodeId, from.Info.Id, from.Info.Type, startSide, start, end,
             target?.NodeId, target?.Info.Id, valid, _reconnecting != null);
         SetConnectionState(state);
         ApplyHandleStatus(from, target, valid);

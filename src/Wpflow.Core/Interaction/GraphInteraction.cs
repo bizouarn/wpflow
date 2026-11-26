@@ -87,10 +87,10 @@ public static class EdgeEndpoints
         if (list != null)
         {
             var info = list.FirstOrDefault(h => h.Type == type && (string.IsNullOrEmpty(handleId) || h.Id == handleId));
-            if (info != null) return (GraphUtils.GetHandlePosition(node, info.Position, info), info.Position);
+            if (info != null) return (GraphUtils.GetHandlePosition(node, info.Position, info), GraphUtils.GetHandleSide(node, info.Position));
         }
 
-        return node.Rect is null ? null : (GraphUtils.GetHandlePosition(node, fallback), fallback);
+        return node.Rect is null ? null : (GraphUtils.GetHandlePosition(node, fallback), GraphUtils.GetHandleSide(node, fallback));
     }
 }
 

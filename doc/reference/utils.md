@@ -60,6 +60,7 @@ Viewport ClampToExtent(Viewport v, double width, double height, Rect extent);   
 Rect? GetNodesBounds(IEnumerable<Node> nodes);      // nodes mesurés, en coordonnées absolues ; null s'il n'y en a pas
 XYPosition GetHandlePosition(Node node, Position position, HandleInfo? handle = null);   // point d'attache d'un edge
 XYPosition GetHandleCenter(Node node, HandleInfo handle);                                // centre du handle (distance de connexion)
+Position GetHandleSide(Node node, Position position);                                    // côté vers lequel regarde un handle une fois le node tourné
 T? GetClosestHandle<T>(XYPosition point, double radius,
                        IEnumerable<(T Handle, XYPosition Position)> candidates) where T : class;
 XYPosition ClampToExtent(XYPosition position, double width, double height, Rect extent); // nodeExtent
@@ -68,6 +69,8 @@ bool IsEdgeVisible(Rect sourceNode, Rect targetNode, Rect visible);
 ```
 
 `GetHandlePosition` renvoie le **bord extérieur** du handle du côté indiqué (comme `getHandlePosition` de xyflow) : c'est là qu'un edge se termine, ce qui laisse visible une flèche.
+
+Sur un node tourné (`Node.Rotation`), `GetHandlePosition` et `GetHandleCenter` rendent le point tel qu'il est affiché, le node tournant autour de son centre ; les `HandleInfo` restent exprimés dans le node non tourné. `GetHandleSide` donne la direction que prennent alors les edges, au quart de tour le plus proche.
 
 ## NodeTree
 

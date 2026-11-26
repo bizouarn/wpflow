@@ -7,6 +7,12 @@ Les trois paquets (`Wpflow.Core`, `Wpflow.Wpf`, `Wpflow.Blazor`) partagent le m�
 ### Ajouts
 
 - Les trois paquets ont une icône (`PackageIcon`, source `assets/logo.svg`).
+- `GraphUtils.GetHandleSide(node, position)` : le côté vers lequel regarde un handle une fois le node tourné.
+
+### Correctifs (nodes tournés)
+
+- WPF et Blazor : les edges ne suivaient pas un node tourné (`Node.Rotation`). Leur extrémité, la direction d'où ils partent, le fil d'une connexion en cours et la recherche du handle visé tiennent désormais compte de la rotation. `GraphUtils.GetHandlePosition` et `GetHandleCenter` rendent le point tel qu'il est affiché ; les `HandleInfo` restent exprimés dans le node non tourné.
+- Blazor : les handles d'un node tourné étaient mesurés d'après son rectangle englobant, donc à une place fausse.
 
 ### Correctifs (conditions d'intégration hostiles)
 

@@ -419,21 +419,36 @@ function measure(el, id) {
     // Zoom du viewport (offsetWidth ignore les transformations). Une rotation élargit le rectangle du node : l'échelle se
     // lit alors sur le calque.
     let k = nr.width / w || 1;
-    if (el.style.transform.includes('rotate')) {
+    const turned = /rotate\((-?[\d.]+)deg\)/.exec(el.style.transform);
+    if (turned) {
         const viewport = el.closest('.wf-viewport');
         k = viewport.getBoundingClientRect().width / (viewport.offsetWidth || 1) || 1;
     }
+    const angle = turned ? Number(turned[1]) * Math.PI / 180 : 0;
+    const cos = Math.cos(angle), sin = Math.sin(angle);
     const handles = [];
     for (const he of el.querySelectorAll('.wf-handle')) {
         const r = he.getBoundingClientRect();
+        let x = (r.left - nr.left) / k, y = (r.top - nr.top) / k, width = r.width / k, height = r.height / k;
+        if (turned) {
+            // Les handles sont annoncés dans le node non tourné (comme en WPF) : le centre affiché est ramené en tournant
+            // à l'envers autour du centre du node, qui est aussi celui de son rectangle englobant.
+            const dx = (r.left + r.width / 2 - nr.left - nr.width / 2) / k;
+            const dy = (r.top + r.height / 2 - nr.top - nr.height / 2) / k;
+            width = he.offsetWidth;
+            height = he.offsetHeight;
+            x = w / 2 + dx * cos + dy * sin - width / 2;
+            y = h / 2 - dx * sin + dy * cos - height / 2;
+        }
+
         handles.push({
             id: he.dataset.handleid || null,
             type: he.dataset.type,
             position: he.dataset.position,
-            x: (r.left - nr.left) / k,
-            y: (r.top - nr.top) / k,
-            width: r.width / k,
-            height: r.height / k,
+            x,
+            y,
+            width,
+            height,
             connectable: he.dataset.connectable !== 'false',
             connectableStart: he.dataset.connectableStart !== 'false',
             connectableEnd: he.dataset.connectableEnd !== 'false'

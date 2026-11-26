@@ -701,11 +701,16 @@ public partial class FlowView
         if (!ShowsConnection || _from is not { } from) return null;
         if (!_absNodes.TryGetValue(from.NodeId, out var n)) return null;
         var start = GraphUtils.GetHandlePosition(n, from.Handle.Position, from.Handle);
-        var endPos = _candidate is { } c ? c.Handle.Position : ViewLogic.Opposite(from.Handle.Position);
+        var startSide = GraphUtils.GetHandleSide(n, from.Handle.Position);
+        var endSide = ViewLogic.Opposite(startSide);
         var end = _cursorFlow;
         if (_candidate is { } cand && _absNodes.TryGetValue(cand.NodeId, out var cn))
+        {
             end = GraphUtils.GetHandlePosition(cn, cand.Handle.Position, cand.Handle);
-        return ViewLogic.ConnectionLine(ConnectionLineType, start, from.Handle.Position, end, endPos).Path;
+            endSide = GraphUtils.GetHandleSide(cn, cand.Handle.Position);
+        }
+
+        return ViewLogic.ConnectionLine(ConnectionLineType, start, startSide, end, endSide).Path;
     }
 
     private ConnectionState CurrentConnectionState()

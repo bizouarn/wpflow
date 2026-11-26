@@ -24,7 +24,30 @@ public static class GraphUtils
 
     /// <summary>Centre d'un handle (utilisé pour la distance de connexion, comme <c>getHandlePosition(..., center = true)</c>).</summary>
     public static XYPosition GetHandleCenter(Node node, HandleInfo handle) =>
-        new(node.Position.X + handle.X + handle.Width / 2, node.Position.Y + handle.Y + handle.Height / 2);
+        Turn(node, new XYPosition(node.Position.X + handle.X + handle.Width / 2, node.Position.Y + handle.Y + handle.Height / 2));
+
+    /// <summary>
+    ///     Le côté vers lequel regarde un handle du côté <paramref name="position" /> une fois le node tourné
+    ///     (<see cref="Node.Rotation" />), au quart de tour le plus proche : c'est la direction que prennent les edges.
+    /// </summary>
+    public static Position GetHandleSide(Node node, Position position)
+    {
+        var quarters = (int)Math.Round(node.Rotation / 90, MidpointRounding.AwayFromZero) % 4;
+        if (quarters == 0) return position;
+        Position[] clockwise = [Position.Top, Position.Right, Position.Bottom, Position.Left];
+        return clockwise[(Array.IndexOf(clockwise, position) + quarters + 4) % 4];
+    }
+
+    // Un point donné dans le node non tourné, là où il est affiché : le node tourne autour de son centre. Les handles sont
+    // mesurés sans la rotation.
+    private static XYPosition Turn(Node node, XYPosition point)
+    {
+        if (node.Rotation == 0 || node.Width is not { } width || node.Height is not { } height) return point;
+        var (cx, cy) = (node.Position.X + width / 2, node.Position.Y + height / 2);
+        var (sin, cos) = Math.SinCos(node.Rotation * Math.PI / 180);
+        var (dx, dy) = (point.X - cx, point.Y - cy);
+        return new XYPosition(cx + dx * cos - dy * sin, cy + dx * sin + dy * cos);
+    }
 
     /// <summary>
     ///     Un edge est visible si le rectangle englobant ses deux nodes recoupe la zone visible
@@ -58,7 +81,7 @@ public static class GraphUtils
             _ => throw new ArgumentOutOfRangeException(nameof(position))
         };
 
-        return new XYPosition(node.Position.X + dx, node.Position.Y + dy);
+        return Turn(node, new XYPosition(node.Position.X + dx, node.Position.Y + dy));
     }
 
     /// <summary>Distance entre deux points.</summary>
