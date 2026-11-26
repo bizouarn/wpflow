@@ -76,10 +76,15 @@ public partial class FlowView
     }
 
     /// <summary>Texte annoncé par les lecteurs d'écran (notification UI Automation) ; sans effet s'il n'y en a pas.</summary>
-    internal void Announce(string text) =>
+    internal void Announce(string text)
+    {
+        // La notification UI Automation n'existe pas en .NET Framework 4.7.2 : aucune annonce sur cette cible.
+#if !NETFRAMEWORK
         System.Windows.Automation.Peers.UIElementAutomationPeer.FromElement(this)?.RaiseNotificationEvent(
             System.Windows.Automation.AutomationNotificationKind.Other,
             System.Windows.Automation.AutomationNotificationProcessing.MostRecent, text, "wpflow.selection");
+#endif
+    }
 
     #region Portail
 

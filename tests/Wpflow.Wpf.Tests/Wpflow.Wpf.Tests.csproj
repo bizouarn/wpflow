@@ -1,7 +1,9 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>net10.0-windows</TargetFramework>
+    <!-- net472 : les mêmes tests sur la version .NET Framework de la vue. -->
+    <TargetFrameworks>net10.0-windows;net472</TargetFrameworks>
+    <LangVersion>latest</LangVersion>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <UseWPF>true</UseWPF>
@@ -23,10 +25,18 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\Wpflow.Wpf\Wpflow.Wpf.csproj" />
+  </ItemGroup>
+
+  <ItemGroup Condition="'$(TargetFramework)' != 'net472'">
     <!-- Pour comparer les API des deux vues (ViewParityTests). -->
     <ProjectReference Include="..\..\src\Wpflow.Blazor\Wpflow.Blazor.csproj" />
     <!-- La matrice des évènements et des gestes (EventMatrixGuardTests). -->
     <ProjectReference Include="..\Scenarios.Shared\Scenarios.Shared.csproj" />
+  </ItemGroup>
+
+  <!-- Blazor et les scénarios sont en .NET 8 : ces deux gardes ne tournent que sur la cible récente. -->
+  <ItemGroup Condition="'$(TargetFramework)' == 'net472'">
+    <Compile Remove="ViewParityTests.cs;EventMatrixGuardTests.cs" />
   </ItemGroup>
 
 </Project>

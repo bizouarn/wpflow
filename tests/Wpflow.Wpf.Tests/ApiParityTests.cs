@@ -93,7 +93,7 @@ public class ApiParityTests
 
             flow.SelectOnly("a", null);
             var deleted = flow.DeleteSelected();
-            Assert.True(deleted.IsCompletedSuccessfully && deleted.Result);
+            Assert.True(deleted.Status == TaskStatus.RanToCompletion && deleted.Result);
             Assert.Equal(["b"], flow.Nodes.Select(n => n.Id));
             Assert.Empty(flow.Edges);
             Assert.False(flow.DeleteSelected().Result); // plus rien de sélectionné

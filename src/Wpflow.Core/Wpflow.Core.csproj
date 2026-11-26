@@ -1,13 +1,22 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>net8.0</TargetFramework>
+    <!-- netstandard2.0 sert .NET Core 2.0 et suivants jusqu'à .NET 7. -->
+    <TargetFrameworks>net8.0;netstandard2.0;net472</TargetFrameworks>
+    <LangVersion>latest</LangVersion>
     <Nullable>enable</Nullable>
+    <!-- Le BCL des anciennes cibles n'est pas annoté : la nullabilité est vérifiée par le build .NET 8. -->
+    <Nullable Condition="!$(TargetFramework.StartsWith('net8.0'))">annotations</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <RootNamespace>Wpflow.Core</RootNamespace>
     <PackageId>Wpflow.Core</PackageId>
     <Description>Noyau sans UI de Wpflow : modèle de graphe, viewport, chemins d'edges, connexions, sérialisation JSON.</Description>
   </PropertyGroup>
+
+  <!-- System.Text.Json est fourni par le framework en .NET 8 ; les anciennes cibles le prennent sur NuGet. -->
+  <ItemGroup Condition="'$(TargetFramework)' == 'netstandard2.0' Or '$(TargetFramework)' == 'net472'">
+    <PackageReference Include="System.Text.Json" Version="8.0.*" />
+  </ItemGroup>
 
   <ItemGroup>
     <InternalsVisibleTo Include="Wpflow.Core.Tests" />

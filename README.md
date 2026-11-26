@@ -24,8 +24,8 @@ dotnet test tests/Wpflow.Core.Tests
 
 | Projet | Rôle |
 |---|---|
-| `src/Wpflow.Core` (net8.0) | Logique **sans UI**, portée de `@xyflow/system` : modèle immuable, viewport, chemins d'edges, connexions, nodes imbriqués, JSON, disposition automatique. Testée (`tests/`). |
-| `src/Wpflow.Wpf` (net8.0-windows) | Contrôles WPF : `FlowView`, `Handle`, `NodeResizer`, `NodeToolbar`, `MiniMap`, `FlowControls`, `FlowPanel`. |
+| `src/Wpflow.Core` (net8.0, net472, netstandard2.0) | Logique **sans UI**, portée de `@xyflow/system` : modèle immuable, viewport, chemins d'edges, connexions, nodes imbriqués, JSON, disposition automatique. Testée (`tests/`). |
+| `src/Wpflow.Wpf` (net8.0-windows, net472) | Contrôles WPF : `FlowView`, `Handle`, `NodeResizer`, `NodeToolbar`, `MiniMap`, `FlowControls`, `FlowPanel`. |
 | `src/Wpflow.Blazor` (net8.0) | Composants Blazor : `FlowView`, `FlowHandle`, `NodeResizer`, `NodeRotator`, `NodeToolbar`, `FlowMiniMap`, `FlowControls`, `FlowPanel`, pont JS (mesure, molette, pointeur, export d'image). Testés avec bUnit et dans un vrai Chrome (Playwright). |
 | `demo/wpf` | Démo d'accueil (un rendu 3D réglé par trois nodes) et fenêtre d'exemples. |
 | `demo/blazor`, `demo/blazor-wasm`, `demo/blazor-shared` | Démo Blazor (hôtes Server et WebAssembly, composant `Demo` partagé). |

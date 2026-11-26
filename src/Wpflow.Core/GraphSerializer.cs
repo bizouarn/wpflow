@@ -147,7 +147,7 @@ public static class GraphSerializer
             if (s.Stroke != null) style["stroke"] = s.Stroke;
             if (s.StrokeWidth is { } sw) style["strokeWidth"] = sw;
             if (s.DashArray is { Count: > 0 } dash)
-                style["strokeDasharray"] = string.Join(' ', dash.Select(d => d.ToString(System.Globalization.CultureInfo.InvariantCulture)));
+                style["strokeDasharray"] = string.Join(" ", dash.Select(d => d.ToString(System.Globalization.CultureInfo.InvariantCulture)));
             o["style"] = style;
         }
 
@@ -219,7 +219,8 @@ public static class GraphSerializer
         if (e.TryGetProperty("style", out var st) && st.ValueKind == JsonValueKind.Object)
         {
             var dash = Str(st, "strokeDasharray")?.Split([' ', ','], StringSplitOptions.RemoveEmptyEntries)
-                .Select(x => double.TryParse(x, System.Globalization.CultureInfo.InvariantCulture, out var d) ? d : 0).ToList();
+                .Select(x => double.TryParse(x, System.Globalization.NumberStyles.Float | System.Globalization.NumberStyles.AllowThousands,
+                    System.Globalization.CultureInfo.InvariantCulture, out var d) ? d : 0).ToList();
             style = new EdgeStyleOptions(Str(st, "stroke"), Num(st, "strokeWidth"), dash);
         }
 

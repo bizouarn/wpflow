@@ -17,7 +17,7 @@ public class ViewLogicTests
     [Fact]
     public void Opposite_sides_face_each_other()
     {
-        foreach (var side in Enum.GetValues<Position>())
+        foreach (var side in Enum.GetValues(typeof(Position)).Cast<Position>())
         {
             Assert.NotEqual(side, ViewLogic.Opposite(side));
             Assert.Equal(side, ViewLogic.Opposite(ViewLogic.Opposite(side)));

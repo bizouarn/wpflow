@@ -322,7 +322,7 @@ public sealed class EdgeLayer : Canvas
     ///     Avec <paramref name="show" /> et <paramref name="keep" /> (virtualisation), un edge n'existe que s'il touche la
     ///     zone <paramref name="keep" /> et n'est affiché que s'il touche <paramref name="show" />.
     /// </summary>
-    internal void Refresh(FlowView flow, IReadOnlySet<string>? touchedNodes = null, Core.Rect? show = null,
+    internal void Refresh(FlowView flow, ISet<string>? touchedNodes = null, Core.Rect? show = null,
         Core.Rect? keep = null)
     {
         // Brosses lues une fois pour tous les edges : une recherche de ressource par edge coûterait trop cher.

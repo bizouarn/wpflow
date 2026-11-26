@@ -125,7 +125,7 @@ public class BatchedChangesTests
             new("a", XYPosition.Zero), new("a1", XYPosition.Zero, ParentId: "a"), new("a2", XYPosition.Zero, ParentId: "a1"),
             new("b", XYPosition.Zero), new("b1", XYPosition.Zero, ParentId: "b"), new("c", XYPosition.Zero)
         };
-        Assert.Equal(new[] { "a1", "a2", "b1" }.Order(), NodeTree.DescendantsOf(["a", "b"], nodes).Order());
+        Assert.Equal(new[] { "a1", "a2", "b1" }.OrderBy(x => x), NodeTree.DescendantsOf(["a", "b"], nodes).OrderBy(x => x));
         Assert.Empty(NodeTree.DescendantsOf(["c"], nodes));
     }
 }

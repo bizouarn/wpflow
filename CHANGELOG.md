@@ -4,6 +4,13 @@ Les trois paquets (`Wpflow.Core`, `Wpflow.Wpf`, `Wpflow.Blazor`) partagent le m�
 
 ## Non publié
 
+### Cibles .NET Framework et .NET Standard
+
+- `Wpflow.Core` cible aussi `net472` et `netstandard2.0` (donc .NET Core 2.0 et suivants), avec une dépendance à `System.Text.Json` 8 sur ces deux cibles. La version `net8.0` est inchangée : sans dépendance, avec les API natives.
+- `Wpflow.Wpf` cible aussi `net472`. Les annonces de sélection aux lecteurs d'écran n'y sont pas émises. WPF n'existe pas sur .NET Core 2.x.
+- Une application .NET Core 2.x doit définir `SuppressTfmSupportBuildWarnings` (voir le [démarrage rapide](doc/learn/01-quickstart.md)).
+- `Wpflow.Blazor` reste en `net8.0`.
+
 ### Ajouts
 
 - Les trois paquets ont une icône (`PackageIcon`, source `assets/logo.svg`).

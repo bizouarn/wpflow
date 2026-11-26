@@ -650,7 +650,7 @@ public partial class FlowView : ContentControl
         RaiseStateChanged();
     }
 
-    private void RefreshEdges(IReadOnlySet<string>? touchedNodes) =>
+    private void RefreshEdges(ISet<string>? touchedNodes) =>
         _edgeLayer?.Refresh(this, touchedNodes, _virtualized ? _showRect : null, _keepRect);
 
     private void OnViewportChanged()
@@ -729,7 +729,7 @@ public partial class FlowView : ContentControl
         RefreshEdges(_virtualized ? EmptySet : null);
     }
 
-    private static readonly IReadOnlySet<string> EmptySet = new HashSet<string>();
+    private static readonly ISet<string> EmptySet = new HashSet<string>();
 
     private bool _useRaw;
     private HashSet<string>? _elevated; // ancêtres d'un node sélectionné (ZIndexMode.Auto)

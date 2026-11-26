@@ -46,5 +46,5 @@ Cette documentation est aussi [en ligne, avec des exemples Blazor interactifs](h
 
 ## Deux niveaux d'API
 
-- **`Wpflow.Core`** (net8.0) : tout ce qui ne dépend pas de l'interface — modèle, mathématiques, chemins d'edges, JSON. Utilisable dans un service, un test ou un autre framework UI.
-- **`Wpflow.Wpf`** (net8.0-windows) : les contrôles. Ils ne contiennent que de la présentation et de l'interaction ; la logique vient de `Wpflow.Core`.
+- **`Wpflow.Core`** (net8.0, net472, netstandard2.0) : tout ce qui ne dépend pas de l'interface — modèle, mathématiques, chemins d'edges, JSON. Utilisable dans un service, un test ou un autre framework UI.
+- **`Wpflow.Wpf`** (net8.0-windows, net472) : les contrôles. Ils ne contiennent que de la présentation et de l'interaction ; la logique vient de `Wpflow.Core`.

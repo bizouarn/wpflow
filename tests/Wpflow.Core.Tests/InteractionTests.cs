@@ -176,9 +176,9 @@ public sealed class InteractionTests
         // Mode contrôlé : la sélection de « b » est demandée mais pas encore dans la liste. L'ancienne sélection ne doit pas partir
         // à sa place (défaut vu dans l'éditeur de schéma témoin) ; avec Ctrl/Maj, elle accompagne le node saisi.
         Assert.Equal(["b"], DragSelection.CollectStart(nodes, true, true, true, "b").Keys);
-        Assert.Equal(["a", "b"], DragSelection.CollectStart(nodes, true, true, true, "b", additive: true).Keys.Order());
+        Assert.Equal(["a", "b"], DragSelection.CollectStart(nodes, true, true, true, "b", additive: true).Keys.OrderBy(x => x));
         // Une fois la sélection appliquée, toute la sélection suit.
-        Assert.Equal(["a", "b"], DragSelection.CollectStart([nodes[0], nodes[1] with { Selected = true }], true, true, true, "b").Keys.Order());
+        Assert.Equal(["a", "b"], DragSelection.CollectStart([nodes[0], nodes[1] with { Selected = true }], true, true, true, "b").Keys.OrderBy(x => x));
         Assert.Equal(["b"], DragSelection.CollectStart(nodes, true, false, true, "b").Keys); // pas de sélection possible
         Assert.Empty(DragSelection.CollectStart([N("b", 0, 0) with { Draggable = false }], true, false, true, "b"));
     }

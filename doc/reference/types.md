@@ -1,6 +1,6 @@
 # Types
 
-Espace de noms `Wpflow.Core` (`net8.0`, sans dépendance UI).
+Espace de noms `Wpflow.Core` (`net8.0`, `net472`, `netstandard2.0`, sans dépendance UI).
 
 ## Node
 

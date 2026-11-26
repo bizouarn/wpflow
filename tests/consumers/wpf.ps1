@@ -148,6 +148,18 @@ Test-Scenario 'wpf-library-usercontrol' {
     Build-AndProbe $project 'net10.0' $dir
 }
 
+# Le demarrage rapide en .NET Framework 4.7.2. « dotnet new wpf » ne connait pas cette cible : on la change ensuite.
+Test-Scenario 'wpf-quickstart-net472' {
+    param($dir)
+    $project = New-WpfApp $dir 'net10.0'
+    $csproj = Join-Path $project 'Consumer.csproj'
+    Write-Utf8 $csproj ((Read-Utf8 $csproj) -replace '<TargetFramework>net10\.0-windows</TargetFramework>', '<TargetFramework>net472</TargetFramework><LangVersion>latest</LangVersion>')
+    Write-Utf8 (Join-Path $project 'MainWindow.xaml') (New-Window "    $flowElement")
+    Write-Utf8 (Join-Path $project 'MainWindow.xaml.cs') (New-WindowCode $usings $statements)
+    Invoke-Dotnet build $project -c Release -warnaserror --nologo
+    Invoke-Probe (Join-Path $project 'bin\Release\net472\Consumer.exe') $dir
+}
+
 # 5. Publication autonome en un seul fichier.
 Test-Scenario 'wpf-singlefile' {
     param($dir)

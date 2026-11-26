@@ -41,7 +41,7 @@ public class NodeTreeTests
     {
         var depths = NodeTree.Depths(Tree);
         Assert.Equal((0, 1, 2), (depths["group"], depths["child"], depths["grandchild"]));
-        Assert.Equal(new[] { "child", "grandchild" }.Order(), NodeTree.Descendants("group", Tree).Order());
+        Assert.Equal(new[] { "child", "grandchild" }.OrderBy(x => x), NodeTree.Descendants("group", Tree).OrderBy(x => x));
         Assert.Empty(NodeTree.Descendants("alone", Tree));
     }
 

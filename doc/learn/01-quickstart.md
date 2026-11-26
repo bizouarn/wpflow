@@ -10,7 +10,20 @@ Ajoutez une référence au projet (ou au package NuGet `Wpflow.Wpf`, qui dépend
 <ProjectReference Include="..\src\Wpflow.Wpf\Wpflow.Wpf.csproj" />
 ```
 
-Prérequis : .NET 8 ou supérieur, Windows.
+Prérequis : Windows, avec .NET 8 ou supérieur, ou .NET Framework 4.7.2 ou supérieur.
+
+| Paquet | Cibles |
+|---|---|
+| `Wpflow.Core` | `net8.0`, `net472`, `netstandard2.0` (.NET Core 2.0 et suivants) |
+| `Wpflow.Wpf` | `net8.0-windows`, `net472` |
+| `Wpflow.Blazor` | `net8.0` |
+
+WPF n'existe sur .NET Core qu'à partir de .NET Core 3.0 : en .NET Core 2.x, seul le noyau `Wpflow.Core` est utilisable.
+
+Particularités des anciennes cibles :
+
+- **.NET Framework 4.7.2** : un projet au format SDK a besoin de `<LangVersion>latest</LangVersion>` pour utiliser les records du noyau avec la syntaxe C# actuelle (`with`, `init`). Les annonces de sélection aux lecteurs d'écran ne sont pas émises (l'API UI Automation n'existe pas dans ce framework).
+- **.NET Core 2.x** : la dépendance `System.Text.Json` 8 bloque la construction (« System.Runtime.CompilerServices.Unsafe doesn't support netcoreapp2.0 »), Microsoft ne la prenant pas en charge avant .NET Core 3.1. Pour passer outre, ajoutez `<SuppressTfmSupportBuildWarnings>true</SuppressTfmSupportBuildWarnings>` au projet de l'application ; ce réglage vaut pour toutes ses dépendances. .NET Core 2.x n'est plus maintenu.
 
 ## Votre premier flow
 

@@ -44,7 +44,12 @@ public static class GraphUtils
     {
         if (node.Rotation == 0 || node.Width is not { } width || node.Height is not { } height) return point;
         var (cx, cy) = (node.Position.X + width / 2, node.Position.Y + height / 2);
-        var (sin, cos) = Math.SinCos(node.Rotation * Math.PI / 180);
+        var angle = node.Rotation * Math.PI / 180;
+#if NET8_0_OR_GREATER
+        var (sin, cos) = Math.SinCos(angle);
+#else
+        var (sin, cos) = (Math.Sin(angle), Math.Cos(angle));
+#endif
         var (dx, dy) = (point.X - cx, point.Y - cy);
         return new XYPosition(cx + dx * cos - dy * sin, cy + dx * sin + dy * cos);
     }
