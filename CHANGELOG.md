@@ -14,6 +14,10 @@ Les trois paquets (`Wpflow.Core`, `Wpflow.Wpf`, `Wpflow.Blazor`) partagent le m�
 - WPF et Blazor : les edges ne suivaient pas un node tourné (`Node.Rotation`). Leur extrémité, la direction d'où ils partent, le fil d'une connexion en cours et la recherche du handle visé tiennent désormais compte de la rotation. `GraphUtils.GetHandlePosition` et `GetHandleCenter` rendent le point tel qu'il est affiché ; les `HandleInfo` restent exprimés dans le node non tourné.
 - Blazor : les handles d'un node tourné étaient mesurés d'après son rectangle englobant, donc à une place fausse.
 
+### Correctifs (groupes Blazor)
+
+- Blazor : le cadre d'un node `group` ne prenait pas la hauteur donnée par `FixedHeight` (il restait à 80 px), et les enfants semblaient sortir du groupe. Il remplit désormais le node.
+
 ### Correctifs (fond et virtualisation Blazor)
 
 - Blazor : le fond `BackgroundVariant.Cross` ne montrait que des coins (┌), la tuile du motif rognant les croix. La demi-longueur par défaut des croix passe de 6 à 3, comme en WPF.

@@ -79,8 +79,9 @@
     border: 1px solid var(--wf-node-border);
 }
 .wf-node.wf-selected .wf-node-default { border-color: var(--wf-node-selected); }
+/* « height: 100% » : le cadre remplit un groupe dimensionné (FixedHeight) ; sans hauteur imposée, il reste ajusté au contenu. */
 .wf-node-group {
-    min-width: 120px; min-height: 80px; box-sizing: border-box; font-size: 11px; padding: 4px 8px;
+    height: 100%; min-width: 120px; min-height: 80px; box-sizing: border-box; font-size: 11px; padding: 4px 8px;
     background: rgba(240, 240, 240, .25); border: 1px solid var(--wf-node-border); color: var(--wf-node-text);
 }
 
