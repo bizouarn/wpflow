@@ -179,7 +179,8 @@ public partial class FlowView : ComponentBase, IAsyncDisposable
         }
 
         // Les nodes apparus ou disparus du DOM : (dé)branche l'observation de leur taille.
-        foreach (var id in _renderedIds)
+        // Copie : chaque await cède la main, un rendu peut modifier _renderedIds pendant l'énumération.
+        foreach (var id in _renderedIds.ToList())
             if (_observed.Add(id))
                 await _module.InvokeVoidAsync("observeNode", _root, id);
         if (_observed.Count > _renderedIds.Count)
