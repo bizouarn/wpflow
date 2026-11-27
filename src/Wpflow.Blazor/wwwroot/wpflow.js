@@ -37,6 +37,7 @@ export function attach(root, dotnet) {
 
     // Position à l'écran et taille de mise en page : un parent en `transform: scale()` change la première, pas la seconde.
     const sendRect = (force) => {
+        if (!root.isConnected) return; // retirée de la page (navigation) : la vue .NET peut déjà être détruite
         const r = root.getBoundingClientRect();
         const scaleX = ancestorScale(r.width, root.offsetWidth), scaleY = ancestorScale(r.height, root.offsetHeight);
         const next = [r.left, r.top, r.width / scaleX, r.height / scaleY];

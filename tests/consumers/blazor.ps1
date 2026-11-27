@@ -125,7 +125,8 @@ Test-Scenario 'blazor-auto' {
 Test-Scenario 'blazor-sous-chemin' {
     param($dir)
     $app = New-WebApp $dir @('--interactivity', 'Server', '--all-interactive') ''
-    Edit-File $app.AppRazor '<base href="/" />' '<base href="/outil/" />'
+    # Le modele du SDK .NET 11 ecrit <BasePath />, qui suit UsePathBase ; les precedents ecrivent la balise a la main.
+    if (-not (Read-Utf8 $app.AppRazor).Contains('<BasePath />')) { Edit-File $app.AppRazor '<base href="/" />' '<base href="/outil/" />' }
     Edit-File (Join-Path $app.Server 'Program.cs') 'var app = builder.Build();' "var app = builder.Build();`napp.UsePathBase(`"/outil`");`napp.UseRouting();"
     Test-PublishedServer $dir $app.Server '/outil/'
 }

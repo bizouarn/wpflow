@@ -2,7 +2,11 @@
 
 Les trois paquets (`Wpflow.Core`, `Wpflow.Wpf`, `Wpflow.Blazor`) partagent le même numéro. Au `dotnet pack`, la validation de paquet compare l'API à la version publiée (`PackageValidationBaselineVersion` dans `Directory.Build.props`) : une API retirée fait échouer la construction, sauf si la rupture est déclarée dans `CompatibilitySuppressions.xml`.
 
-## Non publié
+## 1.2.0
+
+### Correctif (navigation Blazor)
+
+- Blazor : en quittant une page qui contient un graphe (interactivité par page, navigation améliorée), le pont JS pouvait appeler la vue déjà détruite, d'où une erreur en console (« There is no tracked object with id… »). Une vue retirée de la page n'envoie plus rien.
 
 ### Cibles .NET Framework et .NET Standard
 
