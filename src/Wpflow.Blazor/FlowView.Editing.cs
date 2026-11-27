@@ -242,7 +242,12 @@ public partial class FlowView
     {
         if (_keyFromField) return; // la touche appartient au champ : ni suppression, ni annulation, ni déplacement
         _tabbed = e.Key == "Tab";
-        if (e.Key == " " && PanActivationKey == "Space") _space = true;
+        if (e.Key == " " && PanActivationKey == "Space")
+        {
+            _space = true;
+            // Maintenir Espace répète la touche : le dessin n'est pas refait (une sélection au clavier le signale par ses changes).
+            _viewportOnly = true;
+        }
         var ctrl = e.CtrlKey || e.MetaKey;
         var key = e.Key;
 
@@ -302,7 +307,12 @@ public partial class FlowView
 
     private Task OnKeyUp(KeyboardEventArgs e)
     {
-        if (e.Key == " ") _space = false;
+        if (e.Key == " ")
+        {
+            _space = false;
+            _viewportOnly = true;
+        }
+
         return Task.CompletedTask;
     }
 

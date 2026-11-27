@@ -154,6 +154,7 @@ public partial class FlowView
         else if (!flags.NoPan && (PanOnDrag && PanOnDragButtons.Contains(button) || panKey && button == 0))
         {
             _mode = Mode.Pan;
+            _viewportOnly = true; // saisir le fond ne change rien au dessin
         }
     }
 
@@ -332,7 +333,7 @@ public partial class FlowView
         switch (_mode)
         {
             case Mode.Pan:
-                if (first) await OnMoveStart.InvokeAsync(Viewport);
+                if (first) await NotifyViewport(() => OnMoveStart.InvokeAsync(Viewport));
                 await SetViewport(new Viewport(_startViewport.X + _pointer.X - _startPointer.X,
                     _startViewport.Y + _pointer.Y - _startPointer.Y, _startViewport.Zoom));
                 break;
@@ -352,7 +353,7 @@ public partial class FlowView
 
                 _cursorFlow = flow;
                 _candidate = FindCandidate(flow);
-                StateHasChanged();
+                Refresh(); // le fil est dessiné dans la couche
                 break;
             case Mode.Box:
                 if (first) await OnSelectionStart.InvokeAsync();
@@ -399,7 +400,7 @@ public partial class FlowView
         switch (mode)
         {
             case Mode.Pan when _moved:
-                await OnMoveEnd.InvokeAsync(Viewport);
+                await NotifyViewport(() => OnMoveEnd.InvokeAsync(Viewport));
                 break;
             case Mode.DragNodes when _moved:
                 await FinishDrag(pointer);
@@ -445,6 +446,9 @@ public partial class FlowView
         _rotate = null;
         _reconnect = null;
         _moved = false;
+        // La fin d'un pan ne change rien au dessin ; ce qu'un clic modifie (sélection) est signalé par les changes.
+        if (mode == Mode.Pan && !_clickMode) _viewportOnly = true;
+        else _forceLayer = true;
         StateHasChanged();
     });
 
@@ -606,6 +610,7 @@ public partial class FlowView
         _clickMode = false;
         _from = null;
         _candidate = null;
+        _forceLayer = true; // le fil disparaît
         if (connection != null)
         {
             await OnConnect.InvokeAsync(connection);
@@ -632,6 +637,7 @@ public partial class FlowView
     {
         if (_from is not { } f) return;
         _clickMode = true;
+        _forceLayer = true;
         await OnClickConnectStart.InvokeAsync(new ConnectStartEventArgs(f.NodeId, f.Handle.Id, f.Handle.Type));
     }
 
@@ -644,7 +650,7 @@ public partial class FlowView
         _candidate = null;
         _connectArgs = null;
         if (args != null) await OnClickConnectEnd.InvokeAsync(new ConnectEndEventArgs(args, null, false, MakePointer(_pointer)));
-        StateHasChanged();
+        Refresh();
     }
 
     /// <summary>Mouvement sans bouton enfoncé : fait suivre le fil de la connexion par clics.</summary>
@@ -655,6 +661,7 @@ public partial class FlowView
         {
             _cursorFlow = ScreenToFlow(_pointer);
             _candidate = FindCandidate(_cursorFlow);
+            _forceLayer = true;
         }
 
         // Un élément survolé a pu disparaître sans « pointerleave ».

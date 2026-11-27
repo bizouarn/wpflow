@@ -34,6 +34,21 @@ Les trois paquets (`Wpflow.Core`, `Wpflow.Wpf`, `Wpflow.Blazor`) partagent le m�
 - Blazor : le fond `BackgroundVariant.Cross` ne montrait que des coins (┌), la tuile du motif rognant les croix. La demi-longueur par défaut des croix passe de 6 à 3, comme en WPF.
 - Blazor : avec `FitViewOnInit="false"`, `OnlyRenderVisibleElements` ne s'activait jamais. La virtualisation prend désormais effet dès que la taille de la vue est connue ; un edge entre des nodes jamais mesurés est écarté d'après leur taille supposée, comme en WPF.
 
+### Performances (Blazor, grands graphes)
+
+Mesuré en WebAssembly dans Chrome, 855 nodes et 908 edges tous visibles : un pas de pan passe de 280 à 520 ms à une image (environ 17 ms).
+
+- Un parent qui écoute `ViewportChanged` (`@bind-Viewport`), `OnMove`, `OnMoveStart`, `OnMoveEnd` ou `OnStateChange` ne fait plus reconstruire tous les nodes et edges à chaque pas.
+- `OnlyRenderVisibleElements` : la couche n'est reconstruite que lorsqu'un élément doit apparaître ou disparaître, avec la même marge de maintien qu'en WPF.
+- Saisir puis relâcher le fond, ou maintenir Espace, ne reconstruit plus la couche.
+- La minimap ne redessine plus ses rectangles à chaque pas de pan.
+
+### Changements de comportement (Blazor)
+
+- Pendant un changement de vue, le rendu du parent ne redessine plus les modèles d'edges et de labels qui liraient son état (c'était déjà le cas des modèles de nodes) : passez cet état par les données, ou redéclarez le modèle. Même règle pour `NodeColor` de la minimap.
+- Avec `OnlyRenderVisibleElements`, les edges proches de la vue (300 px) sont dessinés d'avance, comme les nodes.
+- `OnStateChange`, quand seule la vue bouge, est levé juste avant le rendu et non après.
+
 ### Correctifs (conditions d'intégration hostiles)
 
 - Blazor : sous un parent en `transform: scale()`, les clics, le glisser, le pan, le pincement, la minimap et le cadrage visaient à côté. Le pont JS donne désormais la taille de mise en page de la vue et l'échelle de ses parents (`OnRootScale`).

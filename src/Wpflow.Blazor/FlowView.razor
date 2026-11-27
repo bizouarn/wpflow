@@ -1,8 +1,8 @@
 @namespace Wpflow.Blazor
 
 @{
-    // Le pan ne change que la transformation du calque : la couche des nodes et des edges n'est pas refaite (sauf virtualisation).
-    if (_forceLayer || !_viewportOnly || OnlyRenderVisibleElements) _layerRevision++;
+    // Le pan ne change que la transformation du calque : la couche des nodes et des edges n'est pas refaite (voir FlowView.Layer).
+    if (!KeepsLayer()) _layerRevision++;
     _viewportOnly = false;
     _forceLayer = false;
 }

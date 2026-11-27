@@ -53,8 +53,10 @@ public partial class FlowView
         if (!OnStateChange.HasDelegate) return Task.CompletedTask;
         var state = (Nodes, Edges, Viewport, IsLocked, Dark, _width, _height);
         if (_state == state) return Task.CompletedTask;
+        // Seule la vue a bougé : le parent qui se redessine en l'apprenant ne fait pas refaire la couche.
+        var viewportOnly = _state is { } was && was with { Item3 = state.Viewport } == state;
         _state = state;
-        return OnStateChange.InvokeAsync();
+        return viewportOnly ? NotifyViewport(() => OnStateChange.InvokeAsync()) : OnStateChange.InvokeAsync();
     }
 
     private string? EdgeHitStyle(Edge edge)

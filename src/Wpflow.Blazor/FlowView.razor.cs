@@ -249,7 +249,7 @@ public partial class FlowView : ComponentBase, IAsyncDisposable
         }
 
         await ApplyNodeChanges(changes);
-        StateHasChanged();
+        Refresh();
         if (!_nodesInitialized && Nodes.Count > 0 && Nodes.All(n => n.Hidden || n.Width != null))
         {
             _nodesInitialized = true;
@@ -288,7 +288,7 @@ public partial class FlowView : ComponentBase, IAsyncDisposable
         if (!_wheeling)
         {
             _wheeling = true;
-            await OnMoveStart.InvokeAsync(Viewport);
+            await NotifyViewport(() => OnMoveStart.InvokeAsync(Viewport));
         }
 
         await SetViewport(v);
@@ -300,7 +300,7 @@ public partial class FlowView : ComponentBase, IAsyncDisposable
             await InvokeAsync(async () =>
             {
                 _wheeling = false;
-                await OnMoveEnd.InvokeAsync(Viewport);
+                await NotifyViewport(() => OnMoveEnd.InvokeAsync(Viewport));
             });
         }, TaskScheduler.Default);
     }
@@ -461,7 +461,10 @@ public partial class FlowView : ComponentBase, IAsyncDisposable
         _absoluteLookup ??= id => _absNodes.GetValueOrDefault(id);
         _handleLookup ??= id => _handles.GetValueOrDefault(id);
         var virtualize = Virtualizes;
-        var visible = virtualize ? ViewportMath.GetVisibleRect(Viewport, _width, _height) : default;
+        var zone = virtualize
+            ? Virtualization.Zones(ViewportMath.GetVisibleRect(Viewport, _width, _height), Viewport.Zoom).Show
+            : default;
+        _unresolvedEdges.Clear();
         _edgeContexts.Clear();
         var ordered = Edges.OrderBy(e => EdgeZOrder.Compute(e, ElevateEdgesOnSelect));
         foreach (var e in ordered)
@@ -470,14 +473,19 @@ public partial class FlowView : ComponentBase, IAsyncDisposable
             if (EdgeEndpoints.MissingNode(e, _rawLookup) is { } missing)
             {
                 ReportError("error008", $"Edge {e.Id} : node {missing} introuvable.");
+                _unresolvedEdges.Add(e.Id);
                 continue;
             }
 
             // Résolution partagée avec la vue WPF : handles mesurés, handles annoncés, sinon milieu du côté.
             if (EdgeEndpoints.Resolve(e, _absoluteLookup, _handleLookup, Position.Bottom, Position.Top) is not { } ends)
+            {
+                _unresolvedEdges.Add(e.Id);
                 continue;
+            }
+
             // Un node jamais mesuré a une taille supposée, comme en WPF : sinon les edges des nodes absents resteraient tous.
-            if (virtualize && !GraphUtils.IsEdgeVisible(ViewRect(e.Source), ViewRect(e.Target), visible))
+            if (virtualize && !GraphUtils.IsEdgeVisible(ViewRect(e.Source), ViewRect(e.Target), zone))
                 continue;
 
             // Un edge dont l'edge lui-même, les extrémités et les réglages n'ont pas changé garde son tracé (déplacer un node
@@ -652,7 +660,7 @@ public partial class FlowView : ComponentBase, IAsyncDisposable
     {
         IsLocked = locked;
         await IsLockedChanged.InvokeAsync(locked);
-        StateHasChanged();
+        Refresh();
     }
 
     private readonly Dictionary<(string, string, HandleType), HandleExtras> _handleExtras = new();
