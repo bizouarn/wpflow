@@ -91,8 +91,18 @@ public static class EdgePaths
     private static double Get(XYPosition p, bool x) => x ? p.X : p.Y;
     private static XYPosition With(XYPosition p, bool x, double v) => x ? p with { X = v } : p with { Y = v };
 
-    private static double Dist(XYPosition a, XYPosition b) =>
-        Math.Sqrt(Math.Pow(b.X - a.X, 2) + Math.Pow(b.Y - a.Y, 2));
+    private static double Dist(XYPosition a, XYPosition b)
+    {
+        var dx = b.X - a.X;
+        var dy = b.Y - a.Y;
+        return Math.Sqrt(dx * dx + dy * dy);
+    }
+
+    private static void AddPoint(List<XYPosition> path, XYPosition point)
+    {
+        if (path.Count >= 2 && IsBetween(path[^2], path[^1], point)) path.RemoveAt(path.Count - 1);
+        path.Add(point);
+    }
 
     /// <summary>
     ///     Points du chemin « step » (port de <c>getPoints</c> de xyflow, version récente : <c>stepPosition</c>,
@@ -112,10 +122,10 @@ public static class EdgePaths
         var currDir = Get(dir, onX);
         var (_, _, defaultOx, defaultOy) = EdgeCenter(source, target);
 
-        List<XYPosition> points;
         double cx, cy;
         var sourceGapOffset = XYPosition.Zero;
         var targetGapOffset = XYPosition.Zero;
+        var path = new List<XYPosition>(6);
 
         if (Get(sourceDir, onX) * Get(targetDir, onX) == -1)
         {
@@ -131,25 +141,20 @@ public static class EdgePaths
                 cy = centerY ?? sourceGapped.Y + (targetGapped.Y - sourceGapped.Y) * stepPosition;
             }
 
-            var verticalSplit = new List<XYPosition> { new(cx, sourceGapped.Y), new(cx, targetGapped.Y) };
-            var horizontalSplit = new List<XYPosition> { new(sourceGapped.X, cy), new(targetGapped.X, cy) };
+            var vertical = Get(sourceDir, onX) == currDir ? onX : !onX;
+            var mid1 = vertical ? new XYPosition(cx, sourceGapped.Y) : new XYPosition(sourceGapped.X, cy);
+            var mid2 = vertical ? new XYPosition(cx, targetGapped.Y) : new XYPosition(targetGapped.X, cy);
 
-            points = Get(sourceDir, onX) == currDir
-                ? onX ? verticalSplit : horizontalSplit
-                : onX
-                    ? horizontalSplit
-                    : verticalSplit;
+            AddPoint(path, source);
+            AddPoint(path, sourceGapped);
+            AddPoint(path, mid1);
+            AddPoint(path, mid2);
+            AddPoint(path, targetGapped);
+            AddPoint(path, target);
         }
         else
         {
-            var sourceTarget = new List<XYPosition> { new(sourceGapped.X, targetGapped.Y) };
-            var targetSource = new List<XYPosition> { new(targetGapped.X, sourceGapped.Y) };
-
-            points = onX
-                ? sourceDir.X == currDir ? targetSource : sourceTarget
-                : sourceDir.Y == currDir
-                    ? sourceTarget
-                    : targetSource;
+            var useSourceTarget = onX ? sourceDir.X != currDir : sourceDir.Y == currDir;
 
             if (sourcePosition == targetPosition)
             {
@@ -175,38 +180,35 @@ public static class EdgePaths
                 var flip = Get(sourceDir, onX) == 1
                     ? (!isSameDir && sourceGt) || (isSameDir && sourceLt)
                     : (!isSameDir && sourceLt) || (isSameDir && sourceGt);
-                if (flip) points = onX ? sourceTarget : targetSource;
+                if (flip) useSourceTarget = onX;
             }
+
+            var mid = useSourceTarget
+                ? new XYPosition(sourceGapped.X, targetGapped.Y)
+                : new XYPosition(targetGapped.X, sourceGapped.Y);
 
             var sourceGapPoint = sourceGapped + sourceGapOffset;
             var targetGapPoint = targetGapped + targetGapOffset;
-            var maxX = Math.Max(Math.Abs(sourceGapPoint.X - points[0].X), Math.Abs(targetGapPoint.X - points[0].X));
-            var maxY = Math.Max(Math.Abs(sourceGapPoint.Y - points[0].Y), Math.Abs(targetGapPoint.Y - points[0].Y));
+            var maxX = Math.Max(Math.Abs(sourceGapPoint.X - mid.X), Math.Abs(targetGapPoint.X - mid.X));
+            var maxY = Math.Max(Math.Abs(sourceGapPoint.Y - mid.Y), Math.Abs(targetGapPoint.Y - mid.Y));
 
             // Le label se place sur le plus long segment.
             if (maxX >= maxY)
             {
                 cx = (sourceGapPoint.X + targetGapPoint.X) / 2;
-                cy = points[0].Y;
+                cy = mid.Y;
             }
             else
             {
-                cx = points[0].X;
+                cx = mid.X;
                 cy = (sourceGapPoint.Y + targetGapPoint.Y) / 2;
             }
-        }
 
-        var candidates = new List<XYPosition> { source, sourceGapped + sourceGapOffset };
-        candidates.AddRange(points);
-        candidates.Add(targetGapped + targetGapOffset);
-        candidates.Add(target);
-
-        // On retire un point si le chemin passe tout droit par lui (sinon il réduirait le coude suivant).
-        var path = new List<XYPosition>();
-        foreach (var point in candidates)
-        {
-            if (path.Count >= 2 && IsBetween(path[^2], path[^1], point)) path.RemoveAt(path.Count - 1);
-            path.Add(point);
+            AddPoint(path, source);
+            AddPoint(path, sourceGapPoint);
+            AddPoint(path, mid);
+            AddPoint(path, targetGapPoint);
+            AddPoint(path, target);
         }
 
         return (path, cx, cy, defaultOx, defaultOy);
@@ -217,24 +219,67 @@ public static class EdgePaths
         (a.X == b.X && b.X == c.X && (b.Y - a.Y) * (c.Y - b.Y) >= 0) ||
         (a.Y == b.Y && b.Y == c.Y && (b.X - a.X) * (c.X - b.X) >= 0);
 
-    private static string Bend(XYPosition a, XYPosition b, XYPosition c, double size)
+    private static void AppendNumber(StringBuilder sb, double v)
+    {
+#if NET8_0_OR_GREATER
+        Span<char> buffer = stackalloc char[32];
+        if (v.TryFormat(buffer, out var written, "0.####", CultureInfo.InvariantCulture))
+        {
+            sb.Append(buffer[..written]);
+            return;
+        }
+#endif
+        sb.Append(v.ToString("0.####", CultureInfo.InvariantCulture));
+    }
+
+    private static void AppendBend(StringBuilder sb, XYPosition a, XYPosition b, XYPosition c, double size)
     {
         var bendSize = Math.Min(Math.Min(Dist(a, b) / 2, Dist(b, c) / 2), size);
         var (x, y) = (b.X, b.Y);
 
         // Alignés : pas de coude.
-        if ((a.X == x && x == c.X) || (a.Y == y && y == c.Y)) return $"L{F(x)} {F(y)}";
+        if ((a.X == x && x == c.X) || (a.Y == y && y == c.Y))
+        {
+            sb.Append('L');
+            AppendNumber(sb, x);
+            sb.Append(' ');
+            AppendNumber(sb, y);
+            return;
+        }
 
         if (a.Y == y)
         {
             var xDir = a.X < c.X ? -1 : 1;
             var yDir = a.Y < c.Y ? 1 : -1;
-            return $"L {F(x + bendSize * xDir)},{F(y)}Q {F(x)},{F(y)} {F(x)},{F(y + bendSize * yDir)}";
+            sb.Append("L ");
+            AppendNumber(sb, x + bendSize * xDir);
+            sb.Append(',');
+            AppendNumber(sb, y);
+            sb.Append("Q ");
+            AppendNumber(sb, x);
+            sb.Append(',');
+            AppendNumber(sb, y);
+            sb.Append(' ');
+            AppendNumber(sb, x);
+            sb.Append(',');
+            AppendNumber(sb, y + bendSize * yDir);
+            return;
         }
 
         var xd = a.X < c.X ? 1 : -1;
         var yd = a.Y < c.Y ? -1 : 1;
-        return $"L {F(x)},{F(y + bendSize * yd)}Q {F(x)},{F(y)} {F(x + bendSize * xd)},{F(y)}";
+        sb.Append("L ");
+        AppendNumber(sb, x);
+        sb.Append(',');
+        AppendNumber(sb, y + bendSize * yd);
+        sb.Append("Q ");
+        AppendNumber(sb, x);
+        sb.Append(',');
+        AppendNumber(sb, y);
+        sb.Append(' ');
+        AppendNumber(sb, x + bendSize * xd);
+        sb.Append(',');
+        AppendNumber(sb, y);
     }
 
     /// <summary>Chemin à angles droits ; <paramref name="borderRadius" /> = 0 donne l'edge de type « step ».</summary>
@@ -245,10 +290,17 @@ public static class EdgePaths
         var (points, cx, cy, ox, oy) =
             StepPoints(source, sourcePosition, target, targetPosition, offset, stepPosition, centerX, centerY);
 
-        var sb = new StringBuilder($"M{F(points[0].X)} {F(points[0].Y)}");
+        var sb = new StringBuilder(64);
+        sb.Append('M');
+        AppendNumber(sb, points[0].X);
+        sb.Append(' ');
+        AppendNumber(sb, points[0].Y);
         for (var i = 1; i < points.Count - 1; i++)
-            sb.Append(Bend(points[i - 1], points[i], points[i + 1], borderRadius));
-        sb.Append($"L{F(points[^1].X)} {F(points[^1].Y)}");
+            AppendBend(sb, points[i - 1], points[i], points[i + 1], borderRadius);
+        sb.Append('L');
+        AppendNumber(sb, points[^1].X);
+        sb.Append(' ');
+        AppendNumber(sb, points[^1].Y);
 
         return new EdgePath(sb.ToString(), cx, cy, ox, oy);
     }

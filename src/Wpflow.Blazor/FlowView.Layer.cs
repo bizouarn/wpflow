@@ -73,7 +73,7 @@ public partial class FlowView
         Virtualization.Zones(ViewportMath.GetVisibleRect(Viewport, _width, _height), Viewport.Zoom);
 
     private VirtualizationRule.Presence NodePresence(Node n, (Rect Show, Rect Keep) zones) =>
-        VirtualizationRule.OfNode(n.Selected, Virtualization.AssumedRect(n, _abs[n.Id]), zones.Show, zones.Keep);
+        VirtualizationRule.OfNode(n.Selected, Virtualization.AssumedRect(n, AbsolutePosition(n.Id)), zones.Show, zones.Keep);
 
     private VirtualizationRule.Presence EdgePresence(Edge e, (Rect Show, Rect Keep) zones) =>
         VirtualizationRule.OfEdge(ViewRect(e.Source), ViewRect(e.Target), zones.Show, zones.Keep);

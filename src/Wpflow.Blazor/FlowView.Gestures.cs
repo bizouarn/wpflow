@@ -298,7 +298,7 @@ public partial class FlowView
     {
         BeginGesture(e);
         if ((int)e.Button != 0 || IsLocked || !_nodeIndex.TryGetValue(nodeId, out var n) || n.Width is not { } w || n.Height is not { } h) return;
-        var p = _abs[nodeId];
+        var p = AbsolutePosition(nodeId);
         var center = new XYPosition(p.X + w / 2, p.Y + h / 2);
         _rotate = (nodeId, center, snap);
         _mode = Mode.Rotate;
@@ -514,6 +514,7 @@ public partial class FlowView
     /// <summary>Agrandit les parents que les enfants déplacés dépassent (<see cref="ParentExpansion" />).</summary>
     private async Task ExpandParents()
     {
+        if (_depth.Count == 0) return;
         _rawLookup ??= id => _nodeIndex.GetValueOrDefault(id);
         var moved = _dragStart.Keys.ToList();
         foreach (var parentId in ParentExpansion.Parents(moved, _rawLookup))

@@ -87,7 +87,7 @@
                             }
                             else
                             {
-                                <path class="wf-edge-path" d="@ev.Context.Path.Path" style="@EdgeStyle(edge)"
+                                <path class="wf-edge-path" d="@ev.Context.Path.Path" style="@ev.Style"
                                       marker-start="@ev.MarkerStart" marker-end="@ev.MarkerEnd" />
                             }
                             <path class="wf-edge-hit" d="@ev.Context.Path.Path" style="@EdgeHitStyle(edge)"
@@ -121,7 +121,7 @@
                 var edge = ev.Edge;
                 if (string.IsNullOrEmpty(edge.Label) && EdgeLabelTemplate == null) continue;
                 <FlowLayer @key="@("l" + edge.Id)" Revision="ev.Stamp">
-                    <div class="wf-edge-label @(EdgeLabelTemplate != null ? "wf-edge-label-custom" : "")" style="@EdgeLabelStyle(ev)"
+                    <div class="wf-edge-label @(EdgeLabelTemplate != null ? "wf-edge-label-custom" : "")" style="@ev.LabelStyle"
                          @onpointerdown="e => OnEdgePointerDown(edge, e)" @onpointerdown:stopPropagation>
                         <CascadingValue Value="edge" Name="WfEdge">
                             @if (EdgeLabelTemplate != null)

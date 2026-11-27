@@ -114,7 +114,7 @@ public partial class FlowView
     /// <summary>Handle accepté le plus proche de la souris (dans <see cref="ConnectionRadius" />), ou <c>null</c>.</summary>
     private HandleRef? FindCandidate(HandleRef from, XYPosition mouseFlow) =>
         ConnectionSearch.FindCandidate(from, mouseFlow, ConnectionRadius, ConnectionMode,
-            _handleMap, id => _nodeIndex.GetValueOrDefault(id));
+            _handleMap, NodeLookup);
 
     /// <summary>La connexion est-elle permise (doublon, validateurs de la vue et des handles) ?</summary>
     private bool Validate(HandleRef from, HandleRef target, out Connection connection) =>

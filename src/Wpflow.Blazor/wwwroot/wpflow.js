@@ -383,8 +383,7 @@ const MESSAGE_LIMIT = 12000;
 function messages(batch) {
     const result = [];
     let current = [], size = 0;
-    const add = (part) => {
-        const length = JSON.stringify(part).length;
+    const add = (part, length) => {
         if (current.length && size + length > MESSAGE_LIMIT) {
             result.push(current);
             current = [];
@@ -395,8 +394,9 @@ function messages(batch) {
     };
 
     for (const node of batch) {
-        if (JSON.stringify(node).length <= MESSAGE_LIMIT) {
-            add(node);
+        const nodeLength = JSON.stringify(node).length;
+        if (nodeLength <= MESSAGE_LIMIT) {
+            add(node, nodeLength);
             continue;
         }
 
@@ -404,14 +404,16 @@ function messages(batch) {
         for (const handle of node.handles) {
             const l = JSON.stringify(handle).length;
             if (handles.length && length + l > MESSAGE_LIMIT / 2) {
-                add({ ...node, handles, partial: true });
+                const part = { ...node, handles, partial: true };
+                add(part, JSON.stringify(part).length);
                 handles = [];
                 length = 0;
             }
             handles.push(handle);
             length += l;
         }
-        add({ ...node, handles });
+        const tail = { ...node, handles };
+        add(tail, JSON.stringify(tail).length);
     }
 
     if (current.length) result.push(current);

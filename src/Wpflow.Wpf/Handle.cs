@@ -72,6 +72,7 @@ public class Handle : Control
 
     // Zone de clic élargie autour du point visible, sans effet sur la mesure ni sur la mise en page.
     private const double HitMargin = 6;
+    private Pen? _borderPen;
 
     protected override void OnRender(DrawingContext dc)
     {
@@ -79,7 +80,17 @@ public class Handle : Control
             new Rect(-HitMargin, -HitMargin, ActualWidth + 2 * HitMargin, ActualHeight + 2 * HitMargin));
         if (Template != null) return; // dessiné par le gabarit : seule la zone de clic ci-dessus reste
         var thickness = BorderThickness.Left;
-        var pen = BorderBrush != null && thickness > 0 ? new Pen(BorderBrush, thickness) : null;
+        Pen? pen = null;
+        if (BorderBrush != null && thickness > 0)
+        {
+            pen = _borderPen;
+            if (pen == null)
+            {
+                pen = new Pen(BorderBrush, thickness);
+                if (pen.CanFreeze) pen.Freeze();
+                _borderPen = pen;
+            }
+        }
         var fill = ConnectionStatus switch
         {
             HandleConnectionStatus.Valid => ValidFill,
@@ -95,7 +106,12 @@ public class Handle : Control
     {
         base.OnPropertyChanged(e);
         if (e.Property == WidthProperty || e.Property == HeightProperty) ApplyAlignment();
-        else if (e.Property == TemplateProperty || e.Property == BackgroundProperty || e.Property == BorderBrushProperty || e.Property == BorderThicknessProperty)
+        else if (e.Property == BorderBrushProperty || e.Property == BorderThicknessProperty)
+        {
+            _borderPen = null;
+            InvalidateVisual();
+        }
+        else if (e.Property == TemplateProperty || e.Property == BackgroundProperty)
             InvalidateVisual();
     }
 
