@@ -1,121 +1,121 @@
-# Exemples
+# Examples
 
-Tous les exemples sont dans le dossier `demo/` et se lancent avec :
+All examples are in the `demo/` folder and run with:
 
 ```bash
 dotnet run --project demo/wpf
 ```
 
-La page d'accueil (« Branchez. Réglez. Regardez. ») montre trois réglages câblés à un rendu ; son bouton **« Parcourir les exemples »** ouvre la fenêtre d'exemples (un onglet par cas). Chaque exemple est vérifié par un auto-test qui pilote la vraie souris et le vrai clavier (voir `CLAUDE.md`).
+The home page (« Plug in. Adjust. Watch. ») shows three settings wired to a render node; its **« Browse the examples »** button opens the examples window (one tab per case). Each example is checked by a self-test that drives the real mouse and keyboard (see `CLAUDE.md`).
 
-![Page d'accueil](../../work-doc/screenshots/demo.png)
+![Home page](../../work-doc/screenshots/demo.png)
 
-## Page d'accueil : calculer avec un flow
+## Home page: computing with a flow
 
-*Fichiers : `demo/wpf/MainWindow.xaml`, `MainWindow.xaml.cs`, `DemoState.cs`, `CubeField.cs`.*
+*Files: `demo/wpf/MainWindow.xaml`, `MainWindow.xaml.cs`, `DemoState.cs`, `CubeField.cs`.*
 
-La page est pilotée par un ViewModel (`HomeViewModel.cs` : nodes, liens et viewport liés, aucune logique dans la vue) — voir [MVVM](../learn/13-mvvm.md).
+The page is driven by a ViewModel (`HomeViewModel.cs`: nodes, edges and viewport are bound, no logic in the view) — see [MVVM](../learn/13-mvvm.md).
 
-Trois nodes de réglage (couleur, forme, zoom) en rangée, reliés par des câbles animés à angles arrondis (`smoothstep`) au node « rendu » placé au-dessus, qui dessine un anneau de solides **3D animés**. Chaque réglage n'agit que si son câble existe : supprimez celui du zoom, le zoom retombe à sa valeur par défaut ; reconnectez-le, le curseur reprend la main (le zoom suit avec une inertie). La vue montre aussi un thème propre (clés `Flow.*` redéfinies dans `FlowView.Resources`), un fond en croix et des handles stylés.
+Three settings nodes (colour, shape, zoom) in a row, connected by animated cables with rounded corners (`smoothstep`) to the « render » node placed above it, which draws a ring of **animated 3D solids**. Each setting only acts while its cable exists: delete the zoom cable and the zoom falls back to its default value; reconnect it and the slider takes over again (the zoom follows with some inertia). The view also shows its own theme (`Flow.*` keys redefined in `FlowView.Resources`), a cross-pattern background and styled handles.
 
-- Le sélecteur de couleur est un vrai `Popup` (pastilles + curseur de teinte) ; la couleur change aussi à la saisie d'un code hexadécimal.
-- Le node « rendu » est redimensionnable (`NodeResizer`).
+- The colour picker is a real `Popup` (swatches and a hue slider); the colour also changes when a hexadecimal code is typed.
+- The « render » node is resizable (`NodeResizer`).
 
-Guide détaillé : [Calculer avec un flow](../learn/10-computing-flows.md).
+Detailed guide: [Computing with a flow](../learn/10-computing-flows.md).
 
-## Types d'edges
+## Edge types
 
-*Onglet « Types d'edges » — `ExamplesWindow.xaml.cs`, `BuildEdgeTypes`.*
+*Tab « Edge types » — `ExamplesWindow.xaml.cs`, `BuildEdgeTypes`.*
 
-`default`, `straight`, `step`, `smoothstep` ; flèches (`MarkerEnd` / `MarkerStart`), edge animé, labels sous forme de pastilles (`EdgeLabelTemplate`), et un edge qui part du bas d'un node pour arriver à gauche d'un autre. Les edges sont bleus grâce à une surcharge locale de `Flow.Edge`.
+`default`, `straight`, `step`, `smoothstep`; arrows (`MarkerEnd` / `MarkerStart`), animated edges, labels as pills (`EdgeLabelTemplate`), and an edge that leaves the bottom of one node and arrives at the left of another. The edges are blue thanks to a local override of `Flow.Edge`.
 
-Guide : [Edges](../learn/05-edges.md).
+Guide: [Edges](../learn/05-edges.md).
 
-## Groupes
+## Groups
 
-*Onglet « Groupes ».*
+*Tab « Groups ».*
 
-Un groupe de deux enfants dont la position est relative (`ParentId`, `ExtentParent`). Déplacez le groupe : les enfants suivent ; tirez un enfant hors du groupe : il reste dedans ; supprimez le groupe : les enfants disparaissent avec lui. Navigation au clavier (Tab, flèches).
+A group with two children whose positions are relative (`ParentId`, `ExtentParent`). Move the group: the children follow; drag a child out of the group: it stays inside; delete the group: the children disappear with it. Keyboard navigation (Tab, arrow keys).
 
-Guide : [Sous-flows et groupes](../learn/06-sub-flows.md).
+Guide: [Sub-flows and groups](../learn/06-sub-flows.md).
 
-## Toolbar et resizer
+## Toolbar and resizer
 
-*Onglet « Toolbar et resizer » — template `wpflow-node-tool`.*
+*Tab « Toolbar and resizer » — template `wpflow-node-tool`.*
 
-Sélectionnez un node : sa barre d'outils (Dupliquer, Supprimer, branchées sur des `ICommand` de `Node.Data`) apparaît au-dessus et huit poignées permettent de le redimensionner.
+Select a node: its toolbar (Duplicate, Delete, bound to `ICommand`s in `Node.Data`) appears above it, and eight handles let you resize it.
 
-Guide : [Nodes personnalisés](../learn/04-custom-nodes.md).
+Guide: [Custom nodes](../learn/04-custom-nodes.md).
 
-## Palette (glisser-déposer)
+## Palette (drag and drop)
 
-*Onglet « Palette ».*
+*Tab « Palette ».*
 
-Glissez « Input node », « Default node » ou « Output node » de la colonne de gauche vers la surface : un node du bon type est créé à l'endroit du dépôt (`DropRequested`). Fond en lignes (`BackgroundVariant.Lines`).
+Drag « Input node », « Default node » or « Output node » from the left column onto the surface: a node of the matching type is created where the drop happened (`DropRequested`). Line background (`BackgroundVariant.Lines`).
 
-Guide : [Interactions](../learn/09-interactions.md#glisser-déposer-depuis-une-palette).
+Guide: [Interactions](../learn/09-interactions.md#drag-and-drop-from-a-palette).
 
-## Disposition automatique
+## Automatic layout
 
-*Onglet « Disposition auto ».*
+*Tab « Auto layout ».*
 
-Sept nodes placés au hasard ; « Disposition automatique » les range en couches de gauche à droite (`GraphLayout.LayeredLeftToRight`), « Mélanger » les disperse de nouveau.
+Seven nodes placed at random; « Auto layout » arranges them in layers from left to right (`GraphLayout.LayeredLeftToRight`), « Shuffle » scatters them again.
 
-Guide : [Disposition automatique](../learn/07-layouting.md).
+Guide: [Automatic layout](../learn/07-layouting.md).
 
-## Options et JSON
+## Options and JSON
 
-*Onglet « Options et JSON ».*
+*Tab « Options and JSON ».*
 
-Cases à cocher pour : mode sombre, connexion `Loose`, magnétisme à la grille, verrouillage, limite du pan (`TranslateExtent`), et un `IsValidConnection` qui refuse les connexions vers « Node D ». « Exporter JSON » écrit le graphe dans la zone de texte, « Importer JSON » le recharge.
+Check boxes for: dark mode, `Loose` connection mode, snap to grid, locking, pan limit (`TranslateExtent`), and an `IsValidConnection` that refuses connections to « Node D ». « Export JSON » writes the graph into the text box, « Import JSON » loads it back.
 
-Guides : [Thèmes](../learn/08-theming.md), [Interactions](../learn/09-interactions.md), [JSON](../learn/12-serialization.md).
+Guides: [Theming](../learn/08-theming.md), [Interactions](../learn/09-interactions.md), [JSON](../learn/12-serialization.md).
 
-## Personnalisation
+## Customization
 
-*Onglet « Personnalisation » — `demo/wpf/CustomizationExample.xaml`, `CustomEdges.cs`.*
+*Tab « Customization » — `demo/wpf/CustomizationExample.xaml`, `CustomEdges.cs`.*
 
-Tout vient de ressources, sans toucher à la bibliothèque : le node `default` redéfini, des handles en losange (style implicite avec `Template`), un type d'edge `wave` (un `IEdgePathProvider`), un type `pulse` dessiné par un `DataTemplate` avec son propre label, des marqueurs `dot` et `diamond`, et un aperçu de connexion en pointillés.
+Everything comes from resources, without touching the library: a redefined `default` node, diamond-shaped handles (implicit style with a `Template`), a `wave` edge type (an `IEdgePathProvider`), a `pulse` type drawn by a `DataTemplate` with its own label, `dot` and `diamond` markers, and a dashed connection preview.
 
-Guide : [Personnaliser](../learn/14-customization.md).
+Guide: [Customization](../learn/14-customization.md).
 
 ## MVVM
 
-*Onglet « MVVM » — `demo/wpf/MvvmExample.xaml`, `MvvmViewModel.cs`.*
+*Tab « MVVM » — `demo/wpf/MvvmExample.xaml`, `MvvmViewModel.cs`.*
 
-Les nodes et les liens sont des ViewModels (`NodesSource`, `EdgesSource`) : glisser un node écrit `X`/`Y` dans le ViewModel, les boutons (commandes du ViewModel) ajoutent, suppriment ou replacent des nodes, la sélection est liée à une `ObservableCollection`, et le titre est un `TextBox` lié à `Data.Title`.
+Nodes and edges are ViewModels (`NodesSource`, `EdgesSource`): dragging a node writes `X`/`Y` into the ViewModel; buttons (ViewModel commands) add, delete or reposition nodes; the selection is bound to an `ObservableCollection`; and the title is a `TextBox` bound to `Data.Title`.
 
-Guide : [MVVM](../learn/13-mvvm.md).
+Guide: [MVVM](../learn/13-mvvm.md).
 
 ## Performance
 
-*Onglet « Performance ».*
+*Tab « Performance ».*
 
-« Charger 3 000 nodes » avec ou sans virtualisation (`OnlyRenderVisibleElements`) ; le texte affiche le nombre de nodes réellement rendus (de l'ordre de 260 sur 3 000 en virtualisé, les autres n'existent pas).
+« Load 3,000 nodes » with or without virtualisation (`OnlyRenderVisibleElements`); the text shows how many nodes are actually rendered (around 260 out of 3,000 when virtualised, the others do not exist).
 
-Guide : [Performance et accessibilité](../learn/11-performance-accessibility.md).
+Guide: [Performance and accessibility](../learn/11-performance-accessibility.md).
 
-## Mesurer les performances en ligne de commande
+## Measuring performance from the command line
 
 ```bash
 WPFLOW_PERF=5000 WPFLOW_PERF_VIRT=1 WPFLOW_SCREENSHOT="chemin/perf.png" dotnet run --project demo/wpf --no-build
-# écrit chemin/perf.perf.log : temps d'affichage, ms/image en déplacement et en pan
+# writes chemin/perf.perf.log: display time, ms per frame while dragging and panning
 ```
 
-## Équivalents des exemples de React Flow
+## React Flow example equivalents
 
-| Exemple React Flow | Dans Wpflow |
+| React Flow example | In Wpflow |
 |---|---|
-| Overview / Basic | Démarrage rapide, page d'accueil |
-| Custom Node, Add Node on Edge Drop | Nodes personnalisés, palette |
-| Edge Types, Custom Edge, Edge Label Renderer | Types d'edges |
-| Sub Flows / Nested | Groupes |
-| Node Resizer, Node Toolbar | Toolbar et resizer |
+| Overview / Basic | Quick start, home page |
+| Custom Node, Add Node on Edge Drop | Custom nodes, palette |
+| Edge Types, Custom Edge, Edge Label Renderer | Edge types |
+| Sub Flows / Nested | Groups |
+| Node Resizer, Node Toolbar | Toolbar and resizer |
 | Drag and Drop | Palette |
-| Layouting | Disposition automatique |
-| Dark Mode | Options et JSON |
-| Save and Restore | Options et JSON |
-| Computing Flows | Page d'accueil |
-| Validation | Options et JSON (`IsValidConnection`) |
+| Layouting | Automatic layout |
+| Dark Mode | Options and JSON |
+| Save and Restore | Options and JSON |
+| Computing Flows | Home page |
+| Validation | Options and JSON (`IsValidConnection`) |
 | Stress | Performance |
 | State Management (store) | MVVM |

@@ -3,9 +3,9 @@
 
 <div class="ex">
     <div class="ex-toolbar">
-        <button @onclick="() => Arrange(LayoutDirection.TopToBottom)">Ranger de haut en bas</button>
-        <button @onclick="() => Arrange(LayoutDirection.LeftToRight)">Ranger de gauche à droite</button>
-        <button @onclick="Shuffle">Mélanger</button>
+        <button @onclick="() => Arrange(LayoutDirection.TopToBottom)">Arrange top to bottom</button>
+        <button @onclick="() => Arrange(LayoutDirection.LeftToRight)">Arrange left to right</button>
+        <button @onclick="Shuffle">Shuffle</button>
     </div>
     <div class="ex-flow">
         <FlowView @ref="_flow" @bind-Nodes="_nodes" @bind-Edges="_edges" MinZoom="0.2">
@@ -18,7 +18,7 @@
     private FlowView? _flow;
     private readonly Random _random = new(4);
 
-    private IReadOnlyList<Node> _nodes = new[] { "Sources", "Lecture", "Filtre", "Jointure", "Calcul", "Rapport", "Export" }
+    private IReadOnlyList<Node> _nodes = new[] { "Sources", "Read", "Filter", "Join", "Compute", "Report", "Export" }
         .Select((name, i) => new Node($"{i}", new XYPosition(i * 137 % 520, i * 211 % 300), Data: name)).ToList();
 
     private IReadOnlyList<Edge> _edges = new[] { (0, 1), (0, 2), (1, 3), (2, 3), (3, 4), (4, 5), (4, 6) }
@@ -28,7 +28,7 @@
     {
         var positions = GraphLayout.Layered(_nodes, _edges, direction);
 
-        // Les handles suivent le sens du rangement.
+        // The handles follow the direction of the layout.
         var horizontal = direction == LayoutDirection.LeftToRight;
         _nodes = _nodes.Select(n => n with
         {

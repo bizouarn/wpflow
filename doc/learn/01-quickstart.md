@@ -1,43 +1,43 @@
-# 1. Démarrage rapide
+# 1. Quick start
 
-*Équivalent React Flow : Quick Start.*
+*React Flow equivalent: Quick Start.*
 
 ## Installation
 
-Ajoutez une référence au projet (ou au package NuGet `Wpflow.Wpf`, qui dépend de `Wpflow.Core`) :
+Add a reference to the project (or the NuGet package `Wpflow.Wpf`, which depends on `Wpflow.Core`):
 
 ```xml
 <ProjectReference Include="..\src\Wpflow.Wpf\Wpflow.Wpf.csproj" />
 ```
 
-Prérequis : Windows, avec .NET 8 ou supérieur, ou .NET Framework 4.7.2 ou supérieur.
+Requirements: Windows, with .NET 8 or later, or .NET Framework 4.7.2 or later.
 
-| Paquet | Cibles |
+| Package | Targets |
 |---|---|
-| `Wpflow.Core` | `net8.0`, `net472`, `netstandard2.0` (.NET Core 2.0 et suivants) |
+| `Wpflow.Core` | `net8.0`, `net472`, `netstandard2.0` (.NET Core 2.0 and later) |
 | `Wpflow.Wpf` | `net8.0-windows`, `net472` |
 | `Wpflow.Blazor` | `net8.0` |
 
-WPF n'existe sur .NET Core qu'à partir de .NET Core 3.0 : en .NET Core 2.x, seul le noyau `Wpflow.Core` est utilisable.
+WPF only exists on .NET Core from .NET Core 3.0 onward: on .NET Core 2.x, only the `Wpflow.Core` core can be used.
 
-Particularités des anciennes cibles :
+Specifics of the older targets:
 
-- **.NET Framework 4.7.2** : un projet au format SDK a besoin de `<LangVersion>latest</LangVersion>` pour utiliser les records du noyau avec la syntaxe C# actuelle (`with`, `init`). Les annonces de sélection aux lecteurs d'écran ne sont pas émises (l'API UI Automation n'existe pas dans ce framework).
-- **.NET Core 2.x** : la dépendance `System.Text.Json` 8 bloque la construction (« System.Runtime.CompilerServices.Unsafe doesn't support netcoreapp2.0 »), Microsoft ne la prenant pas en charge avant .NET Core 3.1. Pour passer outre, ajoutez `<SuppressTfmSupportBuildWarnings>true</SuppressTfmSupportBuildWarnings>` au projet de l'application ; ce réglage vaut pour toutes ses dépendances. .NET Core 2.x n'est plus maintenu.
+- **.NET Framework 4.7.2**: an SDK-style project needs `<LangVersion>latest</LangVersion>` to use the core's records with current C# syntax (`with`, `init`). Selection announcements for screen readers are not emitted (the UI Automation API does not exist in this framework).
+- **.NET Core 2.x**: the `System.Text.Json` 8 dependency blocks the build (« System.Runtime.CompilerServices.Unsafe doesn't support netcoreapp2.0 »), because Microsoft does not support it before .NET Core 3.1. To get past this, add `<SuppressTfmSupportBuildWarnings>true</SuppressTfmSupportBuildWarnings>` to the application project; this setting applies to all of its dependencies. .NET Core 2.x is no longer maintained.
 
-## Votre premier flow
+## Your first flow
 
 **XAML**
 
 ```xml
-<Window x:Class="MonApp.MainWindow"
+<Window x:Class="MyApp.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:flow="clr-namespace:Wpflow.Wpf;assembly=Wpflow.Wpf"
-        Title="Mon flow" Width="900" Height="600">
+        Title="My flow" Width="900" Height="600">
 
     <flow:FlowView x:Name="Flow" FitViewOnInit="True">
-        <!-- Le contenu de FlowView est un overlay affiché au-dessus du graphe. -->
+        <!-- The content of FlowView is an overlay displayed above the graph. -->
         <Grid>
             <flow:MiniMap />
             <flow:FlowControls />
@@ -46,7 +46,7 @@ Particularités des anciennes cibles :
 </Window>
 ```
 
-> `FlowView` n'accepte **qu'un seul** enfant (c'est un `ContentControl`). Pour plusieurs overlays, enveloppez-les dans un `Grid`, comme ci-dessus.
+> `FlowView` accepts **only one** child (it is a `ContentControl`). For several overlays, wrap them in a `Grid`, as above.
 
 **C#**
 
@@ -59,9 +59,9 @@ public MainWindow()
 
     Flow.Nodes =
     [
-        new Node("1", new XYPosition(0, 0),    "input",   "Début"),
-        new Node("2", new XYPosition(250, 80), "default", "Étape"),
-        new Node("3", new XYPosition(500, 0),  "output",  "Fin"),
+        new Node("1", new XYPosition(0, 0),    "input",   "Start"),
+        new Node("2", new XYPosition(250, 80), "default", "Step"),
+        new Node("3", new XYPosition(500, 0),  "output",  "End"),
     ];
 
     Flow.Edges =
@@ -72,13 +72,13 @@ public MainWindow()
 }
 ```
 
-Lancez l'application : vous pouvez déplacer les nodes, relier les petits cercles (handles), zoomer à la molette, déplacer la vue en glissant le fond, supprimer avec la touche Suppr, annuler avec Ctrl+Z. Aucun autre code n'est nécessaire.
+Run the application: you can move the nodes, connect the small circles (handles), zoom with the mouse wheel, pan the view by dragging the background, delete with the Delete key and undo with Ctrl+Z. No other code is needed.
 
-## Ce qu'il faut retenir
+## Key takeaways
 
-- Un **node** a un `Id`, une `Position` (coordonnées « flow »), un `Type` et des `Data`.
-- Un **edge** relie deux ids de nodes (`Source` → `Target`).
-- `Nodes` et `Edges` sont des **listes immuables** : pour les modifier, affectez une nouvelle liste (voir [Construire un flow](03-building-a-flow.md)).
-- Les types intégrés sont `default`, `input`, `output` et `group`.
+- A **node** has an `Id`, a `Position` (« flow » coordinates), a `Type` and `Data`.
+- An **edge** connects two node ids (`Source` → `Target`).
+- `Nodes` and `Edges` are **immutable lists**: to change them, assign a new list (see [Building a flow](03-building-a-flow.md)).
+- The built-in types are `default`, `input`, `output` and `group`.
 
-Étape suivante : [Termes et concepts](02-concepts.md).
+Next step: [Terms and concepts](02-concepts.md).

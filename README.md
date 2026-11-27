@@ -1,47 +1,47 @@
 # Wpflow
 
-**Ajoutez un éditeur de nodes à votre application WPF ou Blazor.**
+**Add a node editor to your WPF or Blazor application.**
 
-Wpflow affiche des boîtes (les *nodes*) reliées par des liens (les *edges*), que l'utilisateur déplace et connecte à la souris. Il sert à construire un éditeur de workflow, un pipeline de données, une programmation visuelle ou un schéma interactif. C'est un portage .NET inspiré de [React Flow (xyflow)](https://reactflow.dev/).
+Wpflow displays boxes (the *nodes*) connected by links (the *edges*), which the user moves and connects with the mouse. It is used to build workflow editors, data pipelines, visual programming and interactive diagrams. It is a .NET port inspired by [React Flow (xyflow)](https://reactflow.dev/).
 
-![La démo WPF : trois nodes de réglage reliés à un node qui affiche un rendu 3D](work-doc/screenshots/demo.png)
+![The wpflow WPF demo: settings wired to a 3D render by animated cables; unplugging a cable changes the render at once](work-doc/screenshots/wpf-demo.gif)
 
-**[Voir la documentation et les exemples interactifs](https://bizouarn.github.io/wpflow/)** (les exemples Blazor s'exécutent dans le navigateur)
+**[See the documentation and interactive examples](https://bizouarn.github.io/wpflow/)** (the Blazor examples run in the browser)
 
-## Ce que fait la bibliothèque
+## What the library does
 
-- **Naviguer** : zoom, déplacement de la vue, minimap et boutons de contrôle.
-- **Éditer** : déplacer, sélectionner, relier, reconnecter, supprimer, annuler et rétablir.
-- **Personnaliser** : un node contient vos propres contrôles WPF ou composants Blazor. Edges, marqueurs et couleurs sont remplaçables, avec un thème clair et un thème sombre.
-- **Organiser** : groupes et nodes imbriqués, redimensionnement, grille magnétique, disposition automatique.
-- **Enregistrer** : import et export JSON au format de React Flow.
-- **S'intégrer** : liaison MVVM et commandes en WPF, `@bind` et `EventCallback` en Blazor.
-- **Gérer de grands graphes** : la virtualisation limite le rendu à ce qui est proche de la zone visible.
+- **Navigate**: zoom, pan the view, minimap and control buttons.
+- **Edit**: move, select, connect, reconnect, delete, undo and redo.
+- **Customize**: a node can contain your own WPF controls or Blazor components. Edges, markers and colours are replaceable, with a light and a dark theme.
+- **Organize**: groups and nested nodes, resizing, snap to grid, automatic layout.
+- **Save**: JSON import and export in React Flow's format.
+- **Integrate**: MVVM binding and commands in WPF, `@bind` and `EventCallback` in Blazor.
+- **Handle large graphs**: virtualisation limits rendering to what is near the visible area.
 
 ## Installation
 
-| Paquet NuGet | À installer pour | Cibles |
+| NuGet package | Install it for | Targets |
 |---|---|---|
-| `Wpflow.Wpf` | une application WPF (Windows) | .NET 8 et suivants, .NET Framework 4.7.2 |
-| `Wpflow.Blazor` | une application Blazor (Server ou WebAssembly) | .NET 8 et suivants |
-| `Wpflow.Core` | manipuler un graphe sans interface (installé avec les deux autres) | .NET 8, .NET Framework 4.7.2, .NET Standard 2.0 |
+| `Wpflow.Wpf` | a WPF application (Windows) | .NET 8 and later, .NET Framework 4.7.2 |
+| `Wpflow.Blazor` | a Blazor application (Server or WebAssembly) | .NET 8 and later |
+| `Wpflow.Core` | working with a graph without a UI (installed with the other two) | .NET 8, .NET Framework 4.7.2, .NET Standard 2.0 |
 
-Les particularités des anciennes cibles sont décrites dans le [guide de démarrage](doc/learn/01-quickstart.md).
+The specifics of the older targets are described in the [quick start guide](doc/learn/01-quickstart.md).
 
-## Démarrage rapide
+## Quick start
 
-Pour WPF, installez le paquet :
+For WPF, install the package:
 
 ```bash
 dotnet add package Wpflow.Wpf
 ```
 
-Placez un `FlowView` dans votre fenêtre :
+Place a `FlowView` in your window:
 
 ```xml
 <Window xmlns:flow="clr-namespace:Wpflow.Wpf;assembly=Wpflow.Wpf" …>
     <flow:FlowView x:Name="Flow" FitViewOnInit="True">
-        <Grid>                       <!-- le contenu de FlowView est un overlay au-dessus du graphe -->
+        <Grid>                       <!-- the content of FlowView is an overlay above the graph -->
             <flow:MiniMap />
             <flow:FlowControls />
         </Grid>
@@ -49,16 +49,16 @@ Placez un `FlowView` dans votre fenêtre :
 </Window>
 ```
 
-Puis donnez-lui des nodes et des edges, dans le constructeur de la fenêtre après `InitializeComponent()` :
+Then give it nodes and edges, in the window constructor after `InitializeComponent()`:
 
 ```csharp
 using Wpflow.Core;
 
 Flow.Nodes =
 [
-    new Node("1", new XYPosition(0, 0),   "input",   "Début"),
-    new Node("2", new XYPosition(250, 80), "default", "Étape"),
-    new Node("3", new XYPosition(500, 0),  "output",  "Fin"),
+    new Node("1", new XYPosition(0, 0),   "input",   "Start"),
+    new Node("2", new XYPosition(250, 80), "default", "Step"),
+    new Node("3", new XYPosition(500, 0),  "output",  "End"),
 ];
 Flow.Edges =
 [
@@ -67,23 +67,23 @@ Flow.Edges =
 ];
 ```
 
-C'est tout : on peut déplacer les nodes, relier leurs points de connexion (*handles*), zoomer à la molette et déplacer la vue en glissant le fond.
+That's it: you can move the nodes, connect their connection points (*handles*), zoom with the mouse wheel and pan the view by dragging the background.
 
-## Démarrage rapide (Blazor)
+## Quick start (Blazor)
 
-Installez le paquet :
+Install the package:
 
 ```bash
 dotnet add package Wpflow.Blazor
 ```
 
-Ajoutez la feuille de style dans la page hôte :
+Add the stylesheet to the host page:
 
 ```html
 <link rel="stylesheet" href="_content/Wpflow.Blazor/wpflow.css" />
 ```
 
-Puis utilisez `FlowView` dans un composant interactif :
+Then use `FlowView` in an interactive component:
 
 ```razor
 @using Wpflow.Blazor
@@ -99,47 +99,47 @@ Puis utilisez `FlowView` dans un composant interactif :
 @code {
     private IReadOnlyList<Node> _nodes =
     [
-        new Node("1", new XYPosition(0, 0), "input", "Début"),
-        new Node("2", new XYPosition(250, 80), "default", "Étape"),
+        new Node("1", new XYPosition(0, 0), "input", "Start"),
+        new Node("2", new XYPosition(250, 80), "default", "Step"),
     ];
     private IReadOnlyList<Edge> _edges = [new Edge("e1-2", "1", "2", Animated: true)];
 }
 ```
 
-## Pour aller plus loin
+## Going further
 
-| Je veux… | Guide |
+| I want to… | Guide |
 |---|---|
-| comprendre le modèle et gérer l'état | [Concepts](doc/learn/02-concepts.md), [Construire un flow](doc/learn/03-building-a-flow.md) |
-| créer mes propres nodes et edges | [Nodes personnalisés](doc/learn/04-custom-nodes.md), [Edges](doc/learn/05-edges.md), [Personnaliser](doc/learn/14-customization.md) |
-| régler les gestes et les connexions | [Interactions](doc/learn/09-interactions.md) |
-| utiliser des ViewModels (WPF) | [MVVM](doc/learn/13-mvvm.md) |
-| enregistrer et recharger un graphe | [Sauvegarde et JSON](doc/learn/12-serialization.md) |
-| afficher des milliers de nodes | [Performance et accessibilité](doc/learn/11-performance-accessibility.md) |
-| utiliser la version Blazor | [Wpflow.Blazor](doc/blazor.md) |
+| understand the model and manage state | [Concepts](doc/learn/02-concepts.md), [Building a flow](doc/learn/03-building-a-flow.md) |
+| create my own nodes and edges | [Custom nodes](doc/learn/04-custom-nodes.md), [Edges](doc/learn/05-edges.md), [Customization](doc/learn/14-customization.md) |
+| tune gestures and connections | [Interactions](doc/learn/09-interactions.md) |
+| use ViewModels (WPF) | [MVVM](doc/learn/13-mvvm.md) |
+| save and reload a graph | [Saving and JSON](doc/learn/12-serialization.md) |
+| display thousands of nodes | [Performance and accessibility](doc/learn/11-performance-accessibility.md) |
+| use the Blazor version | [Wpflow.Blazor](doc/blazor.md) |
 
-La [documentation complète](doc/README.md) contient aussi la référence de l'API et les exemples. Si vous venez de React Flow, la [référence de `FlowView`](doc/reference/flowview.md) donne les équivalences.
+The [full documentation](doc/README.md) also contains the API reference and the examples. If you come from React Flow, the [`FlowView` reference](doc/reference/flowview.md) gives the equivalents.
 
-## Limites connues
+## Known limitations
 
-- Les deux versions n'ont pas tout en commun : l'adaptateur MVVM (`NodesSource`) n'existe qu'en WPF.
-- En Blazor, les lecteurs d'écran et les navigateurs autres que Chrome n'ont pas été vérifiés.
-- La validation des connexions (`IsValidConnection`) est synchrone : il n'y a pas de version asynchrone.
+- The two versions do not share everything: the MVVM adapter (`NodesSource`) exists only in WPF.
+- In Blazor, screen readers and browsers other than Chrome have not been verified.
+- Connection validation (`IsValidConnection`) is synchronous: there is no asynchronous version.
 
-## Développement
+## Development
 
-Les commandes suivantes se lancent depuis la racine du dépôt :
+Run the following commands from the repository root:
 
 ```bash
-dotnet run --project demo/wpf         # démo WPF ; « Parcourir les exemples » ouvre les autres cas
-ASPNETCORE_ENVIRONMENT=Development dotnet run --project demo/blazor --urls http://localhost:5189   # démo Blazor Server
-dotnet run --project demo/blazor-wasm --urls http://localhost:5190                                 # démo Blazor WebAssembly
-dotnet run --project demo/docs-site   # site de documentation, sur http://localhost:5191
+dotnet run --project demo/wpf         # WPF demo; « Browse the examples » opens the other cases
+ASPNETCORE_ENVIRONMENT=Development dotnet run --project demo/blazor --urls http://localhost:5189   # Blazor Server demo
+dotnet run --project demo/blazor-wasm --urls http://localhost:5190                                 # Blazor WebAssembly demo
+dotnet run --project demo/docs-site   # documentation site, on http://localhost:5191
 dotnet test tests/Wpflow.Core.Tests
 ```
 
-Les sources sont dans `src/` : `Wpflow.Core` contient la logique sans interface, `Wpflow.Wpf` et `Wpflow.Blazor` les deux vues. Pour contribuer, lisez [`CLAUDE.md`](CLAUDE.md) (architecture, commandes et tests) et [`work-doc/`](work-doc/) (roadmap et décisions d'architecture).
+The sources are in `src/`: `Wpflow.Core` contains the logic without any UI, `Wpflow.Wpf` and `Wpflow.Blazor` are the two views. To contribute, read [`CLAUDE.md`](CLAUDE.md) (architecture, commands and tests) and [`work-doc/`](work-doc/) (roadmap and architecture decisions).
 
-## Licence
+## License
 
-[MIT](LICENSE). Le portage de xyflow, lui aussi sous licence MIT, est signalé dans [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md).
+[MIT](LICENSE). The port of xyflow, also under the MIT license, is listed in [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md).

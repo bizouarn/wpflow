@@ -8,7 +8,7 @@
 </div>
 
 @code {
-    // Un type d'edge à soi : un IEdgePathProvider, qui renvoie un chemin SVG et la place du label.
+    // A custom edge type: an IEdgePathProvider that returns an SVG path and the position of the label.
     private readonly Dictionary<string, IEdgePathProvider> _types = new()
     {
         ["vague"] = new DelegateEdgePathProvider(g =>
@@ -25,7 +25,7 @@
     private IReadOnlyList<Node> _nodes = Kinds.SelectMany((kind, i) => new[]
     {
         new Node($"s{i}", new XYPosition(0, i * 90), "input", kind, SourcePosition: Position.Right),
-        new Node($"t{i}", new XYPosition(360, i * 90 + 40), "output", "arrivée", TargetPosition: Position.Left)
+        new Node($"t{i}", new XYPosition(360, i * 90 + 40), "output", "end", TargetPosition: Position.Left)
     }).ToList();
 
     private IReadOnlyList<Edge> _edges = Kinds.Select((kind, i) => new Edge($"e{i}", $"s{i}", $"t{i}", Type: kind,

@@ -1,50 +1,50 @@
 @page "/"
 
-<PageTitle>wpflow · Branchez. Réglez. Regardez.</PageTitle>
+<PageTitle>wpflow · Plug in. Adjust. Watch.</PageTitle>
 
 <div class="home">
     <section class="hero">
         <div>
-            <h1>Branchez. Réglez. <span>Regardez.</span></h1>
+            <h1>Plug in. Adjust. <span>Watch.</span></h1>
         </div>
         <div class="hero-side">
-            <p>L'éditeur de graphes à nodes pour WPF et Blazor. Débranchez un câble : le rendu réagit aussitôt.</p>
-            <a class="button" href="exemples">Parcourir les exemples →</a>
-            <a class="button quiet" href="doc">Lire la documentation</a>
+            <p>The node-based graph editor for WPF and Blazor. Unplug a cable and the render reacts immediately.</p>
+            <a class="button" href="exemples">Browse the examples →</a>
+            <a class="button quiet" href="doc">Read the documentation</a>
         </div>
     </section>
 
     <HeroFlow />
 
     <p class="hero-note">
-        Ce graphe est un vrai <code>FlowView</code> Blazor qui s'exécute dans votre navigateur, en WebAssembly. Sélectionnez
-        un câble puis appuyez sur <kbd>Suppr</kbd> ; tirez un nouveau fil entre les deux mêmes points pour le rebrancher.
+        This graph is a real Blazor <code>FlowView</code> running in your browser, in WebAssembly. Select
+        a cable then press <kbd>Delete</kbd>; drag a new wire between the same two points to plug it back in.
     </p>
 
-    <section class="packages" aria-label="Paquets">
+    <section class="packages" aria-label="Packages">
         <article>
             <h2>Wpflow.Blazor</h2>
-            <p>Pour Blazor Server et WebAssembly. C'est la version que ce site exécute.</p>
+            <p>For Blazor Server and WebAssembly. This is the version this site runs.</p>
             <pre><code>dotnet add package Wpflow.Blazor</code></pre>
-            <a href="doc/blazor">Guide Blazor →</a>
+            <a href="doc/blazor">Blazor guide →</a>
         </article>
         <article>
             <h2>Wpflow.Wpf</h2>
-            <p>Les contrôles WPF, avec les mêmes gestes et les mêmes évènements. Windows seulement : rien à essayer ici.</p>
+            <p>WPF controls, with the same gestures and events. Windows only: nothing to try here.</p>
             <pre><code>dotnet add package Wpflow.Wpf</code></pre>
-            <a href="doc/learn/01-quickstart">Démarrage rapide WPF →</a>
+            <a href="doc/learn/01-quickstart">WPF quick start →</a>
         </article>
         <article>
             <h2>Wpflow.Core</h2>
-            <p>Le noyau commun, sans interface : modèle immuable, changes, chemins d'edges, JSON, disposition.</p>
+            <p>The shared core, without UI: immutable model, changes, edge paths, JSON, layout.</p>
             <pre><code>dotnet add package Wpflow.Core</code></pre>
-            <a href="doc/reference/utils">Utilitaires →</a>
+            <a href="doc/reference/utils">Utilities →</a>
         </article>
     </section>
 
     <footer>
         <p>
-            Licence
+            License
             <a href="@($"{DocLibrary.Repository}/blob/main/LICENSE")">MIT</a>.
         </p>
     </footer>

@@ -12,13 +12,13 @@
 }
 else
 {
-    <PageTitle>@current.Title · Exemples wpflow</PageTitle>
+    <PageTitle>@current.Title · wpflow examples</PageTitle>
 
     <div class="examples">
         <aside class="side examples-nav">
-            <button class="side-toggle" aria-expanded="@(_menu ? "true" : "false")" @onclick="() => _menu = !_menu">Liste des exemples</button>
-            <nav class="side-content @(_menu ? "open" : "")" aria-label="Exemples interactifs">
-                <h2>Exemples Blazor</h2>
+            <button class="side-toggle" aria-expanded="@(_menu ? "true" : "false")" @onclick="() => _menu = !_menu">List of examples</button>
+            <nav class="side-content @(_menu ? "open" : "")" aria-label="Interactive examples">
+                <h2>Blazor examples</h2>
                 <ul>
                     @foreach (var example in ExampleCatalog.All)
                     {
@@ -31,12 +31,12 @@ else
             <h1>@current.Title</h1>
             <p class="lead">@current.Summary</p>
             <p class="hint">
-                Tout s'exécute dans votre navigateur, avec <code>Wpflow.Blazor</code> en WebAssembly. La version WPF ne
-                tourne pas dans un navigateur : ses <a href="doc/examples">exemples</a> se lancent sous Windows.
+                Everything runs in your browser, with <code>Wpflow.Blazor</code> in WebAssembly. The WPF version does not
+                run in a browser: its <a href="doc/examples">examples</a> run on Windows.
             </p>
             <ExampleFrame Id="@current.Id" />
             <p class="note-links">
-                <span>Documentation :</span>
+                <span>Documentation:</span>
                 <a class="chip" href="doc/blazor">Wpflow.Blazor</a>
                 @foreach (var file in current.Docs)
                 {

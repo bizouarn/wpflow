@@ -77,7 +77,7 @@ public sealed class LinkVm
 public sealed class MvvmViewModel : Observable
 {
     private int _next = 4;
-    private string _summary = "", _hint = "Cliquez un node ou le fond.";
+    private string _summary = "", _hint = "Click a node or the background.";
     private double _zoom = 1;
     private IFlowController? _flow;
 
@@ -85,9 +85,9 @@ public sealed class MvvmViewModel : Observable
     {
         Tasks =
         [
-            new TaskVm { Id = "1", Title = "Écrire le ViewModel", X = 0, Y = 40 },
-            new TaskVm { Id = "2", Title = "Binder NodesSource", X = 280, Y = 0 },
-            new TaskVm { Id = "3", Title = "Glisser les nodes", X = 280, Y = 120 }
+            new TaskVm { Id = "1", Title = "Write the ViewModel", X = 0, Y = 40 },
+            new TaskVm { Id = "2", Title = "Bind NodesSource", X = 280, Y = 0 },
+            new TaskVm { Id = "3", Title = "Drag the nodes", X = 280, Y = 120 }
         ];
         Links =
         [
@@ -114,9 +114,9 @@ public sealed class MvvmViewModel : Observable
         // Commandes que le contrôle exécute à notre place (voir MvvmExample.xaml).
         ConnectCommand = new ParamCommand(p => AddLink((Connection)p!), CanConnect);
         NodesDeleteCommand = new ParamCommand(p => DeleteTasks((IReadOnlyList<object>)p!));
-        NodeClickCommand = new ParamCommand(p => Hint = $"clic sur « {((TaskVm)p!).Title} »");
-        PaneClickCommand = new ParamCommand(p => Hint = $"clic sur le fond en {(XYPosition)p!}");
-        NodeDragStopCommand = new ParamCommand(p => Hint = $"{((IReadOnlyList<object>)p!).Count} node(s) déplacé(s)");
+        NodeClickCommand = new ParamCommand(p => Hint = $"clicked \"{((TaskVm)p!).Title}\"");
+        PaneClickCommand = new ParamCommand(p => Hint = $"background click at {(XYPosition)p!}");
+        NodeDragStopCommand = new ParamCommand(p => Hint = $"{((IReadOnlyList<object>)p!).Count} node(s) moved");
         LinkFactory = edge => new LinkVm { Id = edge.Id, Source = edge.Source, Target = edge.Target };
     }
 
@@ -167,7 +167,7 @@ public sealed class MvvmViewModel : Observable
     private void AddTask(double x, double y)
     {
         var n = _next++;
-        Tasks.Add(new TaskVm { Id = n.ToString(), Title = $"Tâche {n}", X = x, Y = y });
+        Tasks.Add(new TaskVm { Id = n.ToString(), Title = $"Task {n}", X = x, Y = y });
     }
 
     // Règle métier : on ne se connecte pas à la première tâche, et pas deux fois le même lien. Le contrôle refuse la
@@ -178,7 +178,7 @@ public sealed class MvvmViewModel : Observable
     private void AddLink(Connection c)
     {
         Links.Add(new LinkVm { Id = $"l{Links.Count + 1}-{c.Source}-{c.Target}", Source = c.Source, Target = c.Target });
-        Hint = $"lien {c.Source} → {c.Target} créé";
+        Hint = $"link {c.Source} → {c.Target} created";
     }
 
     private void DeleteTasks(IReadOnlyList<object> tasks)
@@ -189,10 +189,10 @@ public sealed class MvvmViewModel : Observable
             Tasks.Remove(task);
         }
 
-        Hint = $"{tasks.Count} node(s) supprimé(s)";
+        Hint = $"{tasks.Count} node(s) deleted";
     }
 
     private void UpdateSummary() =>
-        Summary = $"{Tasks.Count} nodes, {Selection.Count} sélectionné(s)" +
-                  (Selection.Count > 0 ? " : " + string.Join(", ", Selection.Select(t => t.Title)) : "");
+        Summary = $"{Tasks.Count} nodes, {Selection.Count} selected" +
+                  (Selection.Count > 0 ? ": " + string.Join(", ", Selection.Select(t => t.Title)) : "");
 }

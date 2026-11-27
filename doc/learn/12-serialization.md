@@ -1,22 +1,22 @@
-# 12. Sauvegarde et JSON
+# 12. Saving and JSON
 
-*Équivalent React Flow : Save and Restore (`toObject`).*
+*React Flow equivalent: Save and Restore (`toObject`).*
 
-`GraphSerializer` lit et écrit un document de la même forme que `toObject()` de React Flow : `{ nodes, edges, viewport }`. Il permet de sauvegarder un graphe, de le restaurer, ou d'échanger avec une application React Flow.
+`GraphSerializer` reads and writes a document of the same shape as React Flow's `toObject()`: `{ nodes, edges, viewport }`. It lets you save a graph, restore it, or exchange data with a React Flow application.
 
 ```csharp
-// Sauvegarder
+// Save
 string json = GraphSerializer.ToJson(Flow.Nodes, Flow.Edges, Flow.Viewport);
 File.WriteAllText("flow.json", json);
 
-// Restaurer
+// Restore
 FlowGraph graph = GraphSerializer.FromJson(File.ReadAllText("flow.json"));
 Flow.Nodes = graph.Nodes;
 Flow.Edges = graph.Edges;
 Flow.Viewport = graph.Viewport;
 ```
 
-`ToJson(nodes, edges, viewport, indented: true)` écrit un JSON indenté ; passez `indented: false` pour une ligne.
+`ToJson(nodes, edges, viewport, indented: true)` writes indented JSON; pass `indented: false` for a single line.
 
 ## Format
 
@@ -25,7 +25,7 @@ Flow.Viewport = graph.Viewport;
   "nodes": [
     { "id": "1", "type": "input", "position": { "x": 250, "y": 5 }, "data": { "label": "Input" } },
     { "id": "g", "type": "group", "position": { "x": 0, "y": 0 }, "width": 300, "height": 200 },
-    { "id": "2", "position": { "x": 20, "y": 30 }, "data": "Enfant", "parentId": "g", "extent": "parent" }
+    { "id": "2", "position": { "x": 20, "y": 30 }, "data": "Child", "parentId": "g", "extent": "parent" }
   ],
   "edges": [
     { "id": "e1-2", "source": "1", "target": "2", "animated": true, "type": "smoothstep",
@@ -35,37 +35,37 @@ Flow.Viewport = graph.Viewport;
 }
 ```
 
-### Correspondance des champs
+### Field mapping
 
 | JSON | Wpflow |
 |---|---|
-| `id`, `type`, `position` | `Node.Id`, `Type` (défaut `default`), `Position` |
+| `id`, `type`, `position` | `Node.Id`, `Type` (default `default`), `Position` |
 | `data` | `Node.Data` |
 | `width`, `height` | `Node.FixedWidth`, `FixedHeight` |
 | `selected`, `draggable`, `selectable` | `Selected`, `Draggable`, `Selectable` |
 | `parentId`, `extent: "parent"` | `ParentId`, `ExtentParent` |
-| `source`, `target`, `sourceHandle`, `targetHandle` | idem sur `Edge` |
-| `animated`, `label`, `selected`, `type` | idem |
-| `markerEnd`, `markerStart` | `MarkerEnd`, `MarkerStart` — chaîne (`"arrowclosed"`) ou objet `{ "type": "arrowclosed" }`, valeurs `arrow` et `arrowclosed` |
+| `source`, `target`, `sourceHandle`, `targetHandle` | same names on `Edge` |
+| `animated`, `label`, `selected`, `type` | same names |
+| `markerEnd`, `markerStart` | `MarkerEnd`, `MarkerStart` — string (`"arrowclosed"`) or object `{ "type": "arrowclosed" }`, values `arrow` and `arrowclosed` |
 | `viewport.x/y/zoom` | `Viewport` |
 
-Les champs absents prennent leur valeur par défaut. Un node ou un edge sans `id` (ou un edge sans `source` / `target`) lève une `JsonException`.
+Missing fields take their default value. A node or an edge without an `id` (or an edge without `source` / `target`) throws a `JsonException`.
 
-## À propos de `Data`
+## About `Data`
 
-- **À l'écriture**, `Node.Data` est sérialisé avec `System.Text.Json` : types simples, dictionnaires, objets publics. Un ViewModel qui n'est pas sérialisable (contrôles, commandes…) doit être converti avant.
-- **À la lecture**, `Data` revient en `System.Text.Json.JsonElement`. Convertissez-le vers votre type :
+- **When writing**, `Node.Data` is serialised with `System.Text.Json`: simple types, dictionaries, public objects. A ViewModel that is not serialisable (controls, commands…) must be converted beforehand.
+- **When reading**, `Data` comes back as a `System.Text.Json.JsonElement`. Convert it to your type:
 
 ```csharp
 Flow.Nodes = graph.Nodes
-    .Select(n => n.Data is JsonElement j ? n with { Data = j.Deserialize<MesDonnees>() } : n)
+    .Select(n => n.Data is JsonElement j ? n with { Data = j.Deserialize<MyData>() } : n)
     .ToList();
 ```
 
-Le node par défaut affiche `Data.ToString()` : pour un `JsonElement` de type chaîne, extrayez le texte (`j.GetString()`) avant d'afficher.
+The default node displays `Data.ToString()`: for a `JsonElement` holding a string, extract the text (`j.GetString()`) before displaying it.
 
-## Exemple complet
+## Complete example
 
-La fenêtre d'exemples (onglet « Options et JSON ») exporte et réimporte le graphe affiché ; l'auto-test vérifie que positions et identifiants sont identiques après l'aller-retour.
+The examples window (« Options and JSON » tab) exports and re-imports the displayed graph; the self-test checks that positions and identifiers are identical after the round trip.
 
-Suivant : [MVVM](13-mvvm.md).
+Next: [MVVM](13-mvvm.md).

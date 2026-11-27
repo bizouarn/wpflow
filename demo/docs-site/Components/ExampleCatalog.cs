@@ -2,10 +2,10 @@ using DocsSite.Examples;
 
 namespace DocsSite.Components;
 
-/// <param name="Docs">Pages de <c>doc/</c> que l'exemple illustre.</param>
+/// <param name="Docs">Pages of <c>doc/</c> that the example illustrates.</param>
 public sealed record Example(string Id, string Title, string Summary, Type Component, params string[] Docs)
 {
-    /// <summary>Le code du fichier compilé (embarqué par le projet), donc toujours celui qui s'exécute.</summary>
+    /// <summary>The code of the compiled file (embedded by the project), so always the code that runs.</summary>
     public string Source
     {
         get
@@ -17,39 +17,39 @@ public sealed record Example(string Id, string Title, string Summary, Type Compo
     }
 }
 
-/// <summary>Les exemples interactifs : un composant par fichier de <c>Examples/</c>.</summary>
+/// <summary>The interactive examples: one component per file in <c>Examples/</c>.</summary>
 public static class ExampleCatalog
 {
     public static readonly IReadOnlyList<Example> All =
     [
-        new("premier-graphe", "Premier graphe", "Deux nodes, un lien animé, la minimap et les contrôles.",
+        new("premier-graphe", "First graph", "Two nodes, an animated link, the minimap and the controls.",
             typeof(FirstGraph), "doc/learn/01-quickstart.md", "doc/learn/02-concepts.md"),
-        new("etat-controle", "État et changes",
-            "Mode contrôlé : chaque interaction produit des changes que l'application applique ou refuse.",
+        new("etat-controle", "State and changes",
+            "Controlled mode: each interaction produces changes that the application applies or refuses.",
             typeof(ControlledState), "doc/learn/03-building-a-flow.md", "doc/reference/changes.md"),
-        new("nodes-personnalises", "Nodes personnalisés",
-            "Des modèles Razor avec de vrais champs, le redimensionnement, la rotation et une barre d'outils.",
+        new("nodes-personnalises", "Custom nodes",
+            "Razor templates with real fields, resizing, rotation and a toolbar.",
             typeof(CustomNodes), "doc/learn/04-custom-nodes.md", "doc/reference/components.md"),
-        new("edges", "Types d'edges", "Courbes, angles droits, flèches, labels, animation et tracé sur mesure.",
+        new("edges", "Edge types", "Curves, right angles, arrows, labels, animation and a custom path.",
             typeof(EdgeGallery), "doc/learn/05-edges.md", "doc/learn/14-customization.md"),
-        new("sous-flows", "Sous-flows et groupes", "Des nodes enfants qui suivent leur groupe et restent dedans.",
+        new("sous-flows", "Sub-flows and groups", "Child nodes that follow their group and stay inside it.",
             typeof(SubFlows), "doc/learn/06-sub-flows.md"),
-        new("disposition", "Disposition automatique", "Mélangez, puis laissez GraphLayout ranger le graphe en couches.",
+        new("disposition", "Automatic layout", "Shuffle, then let GraphLayout arrange the graph in layers.",
             typeof(AutoLayout), "doc/learn/07-layouting.md", "doc/reference/utils.md"),
-        new("theme", "Thème", "Clair, sombre ou vos couleurs, par les variables CSS ; trois motifs de fond.",
+        new("theme", "Theme", "Light, dark or your own colours, through CSS variables; three background patterns.",
             typeof(Theming), "doc/learn/08-theming.md", "doc/reference/theme-keys.md"),
-        new("connexions", "Connexions et validation",
-            "Mode strict ou libre, connexion par clics, règle de validation et reconnexion.",
+        new("connexions", "Connections and validation",
+            "Strict or loose mode, two-click connection, a validation rule and reconnection.",
             typeof(Connecting), "doc/learn/09-interactions.md"),
-        new("palette", "Glisser-déposer", "Une palette dont les éléments se déposent sur le graphe.",
+        new("palette", "Drag and drop", "A palette whose items are dropped onto the graph.",
             typeof(DragAndDrop), "doc/learn/09-interactions.md"),
-        new("calcul", "Calculer avec un flow", "Des valeurs circulent le long des liens et sont recalculées à chaque changement.",
+        new("calcul", "Computing with a flow", "Values flow along the links and are recomputed at each change.",
             typeof(Computing), "doc/learn/10-computing-flows.md"),
-        new("performance", "Grands graphes", "Des milliers de nodes, avec ou sans virtualisation.",
+        new("performance", "Large graphs", "Thousands of nodes, with or without virtualisation.",
             typeof(LargeGraph), "doc/learn/11-performance-accessibility.md"),
-        new("json", "Sauvegarde et JSON", "Exporter le graphe au format React Flow, le modifier, le recharger.",
+        new("json", "Saving and JSON", "Export the graph in React Flow format, edit it, reload it.",
             typeof(JsonSave), "doc/learn/12-serialization.md", "doc/reference/types.md"),
-        new("mvvm", "MVVM", "La vue travaille directement sur vos ViewModels.",
+        new("mvvm", "MVVM", "The view works directly on your ViewModels.",
             typeof(MvvmBinding), "doc/learn/13-mvvm.md")
     ];
 

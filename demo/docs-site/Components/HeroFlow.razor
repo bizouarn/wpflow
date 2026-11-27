@@ -1,5 +1,5 @@
-@* Le montage de l'accueil, comme dans la démo WPF : un rendu en haut, nourri par trois réglages à travers des câbles.
-   Un réglage n'agit que si son câble existe. *@
+@* The home page assembly, as in the WPF demo: a render node on top, fed by three settings through cables.
+   A setting only acts while its cable exists. *@
 
 <div class="hero-flow">
     <FlowView @bind-Nodes="_nodes" Edges="_edges" EdgesChanged="OnEdges" NodeTemplates="_templates" Dark="true"
@@ -11,7 +11,7 @@
     </FlowView>
     @if (_edges.Count < Settings.Length)
     {
-        <button class="hero-reconnect" @onclick="@(() => OnEdges(Settings.Select(Cable).ToList()))">Tout rebrancher</button>
+        <button class="hero-reconnect" @onclick="@(() => OnEdges(Settings.Select(Cable).ToList()))">Reconnect all</button>
     }
 </div>
 
@@ -57,23 +57,23 @@
         _templates = new()
         {
             ["render"] = n => @<div class="hero-card hero-render">
-                <header><i class="mint"></i>RENDU</header>
+                <header><i class="mint"></i>RENDER</header>
                 @if (n.Data is Render r)
                 {
                     <SolidRing Color="@r.Color" Pyramids="r.Pyramids" Zoom="r.Zoom" />
                 }
-                <div class="hero-inputs" aria-hidden="true"><span>couleur</span><span>forme</span><span>zoom</span></div>
+                <div class="hero-inputs" aria-hidden="true"><span>colour</span><span>shape</span><span>zoom</span></div>
                 <NodeResizer NodeMinWidth="300" NodeMinHeight="160" />
                 <FlowHandle Type="HandleType.Target" Position="Position.Bottom" HandleId="color" Offset="120" />
                 <FlowHandle Type="HandleType.Target" Position="Position.Bottom" HandleId="shape" Offset="180" />
                 <FlowHandle Type="HandleType.Target" Position="Position.Bottom" HandleId="zoom" Offset="240" />
             </div>,
             ["color"] = n => @<div class="hero-card">
-                <header><i></i>COULEUR</header>
+                <header><i></i>COLOUR</header>
                 <div class="hero-body">
                     @foreach (var preset in Presets)
                     {
-                        <button class="nodrag swatch" style="@($"background:{preset}")" aria-label="@($"Couleur {preset}")"
+                        <button class="nodrag swatch" style="@($"background:{preset}")" aria-label="@($"Colour {preset}")"
                                 aria-pressed="@(((ColorCard)n.Data!).Color == preset ? "true" : "false")"
                                 @onclick="() => { _color = preset; Refresh(); }"></button>
                     }
@@ -81,19 +81,19 @@
                 <FlowHandle Type="HandleType.Source" Position="Position.Top" />
             </div>,
             ["shape"] = n => @<div class="hero-card">
-                <header><i></i>FORME</header>
+                <header><i></i>SHAPE</header>
                 <div class="hero-body segments">
                     <button class="nodrag" aria-pressed="@(((ShapeCard)n.Data!).Pyramids ? "false" : "true")"
                             @onclick="() => { _pyramids = false; Refresh(); }">cubes</button>
                     <button class="nodrag" aria-pressed="@(((ShapeCard)n.Data!).Pyramids ? "true" : "false")"
-                            @onclick="() => { _pyramids = true; Refresh(); }">pyramides</button>
+                            @onclick="() => { _pyramids = true; Refresh(); }">pyramids</button>
                 </div>
                 <FlowHandle Type="HandleType.Source" Position="Position.Top" />
             </div>,
             ["zoom"] = n => @<div class="hero-card">
                 <header><i></i>ZOOM<output>@(((ZoomCard)n.Data!).Zoom) %</output></header>
                 <div class="hero-body">
-                    <input class="nodrag" type="range" min="0" max="100" aria-label="Zoom du rendu" value="@(((ZoomCard)n.Data!).Zoom)"
+                    <input class="nodrag" type="range" min="0" max="100" aria-label="Render zoom" value="@(((ZoomCard)n.Data!).Zoom)"
                            @oninput="e => { if (int.TryParse(e.Value?.ToString(), out var v)) { _zoom = v; Refresh(); } }" />
                 </div>
                 <FlowHandle Type="HandleType.Source" Position="Position.Top" />

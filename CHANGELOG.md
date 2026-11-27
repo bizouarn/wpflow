@@ -1,190 +1,190 @@
 # Changelog
 
-Les trois paquets (`Wpflow.Core`, `Wpflow.Wpf`, `Wpflow.Blazor`) partagent le même numéro. Au `dotnet pack`, la validation de paquet compare l'API à la version publiée (`PackageValidationBaselineVersion` dans `Directory.Build.props`) : une API retirée fait échouer la construction, sauf si la rupture est déclarée dans `CompatibilitySuppressions.xml`.
+The three packages (`Wpflow.Core`, `Wpflow.Wpf`, `Wpflow.Blazor`) share the same version number. At `dotnet pack`, package validation compares the API with the published version (`PackageValidationBaselineVersion` in `Directory.Build.props`): a removed API makes the build fail, unless the break is declared in `CompatibilitySuppressions.xml`.
 
 ## 1.2.0
 
-### Correctif (navigation Blazor)
+### Fix (Blazor navigation)
 
-- Blazor : en quittant une page qui contient un graphe (interactivité par page, navigation améliorée), le pont JS pouvait appeler la vue déjà détruite, d'où une erreur en console (« There is no tracked object with id… »). Une vue retirée de la page n'envoie plus rien.
+- Blazor: when leaving a page that contains a graph (per-page interactivity, improved navigation), the JS bridge could call the view that had already been destroyed, which logged an error in the console (« There is no tracked object with id… »). A view removed from the page no longer sends anything.
 
-### Cibles .NET Framework et .NET Standard
+### .NET Framework and .NET Standard targets
 
-- `Wpflow.Core` cible aussi `net472` et `netstandard2.0` (donc .NET Core 2.0 et suivants), avec une dépendance à `System.Text.Json` 8 sur ces deux cibles. La version `net8.0` est inchangée : sans dépendance, avec les API natives.
-- `Wpflow.Wpf` cible aussi `net472`. Les annonces de sélection aux lecteurs d'écran n'y sont pas émises. WPF n'existe pas sur .NET Core 2.x.
-- Une application .NET Core 2.x doit définir `SuppressTfmSupportBuildWarnings` (voir le [démarrage rapide](doc/learn/01-quickstart.md)).
-- `Wpflow.Blazor` reste en `net8.0`.
+- `Wpflow.Core` also targets `net472` and `netstandard2.0` (so .NET Core 2.0 and later), with a dependency on `System.Text.Json` 8 on these two targets. The `net8.0` version is unchanged: no dependency, with the native APIs.
+- `Wpflow.Wpf` also targets `net472`. Selection announcements to screen readers are not emitted there. WPF does not exist on .NET Core 2.x.
+- An application on .NET Core 2.x must set `SuppressTfmSupportBuildWarnings` (see the [quick start](doc/learn/01-quickstart.md)).
+- `Wpflow.Blazor` stays on `net8.0`.
 
-### Ajouts
+### Additions
 
-- Les trois paquets ont une icône (`PackageIcon`, source `assets/logo.svg`).
-- `GraphUtils.GetHandleSide(node, position)` : le côté vers lequel regarde un handle une fois le node tourné.
+- The three packages have an icon (`PackageIcon`, source `assets/logo.svg`).
+- `GraphUtils.GetHandleSide(node, position)`: the side a handle faces once its node is rotated.
 
-### Correctifs (nodes tournés)
+### Fixes (rotated nodes)
 
-- WPF et Blazor : les edges ne suivaient pas un node tourné (`Node.Rotation`). Leur extrémité, la direction d'où ils partent, le fil d'une connexion en cours et la recherche du handle visé tiennent désormais compte de la rotation. `GraphUtils.GetHandlePosition` et `GetHandleCenter` rendent le point tel qu'il est affiché ; les `HandleInfo` restent exprimés dans le node non tourné.
-- Blazor : les handles d'un node tourné étaient mesurés d'après son rectangle englobant, donc à une place fausse.
+- WPF and Blazor: edges did not follow a rotated node (`Node.Rotation`). Their end point, the direction they leave from, the wire of a connection in progress and the search for the targeted handle now take the rotation into account. `GraphUtils.GetHandlePosition` and `GetHandleCenter` return the point as it is displayed; the `HandleInfo`s remain expressed in the unrotated node.
+- Blazor: the handles of a rotated node were measured from its bounding rectangle, so they were in the wrong place.
 
-### Correctifs (mode contrôlé Blazor)
+### Fixes (Blazor controlled mode)
 
-- Blazor : avec `AutoApplyChanges="false"`, une connexion demandait encore l'ajout de l'edge par `OnEdgesChange` après `OnConnect` ; une application traitant les deux créait deux edges superposés. Seul `OnConnect` est désormais levé, comme en WPF. Si votre application comptait sur cette demande d'ajout, créez l'edge dans `OnConnect`.
+- Blazor: with `AutoApplyChanges="false"`, a connection still requested the addition of the edge through `OnEdgesChange` after `OnConnect`; an application handling both created two overlapping edges. Only `OnConnect` is now raised, as in WPF. If your application relied on that addition request, create the edge in `OnConnect`.
 
-### Correctifs (groupes Blazor)
+### Fixes (Blazor groups)
 
-- Blazor : le cadre d'un node `group` ne prenait pas la hauteur donnée par `FixedHeight` (il restait à 80 px), et les enfants semblaient sortir du groupe. Il remplit désormais le node.
+- Blazor: the frame of a `group` node did not take the height given by `FixedHeight` (it stayed at 80 px), and the children seemed to leave the group. It now fills the node.
 
-### Correctifs (fond et virtualisation Blazor)
+### Fixes (Blazor background and virtualisation)
 
-- Blazor : le fond `BackgroundVariant.Cross` ne montrait que des coins (┌), la tuile du motif rognant les croix. La demi-longueur par défaut des croix passe de 6 à 3, comme en WPF.
-- Blazor : avec `FitViewOnInit="false"`, `OnlyRenderVisibleElements` ne s'activait jamais. La virtualisation prend désormais effet dès que la taille de la vue est connue ; un edge entre des nodes jamais mesurés est écarté d'après leur taille supposée, comme en WPF.
+- Blazor: the `BackgroundVariant.Cross` background only showed corners (┌), the pattern tile cutting off the crosses. The default half-length of the crosses goes from 6 to 3, as in WPF.
+- Blazor: with `FitViewOnInit="false"`, `OnlyRenderVisibleElements` never turned on. Virtualisation now takes effect as soon as the size of the view is known; an edge between nodes never measured is discarded based on their assumed size, as in WPF.
 
-### Performances (Blazor, grands graphes)
+### Performance (Blazor, large graphs)
 
-Mesuré en WebAssembly dans Chrome, 855 nodes et 908 edges tous visibles : un pas de pan passe de 280 à 520 ms à une image (environ 17 ms).
+Measured in WebAssembly in Chrome, 855 nodes and 908 edges all visible: a panning step goes from 280 to 520 ms per frame to about 17 ms.
 
-- Un parent qui écoute `ViewportChanged` (`@bind-Viewport`), `OnMove`, `OnMoveStart`, `OnMoveEnd` ou `OnStateChange` ne fait plus reconstruire tous les nodes et edges à chaque pas.
-- `OnlyRenderVisibleElements` : la couche n'est reconstruite que lorsqu'un élément doit apparaître ou disparaître, avec la même marge de maintien qu'en WPF.
-- Saisir puis relâcher le fond, ou maintenir Espace, ne reconstruit plus la couche.
-- La minimap ne redessine plus ses rectangles à chaque pas de pan.
+- A parent that listens to `ViewportChanged` (`@bind-Viewport`), `OnMove`, `OnMoveStart`, `OnMoveEnd` or `OnStateChange` no longer rebuilds all nodes and edges at each step.
+- `OnlyRenderVisibleElements`: the layer is only rebuilt when an element must appear or disappear, with the same keep margin as in WPF.
+- Pressing and releasing the background, or holding Space, no longer rebuilds the layer.
+- The minimap no longer redraws its rectangles at each panning step.
 
-Même graphe, avec un modèle d'edge et un parent qui écoute le glisser et le survol (configuration de développement) :
+Same graph, with an edge template and a parent listening to dragging and hovering (development configuration):
 
-| Geste ou étape | Avant | Après |
+| Gesture or step | Before | After |
 |---|---|---|
-| Chargement (mode contrôlé) | 78 s | 9 s |
-| Glisser d'un node, par pas | 1 820 ms | 300 ms |
-| Fil tiré, par pas | 990 ms | 140 ms |
-| Rectangle de sélection, par pas | 1 270 ms | 150 ms |
-| Survol du fond, par pas | 620 ms | 55 ms |
+| Loading (controlled mode) | 78 s | 9 s |
+| Dragging a node, per step | 1,820 ms | 300 ms |
+| Wire being drawn, per step | 990 ms | 140 ms |
+| Selection rectangle, per step | 1,270 ms | 150 ms |
+| Hovering the background, per step | 620 ms | 55 ms |
 
-- Chaque edge et chaque label est mémorisé, comme les nodes : déplacer un node ne redessine que ses edges.
-- Les mesures d'un grand graphe, que le pont JS découpe en dizaines de messages (`MeasuredNode.More`), sont appliquées une seule fois : un seul changement (`OnNodesChange`) au lieu d'un par message.
-- La minimap ne redessine ses rectangles que quand les nodes changent (ni quand la virtualisation en fait apparaître), et ne leur pose un gestionnaire de clic que si `OnNodeClick` est écouté. Page « Performance » du site de documentation, 1 000 nodes avec virtualisation (configuration de développement, sans parent à l'écoute ni modèle) : déplacement de la vue 119 → 83 ms par pas, zoom 480 → 306 ms. Le glisser d'un node y reste vers 200 à 240 ms : la minimap en prend environ la moitié.
-- Le fil d'une connexion est dessiné hors de la couche ; survol, rectangle de sélection et rendus du parent qui ne changent rien ne la reconstruisent plus.
+- Each edge and each label is memoised, like nodes: moving a node only redraws its edges.
+- The measurements of a large graph, which the JS bridge splits into dozens of messages (`MeasuredNode.More`), are applied only once: a single change (`OnNodesChange`) instead of one per message.
+- The minimap only redraws its rectangles when nodes change (not when virtualisation makes some appear), and only attaches a click handler to them if `OnNodeClick` is listened to. « Performance » page of the documentation site, 1,000 nodes with virtualisation (development configuration, no listening parent and no template): panning the view 119 → 83 ms per step, zoom 480 → 306 ms. Dragging a node there stays around 200 to 240 ms: the minimap accounts for about half of it.
+- The wire of a connection is drawn outside the layer; hovering, the selection rectangle and parent renders that change nothing no longer rebuild it.
 
-### Changements de comportement (Blazor)
+### Behaviour changes (Blazor)
 
-- Un modèle d'edge (`EdgeTemplates`) ou de label (`EdgeLabelTemplate`) n'est rappelé que si son edge, ses extrémités, l'un de ses deux nodes ou un réglage de la vue change, ou s'il est redéclaré (un délégué neuf). Un modèle qui lit l'état du parent ou un autre node doit recevoir cet état par les données.
-- Le fil d'une connexion passe au-dessus des nodes, comme en WPF (il passait dessous). Il est dans son propre `svg` (`wf-connection-layer`).
-- Pendant un changement de vue, le rendu du parent ne redessine plus les modèles d'edges et de labels qui liraient son état (c'était déjà le cas des modèles de nodes) : passez cet état par les données, ou redéclarez le modèle. Même règle pour `NodeColor` de la minimap.
-- Avec `OnlyRenderVisibleElements`, les edges proches de la vue (300 px) sont dessinés d'avance, comme les nodes.
-- `OnStateChange`, quand seule la vue bouge, est levé juste avant le rendu et non après.
+- An edge template (`EdgeTemplates`) or label template (`EdgeLabelTemplate`) is only called again if its edge, its ends, one of its two nodes or a view setting changes, or if it is re-declared (a new delegate). A template that reads the state of the parent or of another node must receive that state through the data.
+- The wire of a connection now passes above the nodes, as in WPF (it used to pass below). It is in its own `svg` (`wf-connection-layer`).
+- During a view change, the parent's render no longer redraws edge and label templates that would read its state (node templates already behaved this way): pass that state through the data, or re-declare the template. The same rule applies to the minimap's `NodeColor`.
+- With `OnlyRenderVisibleElements`, edges close to the view (300 px) are drawn in advance, as nodes are.
+- `OnStateChange`, when only the view moves, is raised just before rendering instead of after.
 
-### Correctifs (conditions d'intégration hostiles)
+### Fixes (hostile integration conditions)
 
-- Blazor : sous un parent en `transform: scale()`, les clics, le glisser, le pan, le pincement, la minimap et le cadrage visaient à côté. Le pont JS donne désormais la taille de mise en page de la vue et l'échelle de ses parents (`OnRootScale`).
-- Blazor : après un contenu inséré au-dessus du graphe (sans changement de taille ni défilement), un dépôt ou un survol tombait à côté. La position est relue à l'entrée du pointeur et pendant un glisser-déposer.
-- Blazor : un CSS global sur `svg` (`max-width: 100%`, taille d'icône) effaçait les edges ou réduisait la minimap ; un `min-width` sur `button` élargissait les contrôles.
-- Blazor : après la suppression du node qui avait le focus, le clavier (Ctrl+Z) ne parvenait plus à la vue.
-- Blazor : sur une page chargée, ou pour un geste très bref, le dernier mouvement avant le relâchement était perdu : node ou vue arrêtés en retrait de la souris, connexion non faite.
-- Blazor Server : un bouton relâché pendant une coupure du circuit n'arrivait jamais ; le node restait en cours de glisser après la reprise. Le pont JS redemande la fin du geste jusqu'à la réponse du serveur (`OnGestureLost`).
-- WPF : une exception levée par un gestionnaire pendant une connexion laissait la souris capturée par la vue, qui ne répondait plus au clic suivant.
-- WPF : une vue fermée restait en mémoire tant que vivaient ses ViewModels (`NodesSource`, `EdgesSource`), sa collection `SelectedNodes` / `SelectedEdges` ou son `History`. Ces abonnements sont désormais faibles.
+- Blazor: under a parent with `transform: scale()`, clicks, dragging, panning, pinching, the minimap and fitting landed off target. The JS bridge now gives the layout size of the view and the scale of its parents (`OnRootScale`).
+- Blazor: after content inserted above the graph (with no size change or scrolling), a drop or a hover landed off target. The position is now re-read when the pointer enters and during a drag-and-drop.
+- Blazor: a global CSS rule on `svg` (`max-width: 100%`, icon size) erased edges or shrank the minimap; a `min-width` on `button` widened the controls.
+- Blazor: after deleting the node that had focus, the keyboard (Ctrl+Z) could no longer reach the view.
+- Blazor: on a freshly loaded page, or for a very brief gesture, the last movement before release was lost: node or view stopped short of the mouse, connection not made.
+- Blazor Server: a button released during a circuit outage never arrived; the node stayed in a dragging state after reconnection. The JS bridge now re-sends the end of the gesture until the server responds (`OnGestureLost`).
+- WPF: an exception thrown by a handler during a connection left the mouse captured by the view, which no longer responded to the next click.
+- WPF: a closed view stayed in memory as long as its ViewModels (`NodesSource`, `EdgesSource`), its `SelectedNodes` / `SelectedEdges` collection or its `History` lived. These subscriptions are now weak.
 
-### Changements de comportement
+### Behaviour changes
 
-- `NodeSourceAdapter` et `EdgeSourceAdapter` : la source ne retient plus l'adaptateur. Les vues le gardent elles-mêmes ; un code qui crée un adaptateur directement doit en garder une référence tant qu'il doit suivre la source.
+- `NodeSourceAdapter` and `EdgeSourceAdapter`: the source no longer holds the adapter. The views keep it themselves; code that creates an adapter directly must keep a reference to it for as long as it must track the source.
 
 ## 1.1.0
 
-### Ruptures
+### Breaking changes
 
-> Cette version mineure contient une rupture d'API, choisie à la place d'une 2.0.0.
+> This minor version contains an API break, chosen instead of a 2.0.0.
 
-- `EdgeGeometry.Options` est retiré, ainsi que le cinquième paramètre correspondant du constructeur et de `Deconstruct`. Un fournisseur de tracé personnalisé (WPF ou Blazor) qui le lisait lit désormais `geometry.Edge?.PathOptions`.
+- `EdgeGeometry.Options` is removed, together with the corresponding fifth parameter of the constructor and of `Deconstruct`. A custom path provider (WPF or Blazor) that read it now reads `geometry.Edge?.PathOptions`.
 
-### Changements de comportement
+### Behaviour changes
 
-Les deux vues se comportent désormais de la même façon, WPF servant de référence.
+Both views now behave the same way, with WPF as the reference.
 
-- Blazor : un double-clic sur un node ou un edge donne clic, double-clic, clic (auparavant clic, clic, double-clic). Les deux derniers évènements arrivent dans le même traitement : un gestionnaire de clic qui efface ce qu'a fait le double-clic le fait avant tout rendu.
-- Blazor : un clic droit sur une sélection lève `OnSelectionContextMenu`, puis `OnNodeContextMenu` pour le node visé (auparavant le premier seulement).
-- Blazor : `SelectAll()` et Ctrl+A sélectionnent aussi les edges, et les nodes masqués comme en WPF.
-- Blazor : en mode contrôlé (`AutoApplyChanges="false"`), la vue ne tient plus d'historique.
-- WPF : en mode contrôlé, `CanUndo` reste faux (`Undo` n'y faisait déjà rien).
-- WPF, MVVM : annuler et rétablir réécrivent dans les ViewModels toutes les propriétés mappées, plus seulement la position, la sélection, la taille et les extrémités. Un changement que votre code a fait depuis le geste n'est pas défait.
-- Blazor : `NodeDragThreshold`, `ConnectionDragThreshold` et `PaneDragThreshold` valent 1 px par défaut, comme en WPF (3 auparavant), et `ReconnectRadius` 24 px (10).
-- WPF et Blazor : un appui reste un clic tant que le pointeur ne s'éloigne pas de 4 px, ou du seuil de glisser s'il est plus grand. La plus grande distance parcourue compte : un glisser revenu à son départ n'est pas un clic.
-- WPF et Blazor : la reconnexion ne commence qu'au premier mouvement. Un clic près de l'extrémité d'un edge est un clic sur l'edge.
-- WPF : tirer un handle d'où aucune connexion ne peut partir (vue verrouillée, node ou handle non connectable) ne déplace plus ni le node ni la vue.
-- WPF : avec `SelectNodesOnDrag` faux, un node glissé reste non sélectionné, comme le dit la documentation (il était sélectionné au début du glisser).
-- Blazor : un clic sur un node d'une sélection multiple la garde ; Ctrl + clic sur un edge sélectionné ne le désélectionne plus.
-- Blazor : un appui sur un contrôle HTML d'un node (`button`, `input`…) ne sélectionne plus le node.
-- Blazor : un node verrouillé, non sélectionnable ou saisi hors de sa zone `DragHandle` laisse le glisser déplacer la vue.
-- Blazor : `Node.ExpandParent` agit, comme en WPF (il était ignoré). Glisser un tel enfant au-delà de son parent agrandit celui-ci ; à gauche et en haut, le parent recule et ses autres enfants restent en place à l'écran.
-- Blazor : quand les deux extrémités d'un edge sont à portée (edge court), l'appui reconnecte la plus proche, la cible à égale distance (il reconnectait toujours la source).
-- Blazor : la molette sur la minimap (`Zoomable`) zoome deux fois plus à chaque cran. Avec `ZoomStep` à 10, un cran zoome comme sur la surface, comme en WPF. Pour retrouver l'ancienne sensibilité : `ZoomStep="5"`. Les défilements exprimés en lignes sont aussi convertis en pixels, comme sur la surface.
-- Blazor : avec `ElementsSelectable` faux, `SelectOnly` ne fait plus que désélectionner, comme en WPF.
+- Blazor: a double click on a node or an edge gives click, double click, click (previously click, click, double click). The last two events arrive in the same handler: a click handler that undoes what the double click did does it before any render.
+- Blazor: a right click on a selection raises `OnSelectionContextMenu`, then `OnNodeContextMenu` for the targeted node (previously only the first).
+- Blazor: `SelectAll()` and Ctrl+A now also select edges, and hidden nodes, as in WPF.
+- Blazor: in controlled mode (`AutoApplyChanges="false"`), the view no longer keeps a history.
+- WPF: in controlled mode, `CanUndo` stays false (`Undo` already did nothing there).
+- WPF, MVVM: undo and redo now rewrite all mapped properties into the ViewModels, not only position, selection, size and ends. A change your code made after the gesture is not undone.
+- Blazor: `NodeDragThreshold`, `ConnectionDragThreshold` and `PaneDragThreshold` default to 1 px, as in WPF (3 before), and `ReconnectRadius` to 24 px (10).
+- WPF and Blazor: a press stays a click as long as the pointer does not move more than 4 px away, or beyond the drag threshold if it is larger. The greatest distance travelled counts: a drag brought back to its start is not a click.
+- WPF and Blazor: reconnection only starts on the first movement. A click near the end of an edge is a click on the edge.
+- WPF: pulling a handle from which no connection can start (locked view, non-connectable node or handle) no longer moves the node or the view.
+- WPF: with `SelectNodesOnDrag` false, a dragged node stays unselected, as the documentation says (it used to be selected at the start of the drag).
+- Blazor: a click on a node of a multiple selection keeps the selection; Ctrl + click on a selected edge no longer deselects it.
+- Blazor: pressing an HTML control inside a node (`button`, `input`…) no longer selects the node.
+- Blazor: a locked, non-selectable node, or one grabbed outside its `DragHandle` area, lets the drag move the view.
+- Blazor: `Node.ExpandParent` now works, as in WPF (it was ignored). Dragging such a child beyond its parent enlarges the parent; to the left and at the top, the parent moves back and its other children stay in place on screen.
+- Blazor: when both ends of an edge are within reach (short edge), pressing reconnects the nearer one, the target when they are equally close (it always reconnected the source).
+- Blazor: the wheel on the minimap (`Zoomable`) zoomed twice as much per notch. With `ZoomStep` at 10, a notch zooms as on the surface, as in WPF. To get back the old sensitivity: `ZoomStep="5"`. Wheel scrolls expressed in lines are also converted to pixels, as on the surface.
+- Blazor: with `ElementsSelectable` false, `SelectOnly` now only deselects, as in WPF.
 
-### Ajouts
+### Additions
 
-- **MVVM en Blazor** : `NodesSource`, `EdgesSource`, `NodeMapping`, `EdgeMapping`, `NodeFactory`, `EdgeFactory`, sélection liée (`SelectedNodeItems`, `SelectedEdgeItems`, `SelectedNode`), `Controller` / `ControllerChanged`, `History`, `NodeModel` / `EdgeModel`, `ToJson(sélecteur)`. Les `EventCallback` tiennent lieu de commandes.
-- La logique MVVM est dans le noyau (`NodeSourceAdapter`, `EdgeSourceAdapter`, `NodeMappingBase`, `EdgeMappingBase`) ; `NodeMapping` et `EdgeMapping` en dérivent, sans changement pour le code existant.
-- MVVM : toutes les propriétés de `Node` et d'`Edge` se mappent (rotation, z-index, style, options de tracé et de marqueurs, positions des handles, étendue, origine…).
-- WPF : une commande pour chaque évènement qui n'en avait pas (survol, glisser, rectangle de sélection, reconnexion, déplacement de la vue, molette, initialisation, erreurs, changes).
-- WPF : évènements `Deleted`, `SelectionChanged` et `NodesReady` (avec leurs commandes) ; réglages `AutoConnect`, `HistoryEnabled`, `HistoryLimit`.
-- Blazor : `OnNodeMouseMove`, `OnEdgeMouseMove`, `OnPaneScroll`, `OnStateChange` ; réglages `AutoPanOnNodeFocus`, `EdgeHitWidth` ; `NodesInitialized`, `CanPaste`, `IsViewportAnimating`, `IsConnecting`, `Zoom`, `AbsoluteNodes`.
-- WPF : `ExportSvg()`, avec le même dessin qu'en Blazor (`SvgExport` dans le noyau).
-- `EdgeGeometry.Edge` : les fournisseurs de tracé reçoivent l'edge tracé (WPF et Blazor).
-- Blazor : `NodeEventArgs.TargetData`, les attributs `data-*` de l'élément cliqué dans un node.
-- WPF : savoir quelle partie d'un node a été cliquée, double-cliquée ou visée par le menu contextuel. La propriété attachée `FlowView.TargetData` marque un élément d'un modèle ; `ElementEventArgs.TargetData` donne la marque la plus proche et `ElementEventArgs.OriginalSource` l'élément pressé.
-- WPF : des méthodes publiques en Blazor le deviennent sur `FlowView` : `ApplyNodeChanges`, `ApplyEdgeChanges`, `ClearHistory`, `ClearSelection`, `SelectAll`, `SelectOnly`, `DeleteSelected`, `CenterOn(XYPosition)`, `FlowToScreen`, `GetIncomers`, `GetOutgoers`, `SetLocked`. Elles sont synchrones, sauf `DeleteSelected`.
-- WPF, MVVM : `EdgeMapping.DataPath`, `MarkerStartPath` et `MarkerEndPath`. Le tracé et les marqueurs d'un edge peuvent dépendre de son ViewModel.
-- WPF, MVVM : `FlowView.SelectionContextMenuCommand`, la commande qui manquait à côté de l'évènement `SelectionContextMenuRequested`.
-- WPF : `FlowView.UpdateNodeInternals(id)` remesure un node dont les handles ont été déplacés sans changement de taille (la vue ne le détecte pas seule ; en Blazor c'est automatique).
-- WPF : `FlowView.CommandsReceiveEventArgs` (faux par défaut) fait recevoir l'`ElementEventArgs` aux commandes de clic, de double-clic et de menu contextuel.
+- **MVVM in Blazor**: `NodesSource`, `EdgesSource`, `NodeMapping`, `EdgeMapping`, `NodeFactory`, `EdgeFactory`, bound selection (`SelectedNodeItems`, `SelectedEdgeItems`, `SelectedNode`), `Controller` / `ControllerChanged`, `History`, `NodeModel` / `EdgeModel`, `ToJson(selector)`. `EventCallback`s take the place of commands.
+- The MVVM logic is in the core (`NodeSourceAdapter`, `EdgeSourceAdapter`, `NodeMappingBase`, `EdgeMappingBase`); `NodeMapping` and `EdgeMapping` derive from them, with no change for existing code.
+- MVVM: all properties of `Node` and `Edge` can be mapped (rotation, z-index, style, path and marker options, handle positions, extent, origin…).
+- WPF: a command for each event that had none (hover, dragging, selection rectangle, reconnection, view movement, wheel, initialisation, errors, changes).
+- WPF: `Deleted`, `SelectionChanged` and `NodesReady` events (with their commands); `AutoConnect`, `HistoryEnabled`, `HistoryLimit` settings.
+- Blazor: `OnNodeMouseMove`, `OnEdgeMouseMove`, `OnPaneScroll`, `OnStateChange`; `AutoPanOnNodeFocus`, `EdgeHitWidth` settings; `NodesInitialized`, `CanPaste`, `IsViewportAnimating`, `IsConnecting`, `Zoom`, `AbsoluteNodes`.
+- WPF: `ExportSvg()`, with the same drawing as in Blazor (`SvgExport` in the core).
+- `EdgeGeometry.Edge`: path providers receive the edge being drawn (WPF and Blazor).
+- Blazor: `NodeEventArgs.TargetData`, the `data-*` attributes of the clicked element inside a node.
+- WPF: knowing which part of a node was clicked, double-clicked or targeted by the context menu. The attached property `FlowView.TargetData` marks an element of a template; `ElementEventArgs.TargetData` gives the nearest mark and `ElementEventArgs.OriginalSource` the pressed element.
+- WPF: public methods that exist in Blazor are now on `FlowView`: `ApplyNodeChanges`, `ApplyEdgeChanges`, `ClearHistory`, `ClearSelection`, `SelectAll`, `SelectOnly`, `DeleteSelected`, `CenterOn(XYPosition)`, `FlowToScreen`, `GetIncomers`, `GetOutgoers`, `SetLocked`. They are synchronous, except `DeleteSelected`.
+- WPF, MVVM: `EdgeMapping.DataPath`, `MarkerStartPath` and `MarkerEndPath`. The path and markers of an edge can depend on its ViewModel.
+- WPF, MVVM: `FlowView.SelectionContextMenuCommand`, the command that was missing next to the `SelectionContextMenuRequested` event.
+- WPF: `FlowView.UpdateNodeInternals(id)` re-measures a node whose handles were moved without a size change (the view does not detect this on its own; in Blazor it is automatic).
+- WPF: `FlowView.CommandsReceiveEventArgs` (false by default) makes the click, double-click and context-menu commands receive the `ElementEventArgs`.
 
-### Corrections
+### Fixes
 
-- Blazor : le double-clic sur un node n'arrivait jamais et zoomait le fond.
-- Blazor : la molette sur une minimap `Zoomable` n'empêchait pas la page de défiler, et le navigateur écrivait une erreur dans la console (`preventDefault` dans un écouteur passif).
-- Blazor Server : le circuit SignalR tombait au premier affichage dès quelques dizaines de nodes riches (ou une seule table de 150 colonnes), les mesures partant en un seul message de plus de 32 Ko. Elles sont envoyées en plusieurs messages.
-- Blazor : les edges ne suivaient pas des handles déplacés, ajoutés ou retirés sans changement de taille du node (colonnes réordonnées). Le contenu des nodes est observé et remesuré.
-- Blazor : aucun `@onkeydown` posé sur un champ dans un node ne se déclenchait (Entrée, Échap…), le pont JS arrêtant la propagation des touches.
-- Blazor : un clic droit ou un clic du milieu vidait la sélection et levait `OnPaneClick`, même sur un node ; `OnSelectionContextMenu` n'était donc jamais levé après un clic droit réel.
-- Mode contrôlé : saisir un node non sélectionné déplaçait à sa place l'ancienne sélection, tant que la nouvelle n'était pas appliquée (`DragSelection.CollectStart`, WPF et Blazor ; nouvelle surcharge avec `additive`).
-- WPF : `RenderToBitmap` / `SaveImage` prenaient l'image avec le viewport courant au lieu du graphe entier. L'image était décalée, tronquée ou entièrement blanche.
-- WPF : quand la vue perdait la capture de la souris en plein geste (boîte de dialogue, autre application), `NodeDragStopped`, `ViewportMoveEnded`, `SelectionEnded`, `ConnectEnded` et `ReconnectEnded` n'étaient jamais levés, et les nodes restaient marqués `Dragging`. Le geste se termine désormais comme à un relâchement dans le vide.
-- WPF : un gestionnaire de double-clic qui ouvrait une boîte de dialogue laissait la vue capturer la souris, et le node la suivait bouton relâché.
-- WPF : un clic légèrement tremblé était perdu quand un seuil de glisser dépassait 4 px.
-- WPF : le second clic d'une connexion par deux clics levait aussi `NodeClick`.
-- WPF et Blazor : un simple clic à moins de `ReconnectRadius` d'une extrémité démarrait une reconnexion ; en WPF, `EdgeClick` et le double-clic étaient avalés.
-- Blazor : `OnDrop` ne fonctionnait pas dans un navigateur (`dragover` n'était pas annulé).
-- Blazor, mode contrôlé : `OnSelectionChange` n'était jamais levé.
-- Blazor : un relâchement perdu (boîte de dialogue, autre application) laissait le geste suivre la souris ; une connexion ou une reconnexion abandonnée ne levait pas `OnConnectEnd` / `OnReconnectEnd`.
-- Blazor : la reconnexion ne levait ni `OnConnectStart` ni `OnConnectEnd` (`ConnectStartEventArgs.IsReconnection` la distingue).
-- Blazor : un clic sur la minimap, une barre d'outils ou le second clic d'une connexion levait aussi `OnPaneClick` et vidait la sélection ; avec `OnNodeClick`, un clic sur un node de la minimap ne déplaçait plus la vue.
-- Blazor : un double-clic sur un panneau zoomait le graphe, et sur un bouton d'un node levait `OnNodeDoubleClick`.
-- Blazor : un glisser au bouton droit qui déplaçait la vue ouvrait ensuite le menu contextuel.
-- Blazor : `OnPaneMouseEnter`, `OnPaneMouseMove` et `OnPaneMouseLeave` ne tenaient pas compte des nodes et des edges survolés ; comme en WPF, le fond est ce qui n'est ni l'un ni l'autre.
-- Blazor : après un appui sur une barre d'outils, l'appui suivant pouvait être ignoré.
-- WPF, MVVM : quand un ViewModel ajustait ou refusait une valeur écrite par la vue (setter qui borne, élément verrouillé), la vue gardait la sienne. Un ViewModel qui lève `PropertyChanged` pendant l'écriture est désormais relu.
-- WPF, MVVM : `UpdateNode` et `UpdateNodeData` n'écrivaient rien dans le ViewModel ; la vue et le ViewModel divergeaient jusqu'au changement suivant du ViewModel, qui annulait la mise à jour.
-- WPF, MVVM : `UpdateEdge` et `UpdateEdgeData` n'écrivaient que les extrémités ; le label, le type, l'animation, la sélection et les autres propriétés mappées sont désormais écrits aussi.
-- WPF, MVVM : annuler le premier redimensionnement d'un node laissait sa taille dans le ViewModel.
-- WPF : `UpdateNode` ne faisait rien, sans le signaler, tant que le gabarit de la vue n'était pas appliqué (avant le premier affichage).
-- Blazor : `ExportSvg` écrivait telle quelle la couleur propre d'un edge ; elle est échappée.
+- Blazor: a double click on a node never arrived and zoomed the background.
+- Blazor: the wheel on a `Zoomable` minimap did not stop the page from scrolling, and the browser logged an error in the console (`preventDefault` in a passive listener).
+- Blazor Server: the SignalR circuit dropped at the first display as soon as a few dozen rich nodes (or a single 150-column table) were shown, the measurements going out in a single message of more than 32 KB. They are now sent in several messages.
+- Blazor: edges did not follow handles that were moved, added or removed without a change of node size (reordered columns). The content of nodes is now observed and re-measured.
+- Blazor: no `@onkeydown` set on a field inside a node ever fired (Enter, Escape…), because the JS bridge stopped key propagation.
+- Blazor: a right click or a middle click cleared the selection and raised `OnPaneClick`, even on a node; `OnSelectionContextMenu` therefore was never raised after a real right click.
+- Controlled mode: typing on an unselected node moved the old selection to its place until the new one was applied (`DragSelection.CollectStart`, WPF and Blazor; new overload with `additive`).
+- WPF: `RenderToBitmap` / `SaveImage` captured the image with the current viewport instead of the whole graph. The image was offset, truncated or entirely white.
+- WPF: when the view lost mouse capture in the middle of a gesture (dialog box, other application), `NodeDragStopped`, `ViewportMoveEnded`, `SelectionEnded`, `ConnectEnded` and `ReconnectEnded` were never raised, and nodes stayed marked `Dragging`. The gesture now ends as on a release in empty space.
+- WPF: a double-click handler that opened a dialog box left the view capturing the mouse, and the node followed the mouse with the button released.
+- WPF: a slightly shaky click was lost when a drag threshold exceeded 4 px.
+- WPF: the second click of a two-click connection also raised `NodeClick`.
+- WPF and Blazor: a simple click within `ReconnectRadius` of an edge end started a reconnection; in WPF, `EdgeClick` and the double click were swallowed.
+- Blazor: `OnDrop` did not work in a browser (`dragover` was not cancelled).
+- Blazor, controlled mode: `OnSelectionChange` was never raised.
+- Blazor: a lost release (dialog box, other application) left the gesture following the mouse; an abandoned connection or reconnection did not raise `OnConnectEnd` / `OnReconnectEnd`.
+- Blazor: reconnection raised neither `OnConnectStart` nor `OnConnectEnd` (`ConnectStartEventArgs.IsReconnection` tells them apart).
+- Blazor: a click on the minimap, a toolbar or the second click of a connection also raised `OnPaneClick` and cleared the selection; with `OnNodeClick`, a click on a minimap node no longer moved the view.
+- Blazor: a double click on a panel zoomed the graph, and on a button of a node raised `OnNodeDoubleClick`.
+- Blazor: a right-button drag that moved the view then opened the context menu.
+- Blazor: `OnPaneMouseEnter`, `OnPaneMouseMove` and `OnPaneMouseLeave` did not take hovered nodes and edges into account; as in WPF, the background is whatever is neither of them.
+- Blazor: after pressing a toolbar, the next press could be ignored.
+- WPF, MVVM: when a ViewModel adjusted or refused a value written by the view (a clamping setter, a locked element), the view kept its own. A ViewModel that raises `PropertyChanged` while the write happens is now read back.
+- WPF, MVVM: `UpdateNode` and `UpdateNodeData` wrote nothing into the ViewModel; the view and the ViewModel diverged until the ViewModel's next change, which cancelled the update.
+- WPF, MVVM: `UpdateEdge` and `UpdateEdgeData` only wrote the ends; the label, type, animation, selection and other mapped properties are now written too.
+- WPF, MVVM: undoing the first resize of a node left its size in the ViewModel.
+- WPF: `UpdateNode` silently did nothing until the view's template was applied (before the first display).
+- Blazor: `ExportSvg` wrote an edge's own colour as is; it is now escaped.
 
-### Performances
+### Performance
 
-Sans changement d'API ni de comportement. Mesures sur 1 500 nodes (Blazor) et 2 000 nodes (WPF, noyau), Release.
+No change of API or behaviour. Measurements on 1,500 nodes (Blazor) and 2,000 nodes (WPF, core), Release.
 
-- Blazor : un pas de pan alloue 2 Ko au lieu de 284 Ko (0,32 → 0,07 ms) ; déplacer un node alloue 2,2 Mo au lieu de 4,2 Mo (11 → 7 ms ; avec des groupes 13 → 8 ms).
-- WPF : déplacer un node dans un graphe avec des groupes alloue 0,7 Mo au lieu de 2,1 Mo (2,7 → 2,0 ms) ; seules les copies en coordonnées absolues des nodes qui ont bougé sont refaites. Avec une grosse sélection, plus de chaîne reconstruite à chaque image.
-- WPF et Blazor : tirer un fil ne construit plus la liste des handles candidats à chaque mouvement (331 Ko → 0,1 Ko, 0,36 → 0,10 ms avec 4 000 handles).
+- Blazor: a panning step allocates 2 KB instead of 284 KB (0.32 → 0.07 ms); moving a node allocates 2.2 MB instead of 4.2 MB (11 → 7 ms; with groups 13 → 8 ms).
+- WPF: moving a node in a graph with groups allocates 0.7 MB instead of 2.1 MB (2.7 → 2.0 ms); only the absolute-coordinate copies of the nodes that moved are rebuilt. With a large selection, no string is rebuilt at each frame any more.
+- WPF and Blazor: dragging a wire no longer builds the list of candidate handles at each movement (331 KB → 0.1 KB, 0.36 → 0.10 ms with 4,000 handles).
 
-### Tests et publication
+### Tests and publication
 
-- La publication lance les tests de bout en bout Blazor et les auto-tests WPF à la vraie souris avant le `pack`.
-- Les auto-tests WPF rendent un code de sortie en échec (ligne `ECHEC`, exception ou délai dépassé) ; `tests/run-wpf-selftests.ps1` les enchaîne.
-- `tests/run-wpf-selftests-sandbox.ps1` enchaîne les mêmes auto-tests dans le Bac à sable Windows, hors écran : le poste reste utilisable.
-- `tests/consumers/run.ps1` installe les paquets dans des applications neuves, hors de la solution.
-- Tests de bout en bout : `WPFLOW_BROWSER_CHANNEL` choisit le navigateur (par exemple `msedge`) ; `WPFLOW_SERVER_DEMO_TFM=net10.0` permet de lancer la démo Server sur un poste sans runtime .NET 8.
+- Publication runs the Blazor end-to-end tests and the WPF real-mouse self-tests before `pack`.
+- WPF self-tests return a failing exit code (an `ECHEC` line, an exception or a timeout); `tests/run-wpf-selftests.ps1` chains them.
+- `tests/run-wpf-selftests-sandbox.ps1` chains the same self-tests in Windows Sandbox, off screen: the desktop stays usable.
+- `tests/consumers/run.ps1` installs the packages into fresh applications, outside the solution.
+- End-to-end tests: `WPFLOW_BROWSER_CHANNEL` chooses the browser (for example `msedge`); `WPFLOW_SERVER_DEMO_TFM=net10.0` allows running the Server demo on a machine without the .NET 8 runtime.
 
 ## 1.0.1
 
-- Première version de `Wpflow.Blazor` (Server et WebAssembly).
+- First version of `Wpflow.Blazor` (Server and WebAssembly).
 
 ## 1.0.0
 
-- Première version de `Wpflow.Core` et `Wpflow.Wpf`.
+- First version of `Wpflow.Core` and `Wpflow.Wpf`.

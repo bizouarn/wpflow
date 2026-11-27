@@ -1,43 +1,43 @@
-# Clés de thème
+# Theme keys
 
-Les couleurs de Wpflow sont des ressources `Brush` nommées `Flow.*`, définies dans `Themes/Light.xaml` et `Themes/Dark.xaml` et fusionnées dans `FlowView.Resources` selon `ColorMode`. Vos propres entrées dans `FlowView.Resources` (ou dans les ressources d'un parent) restent prioritaires.
+Wpflow's colours are named `Brush` resources `Flow.*`, defined in `Themes/Light.xaml` and `Themes/Dark.xaml` and merged into `FlowView.Resources` according to `ColorMode`. Your own entries in `FlowView.Resources` (or in a parent's resources) keep priority.
 
-| Clé | Utilisation | Clair | Sombre |
+| Key | Used for | Light | Dark |
 |---|---|---|---|
-| `Flow.Background` | Fond de la surface | `#FFFFFF` | `#141414` |
-| `Flow.Dots` | Points / lignes / croix du fond | `#91919A` | `#4A4A52` |
+| `Flow.Background` | Background of the surface | `#FFFFFF` | `#141414` |
+| `Flow.Dots` | Dots / lines / crosses of the background | `#91919A` | `#4A4A52` |
 | `Flow.Edge` | Edges | `#B1B1B7` | `#6B6B75` |
-| `Flow.EdgeSelected` | Edge sélectionné | `#555555` | `#E5E5E5` |
-| `Flow.NodeBackground` | Fond des nodes par défaut (et labels d'edges) | `#FFFFFF` | `#1E1E22` |
-| `Flow.NodeBorder` | Bordure des nodes par défaut | `#1A192B` | `#D9D9DD` |
-| `Flow.NodeBorderSelected` | Bordure d'un node par défaut sélectionné | `#555555` | `#FFFFFF` |
-| `Flow.NodeText` | Texte des nodes par défaut | `#222222` | `#F8F8F8` |
-| `Flow.GroupBackground` | Fond des groupes | `#14F0F0F0` | `#14FFFFFF` |
-| `Flow.Outline` | Contour de sélection des nodes à template | `#555555` | `#E5E5E5` |
-| `Flow.MiniMapBackground` | Fond de la minimap | `#FFFFFF` | `#1E1E22` |
-| `Flow.MiniMapNode` | Nodes dans la minimap | `#E2E2E2` | `#3A3A42` |
-| `Flow.MiniMapNodeSelected` | Node sélectionné dans la minimap | `#B1B1B7` | `#7A7A85` |
-| `Flow.MiniMapMask` | Voile hors de la zone visible | `#99F0F0F0` | `#99141414` |
-| `Flow.ControlsBackground` | Fond des contrôles et de `NodeToolbar` | `#FFFFFF` | `#1E1E22` |
-| `Flow.ControlsForeground` | Icônes des contrôles | `#222222` | `#F2F2F2` |
-| `Flow.ControlsBorder` | Séparateurs des contrôles | `#EEEEEE` | `#34343A` |
-| `Flow.ControlsHover` | Survol d'un bouton de contrôle | `#F4F4F4` | `#2C2C32` |
+| `Flow.EdgeSelected` | Selected edge | `#555555` | `#E5E5E5` |
+| `Flow.NodeBackground` | Background of default nodes (and edge labels) | `#FFFFFF` | `#1E1E22` |
+| `Flow.NodeBorder` | Border of default nodes | `#1A192B` | `#D9D9DD` |
+| `Flow.NodeBorderSelected` | Border of a selected default node | `#555555` | `#FFFFFF` |
+| `Flow.NodeText` | Text of default nodes | `#222222` | `#F8F8F8` |
+| `Flow.GroupBackground` | Background of groups | `#14F0F0F0` | `#14FFFFFF` |
+| `Flow.Outline` | Selection outline of nodes with a template | `#555555` | `#E5E5E5` |
+| `Flow.MiniMapBackground` | Background of the minimap | `#FFFFFF` | `#1E1E22` |
+| `Flow.MiniMapNode` | Nodes in the minimap | `#E2E2E2` | `#3A3A42` |
+| `Flow.MiniMapNodeSelected` | Selected node in the minimap | `#B1B1B7` | `#7A7A85` |
+| `Flow.MiniMapMask` | Veil outside the visible area | `#99F0F0F0` | `#99141414` |
+| `Flow.ControlsBackground` | Background of the controls and of `NodeToolbar` | `#FFFFFF` | `#1E1E22` |
+| `Flow.ControlsForeground` | Icons of the controls | `#222222` | `#F2F2F2` |
+| `Flow.ControlsBorder` | Separators of the controls | `#EEEEEE` | `#34343A` |
+| `Flow.ControlsHover` | Hover state of a control button | `#F4F4F4` | `#2C2C32` |
 
-## Utiliser les clés
+## Using the keys
 
-Dans un template (suit le thème et ses changements) :
+In a template (follows the theme and its changes):
 
 ```xml
 <Border Background="{DynamicResource Flow.NodeBackground}" />
 ```
 
-En code (repli sur le thème clair si la clé est absente) :
+In code (falls back to the light theme if the key is missing):
 
 ```csharp
 Brush brush = Flow.ThemeBrush("Flow.Edge");
 ```
 
-## Surcharger
+## Overriding
 
 ```xml
 <flow:FlowView>
@@ -47,16 +47,16 @@ Brush brush = Flow.ThemeBrush("Flow.Edge");
 </flow:FlowView>
 ```
 
-Aucune autre clé n'est requise : celles que vous ne redéfinissez pas viennent du thème.
+No other key is required: the ones you do not redefine come from the theme.
 
-## Clés de remplacement de contenu
+## Content replacement keys
 
-En plus des couleurs `Flow.*`, ces clés remplacent des **éléments** (voir [Personnaliser](../learn/14-customization.md)) :
+In addition to the `Flow.*` colours, these keys replace **elements** (see [Customization](../learn/14-customization.md)):
 
-| Clé | Ressource |
+| Key | Resource |
 |---|---|
-| `wpflow-node-{type}` | `DataTemplate` du node |
-| `wpflow-edge-{type}` | `IEdgePathProvider` (tracé) |
-| `wpflow-edge-template-{type}` | `DataTemplate` du rendu complet de l'edge |
-| `wpflow-edge-label-{type}` | `DataTemplate` du label |
-| `wpflow-marker-{clé}` | `Geometry` du marqueur |
+| `wpflow-node-{type}` | `DataTemplate` of the node |
+| `wpflow-edge-{type}` | `IEdgePathProvider` (path) |
+| `wpflow-edge-template-{type}` | `DataTemplate` for the full rendering of the edge |
+| `wpflow-edge-label-{type}` | `DataTemplate` of the label |
+| `wpflow-marker-{key}` | `Geometry` of the marker |

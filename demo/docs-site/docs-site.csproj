@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk.BlazorWebAssembly">
 
-  <!-- Site de documentation (statique, publié sur GitHub Pages par .github/workflows/pages.yml).
-       Les pages viennent de doc/**/*.md, embarquées telles quelles : rien n'est recopié ici. -->
+  <!-- Documentation site (static, published on GitHub Pages by .github/workflows/pages.yml).
+       The pages come from doc/**/*.md, embedded as they are: nothing is copied here. -->
   <PropertyGroup>
     <TargetFramework>net8.0</TargetFramework>
     <Nullable>enable</Nullable>
@@ -23,9 +23,9 @@
   </ItemGroup>
 
   <ItemGroup>
-    <!-- La documentation : la source de vérité reste doc/. -->
+    <!-- The documentation: its source of truth is doc/. -->
     <EmbeddedResource Include="../../doc/**/*.md" LogicalName="repo/doc/%(RecursiveDir)%(Filename)%(Extension)" />
-    <!-- Images citées par la documentation hors de doc/. -->
+    <!-- Images cited by the documentation from outside doc/. -->
     <EmbeddedResource Include="../../work-doc/screenshots/demo.png" LogicalName="repo/work-doc/screenshots/demo.png" />
     <!-- Le code affiché sous chaque exemple est celui qui s'exécute. -->
     <EmbeddedResource Include="Examples/*.razor" LogicalName="source/%(Filename)%(Extension)" />
@@ -40,7 +40,7 @@
       <_SiteRoot>$(PublishDir)wwwroot/</_SiteRoot>
       <_Index>$([System.IO.File]::ReadAllText('$(_SiteRoot)index.html'))</_Index>
     </PropertyGroup>
-    <Error Condition="!$(_Index.Contains('&lt;base href=&quot;/&quot; /&gt;'))" Text="index.html : la balise base attendue est introuvable." />
+    <Error Condition="!$(_Index.Contains('&lt;base href=&quot;/&quot; /&gt;'))" Text="index.html: the expected base tag was not found." />
     <PropertyGroup>
       <_Index>$(_Index.Replace('&lt;base href=&quot;/&quot; /&gt;', '&lt;base href=&quot;$(SiteBaseHref)&quot; /&gt;'))</_Index>
     </PropertyGroup>

@@ -1,47 +1,47 @@
-# 10. Calculer avec un flow
+# 10. Computing with a flow
 
-*Équivalent React Flow : Computing Flows.*
+*React Flow equivalent: Computing Flows.*
 
-Un flow peut servir à **calculer** : des nodes produisent des valeurs, d'autres les consomment le long des edges. La démo de Wpflow (`dotnet run --project demo/wpf`) le montre :
+A flow can be used to **compute**: some nodes produce values, others consume them along the edges. The Wpflow demo (`dotnet run --project demo/wpf`) shows it:
 
-- trois nodes de réglage — **couleur** (un vrai sélecteur de couleur), **forme** (cubes ou pyramides), **zoom** (un curseur) ;
-- un node **rendu** qui affiche un anneau de solides 3D animés ;
-- trois edges, un par réglage, vers trois handles distincts du node de rendu.
+- three settings nodes — **colour** (a real colour picker), **shape** (cubes or pyramids), **zoom** (a slider);
+- a **render** node that displays a ring of animated 3D solids;
+- three edges, one per setting, to three distinct handles of the render node.
 
-Le point clé : **le node de rendu n'utilise une valeur que si l'edge correspondant existe.** Supprimez l'edge du zoom (sélectionnez-le, Suppr) : le zoom retombe à sa valeur par défaut ; reconnectez-le : le curseur reprend la main. (Dans le code, ce node a le type `output`.)
+The key point: **the render node only uses a value if the corresponding edge exists.** Delete the zoom edge (select it, Delete): the zoom falls back to its default value; reconnect it: the slider takes over again. (In the code, this node has the type `output`.)
 
-## Le principe
+## The principle
 
-1. **Un état partagé** : les nodes d'entrée écrivent dans un même objet (`Node.Data`) qui implémente `INotifyPropertyChanged`.
-2. **Un ViewModel qui sait ce qui est relié** : il expose des valeurs *effectives*.
-3. **Une synchronisation avec les edges** : à chaque changement de `Edges`, on recalcule quelles entrées sont reliées.
+1. **A shared state**: the input nodes write into one same object (`Node.Data`) that implements `INotifyPropertyChanged`.
+2. **A ViewModel that knows what is connected**: it exposes *effective* values.
+3. **A synchronisation with the edges**: each time `Edges` changes, it recalculates which inputs are connected.
 
-### 1. L'état
+### 1. The state
 
 ```csharp
 public sealed class DemoState : INotifyPropertyChanged
 {
-    public Color Color { get; private set; }     // choisi par le sélecteur
+    public Color Color { get; private set; }     // chosen with the colour picker
     public bool IsCube { get; set; }
-    public double Zoom { get; set; }             // choisi par le curseur
+    public double Zoom { get; set; }             // chosen with the slider
 
-    // Reliées ? (mises à jour depuis les edges)
+    // Connected? (updated from the edges)
     public bool UseColor { get; set; } = true;
     public bool UseShape { get; set; } = true;
     public bool UseZoom  { get; set; } = true;
 
-    // Valeurs effectives : la valeur choisie si l'entrée est reliée, sinon la valeur par défaut.
+    // Effective values: the chosen value if the input is connected, otherwise the default value.
     public Color  EffectiveColor  => UseColor ? Color : DefaultColor;
     public bool   EffectiveIsCube => !UseShape || IsCube;
     public double EffectiveZoom   => UseZoom ? Zoom : DefaultZoom;
 }
 ```
 
-Le même objet est mis dans `Data` de **tous** les nodes ; chaque template lie ses contrôles à la propriété qui le concerne.
+The same object is put in `Data` of **all** the nodes; each template binds its controls to the property that concerns it.
 
-### 2. Les nodes d'entrée
+### 2. The input nodes
 
-Chacun est un `DataTemplate` (`wpflow-node-color`, `-shape`, `-zoom`) avec ses contrôles WPF — un `Popup` de couleurs, des `RadioButton`, un `Slider` — et un handle source à droite. Exemple du curseur :
+Each one is a `DataTemplate` (`wpflow-node-color`, `-shape`, `-zoom`) with its WPF controls — a colour `Popup`, `RadioButton`s, a `Slider` — and a source handle on the right. Example of the slider:
 
 ```xml
 <DataTemplate x:Key="wpflow-node-zoom">
@@ -57,9 +57,9 @@ Chacun est un `DataTemplate` (`wpflow-node-color`, `-shape`, `-zoom`) avec ses c
 </DataTemplate>
 ```
 
-### 3. Le node output et ses trois entrées
+### 3. The output node and its three inputs
 
-L'output expose trois handles **cible** distincts, identifiés par `HandleId`, et dessine la scène :
+The output exposes three distinct **target** handles, identified by `HandleId`, and draws the scene:
 
 ```xml
 <DataTemplate x:Key="wpflow-node-output">
@@ -75,7 +75,7 @@ L'output expose trois handles **cible** distincts, identifiés par `HandleId`, e
 </DataTemplate>
 ```
 
-### 4. Relier : suivre les edges
+### 4. Connecting: following the edges
 
 ```csharp
 Flow.Edges = [ new Edge("e-color", "color", "output", TargetHandle: "color", Animated: true),
@@ -95,17 +95,17 @@ DependencyPropertyDescriptor.FromProperty(FlowView.EdgesProperty, typeof(FlowVie
 SyncConnections();
 ```
 
-Comme `Edges` change à chaque connexion, reconnexion, suppression ou annulation (Ctrl+Z), la scène suit sans autre code. En mode contrôlé, appelez `SyncConnections()` après avoir appliqué vos changes.
+As `Edges` changes on every connection, reconnection, deletion or undo (Ctrl+Z), the scene follows without any other code. In controlled mode, call `SyncConnections()` after applying your changes.
 
-## La scène animée
+## The animated scene
 
-`CubeField` est un `FrameworkElement` qui dessine en 3D dans `OnRender` :
+`CubeField` is a `FrameworkElement` that draws in 3D in `OnRender`:
 
-- **Animation** : à chaque image (`CompositionTarget.Rendering`) le nuage tourne sur lui-même, chaque solide pivote selon sa propre phase et flotte légèrement.
-- **Rendu** : projection orthographique, faces triées de l'arrière vers l'avant, faces dos à la caméra éliminées, ombrage selon une lumière fixe.
-- **Zoom** : l'échelle de la « caméra » suit `EffectiveZoom` avec une inertie (le zoom affiché rattrape la cible de façon exponentielle, indépendamment de la cadence).
-- **Couleur et forme** : `EffectiveColor` et `EffectiveIsCube`.
+- **Animation**: on every frame (`CompositionTarget.Rendering`) the cloud rotates on itself; each solid turns according to its own phase and floats slightly.
+- **Rendering**: orthographic projection, faces sorted from back to front, faces turned away from the camera removed, shading according to a fixed light.
+- **Zoom**: the scale of the « camera » follows `EffectiveZoom` with some inertia (the displayed zoom catches up with the target exponentially, independently of the frame rate).
+- **Colour and shape**: `EffectiveColor` and `EffectiveIsCube`.
 
-Le code complet est dans `demo/wpf/CubeField.cs`, `demo/wpf/DemoState.cs` et `demo/wpf/MainWindow.xaml`.
+The full code is in `demo/wpf/CubeField.cs`, `demo/wpf/DemoState.cs` and `demo/wpf/MainWindow.xaml`.
 
-Suivant : [Performance et accessibilité](11-performance-accessibility.md).
+Next: [Performance and accessibility](11-performance-accessibility.md).

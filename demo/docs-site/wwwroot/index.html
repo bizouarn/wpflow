@@ -1,32 +1,59 @@
 <!DOCTYPE html>
-<html lang="fr">
+<html lang="en">
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="description" content="Documentation et exemples interactifs de wpflow, l'éditeur de graphes à nodes pour WPF et Blazor." />
-    <!-- La ligne suivante est remplacée à la publication par SiteBaseHref (voir docs-site.csproj) : la garder telle quelle. -->
+    <meta name="description" content="Documentation and interactive examples for wpflow, the node-based graph editor for WPF and Blazor." />
+    <!-- The following line is replaced at publication by SiteBaseHref (see docs-site.csproj): keep it as is. -->
     <base href="/" />
-    <title>wpflow · éditeur de graphes à nodes pour WPF et Blazor</title>
+    <title>wpflow · node-based graph editor for WPF and Blazor</title>
     <link rel="icon" type="image/svg+xml" href="logo.svg" />
     <link rel="stylesheet" href="_content/Wpflow.Blazor/wpflow.css" />
     <link rel="stylesheet" href="site.css" />
+    <!-- Syntax highlighting for code blocks (highlight.js 11.9, dark theme, served from vendor/). -->
+    <link rel="stylesheet" href="vendor/github-dark.min.css" />
 </head>
 <body>
     <div id="app">
-        <p class="loading">Chargement de wpflow…</p>
-        <noscript><p class="loading">Ce site s'exécute dans le navigateur : activez JavaScript, ou lisez la <a href="https://github.com/bizouarn/wpflow/tree/main/doc">documentation sur GitHub</a>.</p></noscript>
+        <p class="loading">Loading wpflow…</p>
+        <noscript><p class="loading">This site runs in the browser: enable JavaScript, or read the <a href="https://github.com/bizouarn/wpflow/tree/main/doc">documentation on GitHub</a>.</p></noscript>
     </div>
-    <div id="blazor-error-ui">Une erreur est survenue. <a href="" onclick="location.reload(); return false;">Recharger la page</a></div>
+    <div id="blazor-error-ui">An error occurred. <a href="" onclick="location.reload(); return false;">Reload the page</a></div>
     <script>
         window.wpsite = {
-            // Blazor ne rejoint pas l'ancre d'une page rendue après coup : on le fait après le rendu.
+            // Blazor does not jump to the anchor of a page rendered later: we do it after rendering.
             scrollTo(id) {
                 const target = id ? document.getElementById(id) : null;
                 if (target) target.scrollIntoView();
                 else window.scrollTo(0, 0);
+            },
+            // Highlights each code block once and adds a copy button. Blazor re-creates the markup
+            // it renders, so the flag is per element and new blocks are picked up on each call.
+            enhanceCode() {
+                document.querySelectorAll('.markdown pre, .example-code').forEach(pre => {
+                    if (pre.dataset.enhanced) return;
+                    pre.dataset.enhanced = '1';
+                    const code = pre.querySelector('code') ?? pre;
+                    if (window.hljs) hljs.highlightElement(code);
+                    const button = document.createElement('button');
+                    button.type = 'button';
+                    button.className = 'copy-code';
+                    button.textContent = 'Copy';
+                    button.addEventListener('click', async () => {
+                        try {
+                            await navigator.clipboard.writeText(code.textContent);
+                            button.textContent = 'Copied';
+                        } catch {
+                            button.textContent = 'Failed';
+                        }
+                        setTimeout(() => button.textContent = 'Copy', 1500);
+                    });
+                    pre.appendChild(button);
+                });
             }
         };
     </script>
+    <script src="vendor/highlight.min.js"></script>
     <script src="ring.js"></script>
     <script src="_framework/blazor.webassembly.js"></script>
 </body>

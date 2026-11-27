@@ -1,24 +1,24 @@
-@* La documentation vient du dépôt, où une grande partie décrit WPF : on le dit en tête de page. *@
+@* The documentation comes from the repository, where much of it describes WPF: say so at the top of the page. *@
 @if (Page.File != "doc/blazor.md")
 {
     var related = ExampleCatalog.ForDoc(Page.File);
     <div class="note" role="note">
         @if (SharedPages.Contains(Page.File))
         {
-            <p><strong>Noyau commun.</strong> <code>Wpflow.Core</code> sert à WPF comme à Blazor : les types et les fonctions décrits ici valent pour les deux.</p>
+            <p><strong>Shared core.</strong> <code>Wpflow.Core</code> is used by WPF and Blazor alike: the types and functions described here apply to both.</p>
         }
         else
         {
             <p>
-                <strong>Page écrite d'abord pour la version WPF.</strong> WPF ne tourne pas dans un navigateur : les
-                exemples interactifs de ce site sont en <strong>Blazor</strong>. Les concepts sont les mêmes ; pour les
-                noms propres à Blazor, voyez <a href="doc/blazor">Wpflow.Blazor</a>.
+                <strong>Page written first for the WPF version.</strong> WPF does not run in a browser: the interactive
+                examples on this site are in <strong>Blazor</strong>. The concepts are the same; for names specific to
+                Blazor, see <a href="doc/blazor">Wpflow.Blazor</a>.
             </p>
         }
         @if (related.Count > 0)
         {
             <p class="note-links">
-                <span>À essayer en Blazor :</span>
+                <span>Try it in Blazor:</span>
                 @foreach (var example in related)
                 {
                     <a class="chip" href="@($"exemples/{example.Id}")">@example.Title</a>

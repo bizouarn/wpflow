@@ -1,22 +1,22 @@
-# 4. Nodes personnalisés
+# 4. Custom nodes
 
-*Équivalent React Flow : Custom Nodes, Handles, Node Resizer, Node Toolbar.*
+*React Flow equivalent: Custom Nodes, Handles, Node Resizer, Node Toolbar.*
 
-## Un node = un DataTemplate
+## One node = one DataTemplate
 
-Un node de type `"carte"` est rendu avec le `DataTemplate` de clé `wpflow-node-carte`. Déclarez-le dans n'importe quelles ressources (fenêtre, `App.xaml`, `FlowView.Resources`). Le `DataContext` est le `Node` ; placez votre ViewModel dans `Node.Data`.
+A node of type `"card"` is rendered with the `DataTemplate` keyed `wpflow-node-card`. Declare it in any resource dictionary (window, `App.xaml`, `FlowView.Resources`). The `DataContext` is the `Node`; put your ViewModel in `Node.Data`.
 
 ```xml
 <Window.Resources>
-    <DataTemplate x:Key="wpflow-node-carte">
+    <DataTemplate x:Key="wpflow-node-card">
         <Grid>
             <Border Background="{DynamicResource Flow.NodeBackground}"
                     BorderBrush="{DynamicResource Flow.NodeBorder}" BorderThickness="1"
                     CornerRadius="0" Padding="12">
                 <StackPanel>
-                    <TextBlock Text="{Binding Data.Titre}" FontWeight="SemiBold"
+                    <TextBlock Text="{Binding Data.Title}" FontWeight="SemiBold"
                                Foreground="{DynamicResource Flow.NodeText}" />
-                    <Slider Minimum="0" Maximum="100" Value="{Binding Data.Valeur, Mode=TwoWay}" />
+                    <Slider Minimum="0" Maximum="100" Value="{Binding Data.Value, Mode=TwoWay}" />
                 </StackPanel>
             </Border>
 
@@ -28,71 +28,71 @@ Un node de type `"carte"` est rendu avec le `DataTemplate` de clé `wpflow-node-
 ```
 
 ```csharp
-public sealed class CarteVm : INotifyPropertyChanged { /* Titre, Valeur… */ }
+public sealed class CardVm : INotifyPropertyChanged { /* Title, Value… */ }
 
-Flow.Nodes = [ new Node("a", new XYPosition(0, 0), "carte", new CarteVm { Titre = "Volume" }) ];
+Flow.Nodes = [ new Node("a", new XYPosition(0, 0), "card", new CardVm { Title = "Volume" }) ];
 ```
 
-Les contrôles WPF (Slider, TextBox, ComboBox, boutons…) fonctionnent normalement dans un node : ils marquent leurs événements souris comme traités, donc interagir avec eux ne déplace pas le node. Cliquer ou glisser sur une zone « vide » du node le déplace.
+WPF controls (Slider, TextBox, ComboBox, buttons…) work normally inside a node: they mark their mouse events as handled, so interacting with them does not move the node. Clicking or dragging an « empty » area of the node moves it.
 
-> **Mettre à jour les données.** Faites de `Node.Data` un objet qui implémente `INotifyPropertyChanged` : le binding `Data.Valeur` se met à jour sans recréer le node. Le `DataContext` (le `Node`) est remplacé quand le node change, et les bindings se réévaluent.
+> **Updating data.** Make `Node.Data` an object that implements `INotifyPropertyChanged`: the `Data.Value` binding updates without recreating the node. The `DataContext` (the `Node`) is replaced when the node changes, and the bindings are re-evaluated.
 
 ## Handles
 
 ```xml
-<flow:Handle Type="Source" Position="Right" HandleId="sortie" Offset="40" />
+<flow:Handle Type="Source" Position="Right" HandleId="output" Offset="40" />
 ```
 
-| Propriété | Rôle |
+| Property | Role |
 |---|---|
-| `Type` | `Source` (départ) ou `Target` (arrivée) |
-| `Position` | Côté du node : `Left`, `Top`, `Right`, `Bottom` |
-| `HandleId` | Identifiant, pour distinguer plusieurs handles d'un même node (`Edge.SourceHandle` / `TargetHandle`) |
-| `Offset` | Distance depuis le haut (côtés gauche/droit) ou la gauche (côtés haut/bas). Sans valeur : centré. |
+| `Type` | `Source` (start) or `Target` (end) |
+| `Position` | Side of the node: `Left`, `Top`, `Right`, `Bottom` |
+| `HandleId` | Identifier, to tell apart several handles on the same node (`Edge.SourceHandle` / `TargetHandle`) |
+| `Offset` | Distance from the top (left/right sides) or from the left (top/bottom sides). Without a value: centred. |
 
-**Placez les handles comme enfants du `Grid` racine du template, pas dans une bordure avec `Padding`** : un handle est positionné sur le bord de son conteneur. Un edge sans `SourceHandle` utilise le premier handle de type `Source` du node.
+**Place the handles as children of the template's root `Grid`, not inside a border with `Padding`**: a handle is positioned on the edge of its container. An edge without `SourceHandle` uses the first `Source` handle of the node.
 
-Le node `default` possède un handle cible en haut et un handle source en bas ; `input` n'a que la source, `output` que la cible.
+The `default` node has a target handle at the top and a source handle at the bottom; `input` only has the source, `output` only the target.
 
-## Redimensionner : `NodeResizer`
+## Resizing: `NodeResizer`
 
 ```xml
 <Grid>
-    <Border … />                                   <!-- la carte : elle doit s'étirer, sans Width/Height fixes -->
-    <flow:NodeResizer NodeMinWidth="150" NodeMinHeight="70" />   <!-- après la carte, avant les handles -->
+    <Border … />                                   <!-- the card: it must stretch, without fixed Width/Height -->
+    <flow:NodeResizer NodeMinWidth="150" NodeMinHeight="70" />   <!-- after the card, before the handles -->
     <flow:Handle … />
 </Grid>
 ```
 
 ```csharp
-new Node("a", pos, "carte", data, FixedWidth: 200, FixedHeight: 90)   // taille initiale
+new Node("a", pos, "card", data, FixedWidth: 200, FixedHeight: 90)   // initial size
 ```
 
-Les 8 poignées apparaissent quand le node est sélectionné. Chaque redimensionnement émet un `NodeResizeChange` (taille + position, car tirer le bord gauche ou haut déplace le node).
+The 8 grips appear when the node is selected. Each resize emits a `NodeResizeChange` (size + position, because dragging the left or top edge moves the node).
 
-## Barre d'outils : `NodeToolbar`
+## Toolbar: `NodeToolbar`
 
 ```xml
 <flow:NodeToolbar ToolbarPosition="Top" Offset="10">
     <StackPanel Orientation="Horizontal">
-        <Button Content="Dupliquer" Command="{Binding Data.DuplicateCommand}" />
-        <Button Content="Supprimer" Command="{Binding Data.DeleteCommand}" />
+        <Button Content="Duplicate" Command="{Binding Data.DuplicateCommand}" />
+        <Button Content="Delete" Command="{Binding Data.DeleteCommand}" />
     </StackPanel>
 </flow:NodeToolbar>
 ```
 
-La barre est visible uniquement quand le node est sélectionné et se place hors du node, du côté demandé.
+The toolbar is only visible when the node is selected and is placed outside the node, on the requested side.
 
-## Contour de sélection
+## Selection outline
 
-Un node à template personnalisé reçoit automatiquement un contour arrondi quand il est sélectionné (clé `Flow.Outline`). Pour un autre style, liez-vous à `Selected` :
+A node with a custom template automatically receives a rounded outline when it is selected (key `Flow.Outline`). For another style, bind to `Selected`:
 
 ```xml
 <DataTrigger Binding="{Binding Selected}" Value="True"> … </DataTrigger>
 ```
 
-## Node par défaut
+## Default node
 
-Sans template, un node `default` affiche `Node.Data.ToString()` (ou l'`Id`) dans une carte de 150 px de large, avec ses handles. Pour changer ce rendu globalement, redéfinissez les [clés de thème](../reference/theme-keys.md).
+Without a template, a `default` node displays `Node.Data.ToString()` (or the `Id`) in a card 150 px wide, with its handles. To change this rendering globally, redefine the [theme keys](../reference/theme-keys.md).
 
-Suivant : [Edges](05-edges.md).
+Next: [Edges](05-edges.md).

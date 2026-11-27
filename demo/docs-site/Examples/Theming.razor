@@ -4,25 +4,25 @@
 <div class="ex">
     <div class="ex-toolbar">
         <label>
-            Thème
+            Theme
             <select @bind="_theme">
-                <option value="clair">Clair (par défaut)</option>
-                <option value="sombre">Sombre (Dark)</option>
-                <option value="ambre">Ambre (variables CSS)</option>
+                <option value="clair">Light (default)</option>
+                <option value="sombre">Dark</option>
+                <option value="ambre">Amber (CSS variables)</option>
             </select>
         </label>
         <label>
-            Fond
+            Background
             <select @bind="_variant">
-                <option value="@BackgroundVariant.Dots">Points</option>
-                <option value="@BackgroundVariant.Lines">Lignes</option>
-                <option value="@BackgroundVariant.Cross">Croix</option>
+                <option value="@BackgroundVariant.Dots">Dots</option>
+                <option value="@BackgroundVariant.Lines">Lines</option>
+                <option value="@BackgroundVariant.Cross">Cross</option>
             </select>
         </label>
     </div>
     <div class="ex-flow">
-        @* La classe « lib-theme » demande à ce site de ne pas appliquer ses propres couleurs au graphe.
-           « theme-ambre » redéfinit les variables --wf-* (voir ci-dessous). *@
+        @* The class "lib-theme" tells this site not to apply its own colours to the graph.
+           "theme-ambre" redefines the --wf-* variables (see below). *@
         <FlowView @bind-Nodes="_nodes" @bind-Edges="_edges" Dark="@(_theme == "sombre")" BackgroundVariant="_variant"
                   Class="@($"lib-theme theme-{_theme}")">
             <FlowMiniMap />
@@ -46,9 +46,9 @@
 
     private IReadOnlyList<Node> _nodes =
     [
-        new Node("1", new XYPosition(0, 0), "input", "Capteur"),
-        new Node("2", new XYPosition(180, 100), "default", "Moyenne"),
-        new Node("3", new XYPosition(40, 220), "output", "Alerte")
+        new Node("1", new XYPosition(0, 0), "input", "Sensor"),
+        new Node("2", new XYPosition(180, 100), "default", "Average"),
+        new Node("3", new XYPosition(40, 220), "output", "Alert")
     ];
 
     private IReadOnlyList<Edge> _edges =

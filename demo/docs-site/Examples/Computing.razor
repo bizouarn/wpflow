@@ -31,7 +31,7 @@
     protected override void OnInitialized() => _templates = new()
     {
         ["valeur"] = n => @<div class="ex-card">
-            <label>Valeur
+            <label>Value
                 <input class="nodrag" type="number" value="@(((double)n.Data!).ToString(CultureInfo.InvariantCulture))"
                        @oninput="e => SetValue(n.Id, e.Value)" />
             </label>
@@ -46,7 +46,7 @@
 
     private sealed record Result(string Operator, double Value);
 
-    // Un modèle de node ne voit que son node : le résultat est donc écrit dans Node.Data.
+    // A node template only sees its own node: the result is therefore written into Node.Data.
     protected override void OnParametersSet() => Recompute();
 
     private void OnEdges(IReadOnlyList<Edge> edges)
@@ -68,7 +68,7 @@
         {
             var node = _nodes.First(n => n.Id == id);
             if (node.Data is double constant) return constant;
-            if (!path.Add(id)) return 0; // une boucle ne se calcule pas
+            if (!path.Add(id)) return 0; // a loop cannot be computed
 
             var inputs = _edges.Where(e => e.Target == id).Select(e => Evaluate(e.Source, path)).ToList();
             path.Remove(id);

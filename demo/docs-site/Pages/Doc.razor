@@ -15,7 +15,7 @@ else
 
     <div class="doc">
         <aside class="side doc-nav">
-            <button class="side-toggle" aria-expanded="@(_menu ? "true" : "false")" @onclick="() => _menu = !_menu">Sommaire</button>
+            <button class="side-toggle" aria-expanded="@(_menu ? "true" : "false")" @onclick="() => _menu = !_menu">Contents</button>
             <nav class="side-content @(_menu ? "open" : "")" aria-label="Documentation">
                 @foreach (var group in Library.Navigation)
                 {
@@ -32,7 +32,7 @@ else
 
         <article class="doc-body">
             <PlatformNote Page="_page" />
-            @* Une clé par page : les exemples de la page précédente ne sont pas réutilisés. *@
+            @* One key per page: the examples of the previous page are not reused. *@
             @for (var i = 0; i < _page.Segments.Count; i++)
             {
                 var segment = _page.Segments[i];
@@ -49,7 +49,7 @@ else
         <aside class="doc-toc">
             @if (_page.Headings.Any(h => h.Level == 2))
             {
-                <h2>Sur cette page</h2>
+                <h2>On this page</h2>
                 <ul>
                     @foreach (var heading in _page.Headings.Where(h => h.Level is 2 or 3))
                     {
@@ -76,7 +76,7 @@ else
         _scroll = true;
     }
 
-    // Un changement d'ancre dans la même page ne modifie pas les paramètres.
+    // An anchor change within the same page does not change the parameters.
     private void OnLocationChanged(object? sender, LocationChangedEventArgs e)
     {
         _scroll = true;
@@ -86,6 +86,7 @@ else
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
+        await Js.InvokeVoidAsync("wpsite.enhanceCode");
         if (!_scroll || _page == null) return;
         _scroll = false;
         var fragment = new Uri(Navigation.Uri).Fragment.TrimStart('#');

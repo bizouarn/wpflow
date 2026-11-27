@@ -1,6 +1,6 @@
 # Types
 
-Espace de noms `Wpflow.Core` (`net8.0`, `net472`, `netstandard2.0`, sans dépendance UI).
+Namespace `Wpflow.Core` (`net8.0`, `net472`, `netstandard2.0`, no UI dependency).
 
 ## Node
 
@@ -10,34 +10,34 @@ public sealed record Node(
     XYPosition Position,
     string Type = "default",
     object? Data = null,
-    double? Width = null,           // mesuré (ne pas dimensionner avec)
-    double? Height = null,          // mesuré
+    double? Width = null,           // measured (do not size with it)
+    double? Height = null,          // measured
     bool Selected = false,
     bool Draggable = true,
     bool Selectable = true,
-    double? FixedWidth = null,      // taille imposée (NodeResizer, JSON "width")
+    double? FixedWidth = null,      // imposed size (NodeResizer, JSON "width")
     double? FixedHeight = null,
-    string? ParentId = null,        // position relative à ce parent
-    bool ExtentParent = false,      // l'enfant ne sort pas du parent
-    Position? SourcePosition = null, // côté du handle source du node par défaut (défaut : Bottom)
-    Position? TargetPosition = null, // côté du handle cible du node par défaut (défaut : Top)
+    string? ParentId = null,        // position relative to this parent
+    bool ExtentParent = false,      // the child does not leave the parent
+    Position? SourcePosition = null, // side of the source handle of the default node (default: Bottom)
+    Position? TargetPosition = null, // side of the target handle of the default node (default: Top)
     bool Connectable = true,
     bool Deletable = true,
-    bool Hidden = false,             // non dessiné (ni ses edges) ; ignoré par bornes, minimap, sélection
-    string? DragHandle = null,       // clé de la zone qui déplace le node (NodeHost.DragHandle dans le template)
-    Rect? Extent = null,             // bornes de déplacement propres au node (relatives au parent s'il y en a un)
-    bool ExpandParent = false,       // agrandit le parent quand on le déplace au-delà (à gauche / en haut, le parent recule et ses enfants sont recalés)
+    bool Hidden = false,             // not drawn (nor its edges); ignored by bounds, minimap, selection
+    string? DragHandle = null,       // key of the area that moves the node (NodeHost.DragHandle in the template)
+    Rect? Extent = null,             // movement bounds specific to the node (relative to the parent, if any)
+    bool ExpandParent = false,       // enlarges the parent when moved beyond it (to the left / top, the parent moves back and its children are readjusted)
     int? ZIndex = null,
-    string? AriaLabel = null,        // nom UI Automation
-    XYPosition? Origin = null,       // point d'ancrage de Position (défaut : FlowView.NodeOrigin) ; celui d'un parent décale aussi ses enfants
-    double Rotation = 0,             // degrés, autour du centre (NodeRotator) ; handles et edges restent non tournés
-    double? InitialWidth = null,     // taille avant la première mesure : les edges se dessinent tout de suite
+    string? AriaLabel = null,        // UI Automation name
+    XYPosition? Origin = null,       // anchor point of Position (default: FlowView.NodeOrigin); a parent's origin also shifts its children
+    double Rotation = 0,             // degrees, around the centre (NodeRotator); handles and edges stay unrotated
+    double? InitialWidth = null,     // size before the first measurement: edges are drawn straight away
     double? InitialHeight = null,
-    IReadOnlyList<HandleInfo>? Handles = null,   // handles annoncés (relatifs au coin) : utilisés tant que le node n'est pas mesuré
-    bool Dragging = false,           // vrai pendant un déplacement (NodeInteractionChange)
-    bool Resizing = false);          // vrai pendant un redimensionnement
+    IReadOnlyList<HandleInfo>? Handles = null,   // announced handles (relative to the corner): used while the node is not measured
+    bool Dragging = false,           // true during a move (NodeInteractionChange)
+    bool Resizing = false);          // true during a resize
 
-public Rect? Rect { get; }          // rectangle (position relative) ; null tant que non mesuré
+public Rect? Rect { get; }          // rectangle (relative position); null until measured
 ```
 
 ## Edge
@@ -46,22 +46,22 @@ public Rect? Rect { get; }          // rectangle (position relative) ; null tant
 public sealed record Edge(
     string Id, string Source, string Target,
     string? SourceHandle = null, string? TargetHandle = null,
-    string Type = "default",        // default | straight | step | smoothstep | simplebezier, ou un type personnalisé (voir Personnaliser)
+    string Type = "default",        // default | straight | step | smoothstep | simplebezier, or a custom type (see Customization)
     string? Label = null,
     bool Animated = false,
     bool Selected = false,
     EdgeMarker MarkerEnd = EdgeMarker.None,
     EdgeMarker MarkerStart = EdgeMarker.None,
-    string? MarkerEndKey = null,       // marqueur personnalisé : ressource wpflow-marker-{clé}
+    string? MarkerEndKey = null,       // custom marker: resource wpflow-marker-{key}
     string? MarkerStartKey = null,
     object? Data = null,
     bool Hidden = false, bool Selectable = true, bool Deletable = true, bool Reconnectable = true,
-    double? InteractionWidth = null,   // largeur de la zone cliquable (sinon FlowView.EdgeHitWidth)
+    double? InteractionWidth = null,   // width of the clickable area (otherwise FlowView.EdgeHitWidth)
     int? ZIndex = null, string? AriaLabel = null,
     EdgeStyleOptions? Style = null,    // Stroke ("#rrggbb"), StrokeWidth, DashArray
     EdgeLabelOptions? LabelStyle = null, // Foreground, Background, ShowBackground, FontSize, Padding, CornerRadius
     EdgePathOptions? PathOptions = null, // Curvature (bézier), BorderRadius, Offset, StepPosition
-    EdgeMarkerOptions? MarkerEndOptions = null,   // Color, Width, Height (12,5 = taille par défaut), StrokeWidth, Orient (angle fixe en degrés)
+    EdgeMarkerOptions? MarkerEndOptions = null,   // Color, Width, Height (12.5 = default size), StrokeWidth, Orient (fixed angle in degrees)
     EdgeMarkerOptions? MarkerStartOptions = null);
 
 public enum EdgeMarker { None, Arrow, ArrowClosed }
@@ -77,7 +77,7 @@ public sealed record Connection(string Source, string Target, string? SourceHand
 
 ```csharp
 public sealed record HandleInfo(string? Id, HandleType Type, Position Position,
-                                double X, double Y, double Width, double Height);   // relatif au coin du node
+                                double X, double Y, double Width, double Height);   // relative to the corner of the node
 public enum HandleType { Source, Target }
 public enum Position { Left, Top, Right, Bottom }
 ```
@@ -95,11 +95,11 @@ public readonly record struct Rect(double X, double Y, double Width, double Heig
     bool Overlaps(Rect other);
 }
 
-public readonly record struct Viewport(double X, double Y, double Zoom);   // écran = flow × Zoom + (X, Y)
+public readonly record struct Viewport(double X, double Y, double Zoom);   // screen = flow × Zoom + (X, Y)
 // Viewport.Identity == (0, 0, 1)
 ```
 
-> `Wpflow.Core.Rect` n'est pas `System.Windows.Rect`. Dans un fichier qui importe les deux espaces de noms, qualifiez ou créez un alias (`using Rect = Wpflow.Core.Rect;`).
+> `Wpflow.Core.Rect` is not `System.Windows.Rect`. In a file that imports both namespaces, qualify it or create an alias (`using Rect = Wpflow.Core.Rect;`).
 
 ## ConnectionMode
 
@@ -111,7 +111,7 @@ public enum ConnectionMode { Strict, Loose }
 
 ```csharp
 public sealed record EdgePath(string Path, double LabelX, double LabelY, double OffsetX, double OffsetY);
-// Path : syntaxe SVG, utilisable avec Geometry.Parse
+// Path: SVG syntax, usable with Geometry.Parse
 ```
 
 ## FlowGraph
@@ -120,7 +120,7 @@ public sealed record EdgePath(string Path, double LabelX, double LabelY, double 
 public sealed record FlowGraph(IReadOnlyList<Node> Nodes, IReadOnlyList<Edge> Edges, Viewport Viewport);
 ```
 
-Résultat de `GraphSerializer.FromJson`.
+Result of `GraphSerializer.FromJson`.
 
 ## ResizeDirection
 

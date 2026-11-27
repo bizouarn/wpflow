@@ -221,3 +221,12 @@ kbd { border: 1px solid var(--panel-border); border-bottom-width: 2px; border-ra
     .ex-palette { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; width: auto; border-right: 0; }
     .ex-palette p, .ex-chip { margin: 4px 0; }
 }
+
+/* ---- Code blocks: syntax colours and copy button ---- */
+.markdown pre, .example-code { position: relative; }
+.copy-code {
+    position: absolute; top: 8px; right: 8px; padding: 3px 10px; font: inherit; font-size: .78em;
+    border: 1px solid var(--panel-border); border-radius: 6px; background: var(--panel); color: var(--text);
+    cursor: pointer; opacity: .75;
+}
+.copy-code:hover, .copy-code:focus-visible { opacity: 1; border-color: var(--mint); color: var(--mint); }

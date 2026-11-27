@@ -1,23 +1,23 @@
-# 14. Personnaliser sans toucher à la bibliothèque
+# 14. Customizing without touching the library
 
-*Équivalent React Flow : Custom Nodes, Custom Edges, Custom Markers, `nodeTypes` / `edgeTypes`.*
+*React Flow equivalent: Custom Nodes, Custom Edges, Custom Markers, `nodeTypes` / `edgeTypes`.*
 
-Tout ce qui s'affiche se remplace avec des **ressources WPF** (dans `FlowView.Resources`, la fenêtre ou l'application), sans sous-classe ni réflexion. Les clés suivent toutes la même convention :
+Everything that is displayed can be replaced with **WPF resources** (in `FlowView.Resources`, the window or the application), without subclassing or reflection. The keys all follow the same convention:
 
-| Ce qu'on remplace | Clé de ressource | Type de la ressource |
+| What you replace | Resource key | Resource type |
 |---|---|---|
-| Un type de node (même les intégrés) | `wpflow-node-{type}` | `DataTemplate` (DataContext = `Node`) |
-| Le **tracé** d'un type d'edge | `wpflow-edge-{type}` | `IEdgePathProvider` |
-| Le **rendu complet** d'un type d'edge | `wpflow-edge-template-{type}` | `DataTemplate` (DataContext = `EdgeRenderContext`) |
-| Le label d'un type d'edge | `wpflow-edge-label-{type}` | `DataTemplate` (DataContext = `Edge`) |
-| Un marqueur | `wpflow-marker-{clé}` | `Geometry` |
-| L'apparence des handles | style implicite `flow:Handle` | `Style` (taille, `Template`) |
+| A node type (even the built-in ones) | `wpflow-node-{type}` | `DataTemplate` (DataContext = `Node`) |
+| The **path** of an edge type | `wpflow-edge-{type}` | `IEdgePathProvider` |
+| The **full rendering** of an edge type | `wpflow-edge-template-{type}` | `DataTemplate` (DataContext = `EdgeRenderContext`) |
+| The label of an edge type | `wpflow-edge-label-{type}` | `DataTemplate` (DataContext = `Edge`) |
+| A marker | `wpflow-marker-{key}` | `Geometry` |
+| The appearance of handles | implicit style for `flow:Handle` | `Style` (size, `Template`) |
 
-Le démonstrateur de cette page est l'onglet **Personnalisation** des exemples (`demo/wpf/CustomizationExample.xaml`, `CustomEdges.cs`).
+The demonstrator for this page is the **Customization** tab of the examples (`demo/wpf/CustomizationExample.xaml`, `CustomEdges.cs`).
 
-## Redéfinir un node intégré
+## Redefining a built-in node
 
-`default`, `input`, `output` et `group` sont des types comme les autres : une ressource `wpflow-node-default` remplace le node par défaut pour tout le flow.
+`default`, `input`, `output` and `group` are types like any other: a `wpflow-node-default` resource replaces the default node for the whole flow.
 
 ```xml
 <flow:FlowView>
@@ -35,11 +35,11 @@ Le démonstrateur de cette page est l'onglet **Personnalisation** des exemples (
 </flow:FlowView>
 ```
 
-Un template remplace tout le node, **handles compris** : placez-y les vôtres.
+A template replaces the whole node, **handles included**: put your own there.
 
 ## Handles
 
-Un `Handle` se dessine lui-même (8 × 8, disque). Pour le changer, un style implicite suffit ; la taille se règle par `Width` / `Height`, la forme par un `Template` :
+A `Handle` draws itself (8 × 8, a disc). To change it, an implicit style is enough; the size is set with `Width` / `Height`, the shape with a `Template`:
 
 ```xml
 <Style TargetType="flow:Handle">
@@ -57,22 +57,22 @@ Un `Handle` se dessine lui-même (8 × 8, disque). Pour le changer, un style imp
 </Style>
 ```
 
-La zone de clic reste celle du handle, élargie de 6 px, et la position sur le bord du node suit la taille choisie. Sans `Template`, le handle garde son dessin direct (pas d'élément visuel en plus).
+The click area remains that of the handle, widened by 6 px, and the position on the edge of the node follows the chosen size. Without a `Template`, the handle keeps its direct drawing (no extra visual element).
 
-## Types d'edges
+## Edge types
 
-Deux niveaux, selon ce qu'il faut changer.
+Two levels, depending on what needs to change.
 
-### Un autre tracé : `IEdgePathProvider`
+### A different path: `IEdgePathProvider`
 
-Le fournisseur ne calcule que le chemin (une chaîne SVG et la position du label) ; la bibliothèque dessine le trait, les flèches, l'animation, la sélection et la zone de clic, exactement comme pour un type intégré. C'est le chemin **rapide**.
+The provider only computes the path (an SVG string and the position of the label); the library draws the line, the arrows, the animation, the selection and the click area, exactly as for a built-in type. This is the **fast** path.
 
 ```csharp
 public sealed class WaveEdge : IEdgePathProvider
 {
     public EdgePath GetPath(EdgeGeometry g)      // g.Source, g.SourcePosition, g.Target, g.TargetPosition
     {
-        // ... construire le chemin SVG ...
+        // ... build the SVG path ...
         return new EdgePath(path, labelX, labelY, offsetX, offsetY);
     }
 }
@@ -86,26 +86,26 @@ public sealed class WaveEdge : IEdgePathProvider
 new Edge("e1", "a", "b", Type: "wave")
 ```
 
-`g.Edge` donne l'edge tracé : le tracé peut dépendre de ses données (`Data`, handles, sélection), et un seul type suffit alors là où il en faudrait un par variante. Il vaut `null` quand il n'y a pas d'edge, par exemple si vous appelez le fournisseur vous-même sans le préciser.
+`g.Edge` gives the edge being drawn: the path can depend on its data (`Data`, handles, selection), so a single type is enough where one per variant would otherwise be needed. It is `null` when there is no edge, for example if you call the provider yourself without specifying one.
 
 ```csharp
 new DelegateEdgePathProvider(g => g.Edge?.Data is Relation { IsSelfReference: true }
-    ? LoopPath(g)                                  // votre tracé en boucle
+    ? LoopPath(g)                                  // your loop path
     : EdgePathProviders.ForType("smoothstep").GetPath(g));
 ```
 
-`DelegateEdgePathProvider(g => …)` évite de créer une classe. `EdgePaths.Bezier`, `Step`, `SmoothStep`, `Straight` sont des briques utilisables dans votre fournisseur, et `EdgePathProviders.ForType("step")` donne les fournisseurs intégrés (on peut aussi **surcharger** un type intégré : `wpflow-edge-straight`).
+`DelegateEdgePathProvider(g => …)` avoids creating a class. `EdgePaths.Bezier`, `Step`, `SmoothStep`, `Straight` are building blocks you can use in your provider, and `EdgePathProviders.ForType("step")` gives the built-in providers (you can also **override** a built-in type: `wpflow-edge-straight`).
 
-### Un autre rendu : `wpflow-edge-template-{type}`
+### A different rendering: `wpflow-edge-template-{type}`
 
-Pour dessiner l'edge autrement qu'avec un seul trait (halo, plusieurs traits, formes…), un `DataTemplate` reçoit un `EdgeRenderContext` :
+To draw the edge differently than with a single line (halo, several strokes, shapes…), a `DataTemplate` receives an `EdgeRenderContext`:
 
-| Propriété | Contenu |
+| Property | Content |
 |---|---|
-| `Edge`, `IsSelected`, `IsAnimated` | L'edge et son état |
-| `Geometry`, `PathData` | Le chemin calculé (par le fournisseur du même type, sinon le bézier) |
-| `Start`, `End`, `StartSide`, `EndSide`, `LabelPosition` | Extrémités et côtés des handles |
-| `Stroke`, `StrokeThickness` | Brosse (déjà celle de la sélection si sélectionné) et épaisseur du thème |
+| `Edge`, `IsSelected`, `IsAnimated` | The edge and its state |
+| `Geometry`, `PathData` | The computed path (by the provider of the same type, otherwise the bézier) |
+| `Start`, `End`, `StartSide`, `EndSide`, `LabelPosition` | Ends and sides of the handles |
+| `Stroke`, `StrokeThickness` | Brush (already the selection brush if selected) and thickness from the theme |
 
 ```xml
 <DataTemplate x:Key="wpflow-edge-template-pulse">
@@ -116,15 +116,15 @@ Pour dessiner l'edge autrement qu'avec un seul trait (halo, plusieurs traits, fo
 </DataTemplate>
 ```
 
-Le clic, la sélection et la reconnexion fonctionnent comme pour les autres edges, sur les éléments dessinés par votre template. Un template coûte un vrai arbre visuel par edge : gardez-le pour les types qui en ont besoin (les types sans template restent dessinés directement).
+Clicking, selecting and reconnecting work as for the other edges, on the elements drawn by your template. A template costs a real visual tree per edge: keep it for the types that need it (types without a template remain drawn directly).
 
-### Labels par type
+### Labels per type
 
-`wpflow-edge-label-{type}` définit le label d'un seul type ; à défaut, `FlowView.EdgeLabelTemplate` (global) s'applique, et à défaut le texte de `Edge.Label`.
+`wpflow-edge-label-{type}` defines the label of a single type; otherwise, the global `FlowView.EdgeLabelTemplate` applies, and otherwise the text of `Edge.Label`.
 
-## Marqueurs
+## Markers
 
-`Edge.MarkerEnd` / `MarkerStart` : `Arrow`, `ArrowClosed`. Pour un autre marqueur, `Edge.MarkerEndKey` / `MarkerStartKey` désignent une **géométrie** en ressource :
+`Edge.MarkerEnd` / `MarkerStart`: `Arrow`, `ArrowClosed`. For another marker, `Edge.MarkerEndKey` / `MarkerStartKey` designate a **geometry** held in a resource:
 
 ```xml
 <Geometry x:Key="wpflow-marker-dot">M-8,0 A4,4 0 1 1 0,0 A4,4 0 1 1 -8,0 Z</Geometry>
@@ -134,18 +134,18 @@ Le clic, la sélection et la reconnexion fonctionnent comme pour les autres edge
 new Edge("e", "a", "b", MarkerEndKey: "dot")
 ```
 
-La **pointe est en (0, 0) et la forme regarde vers +x** (comme les flèches intégrées, qui sont tournées selon le côté du handle). Une forme dont toutes les figures sont fermées est remplie avec la couleur de l'edge ; une forme ouverte est un simple trait. Une clé introuvable retombe sur `MarkerEnd` / `MarkerStart`. Les clés survivent à l'export JSON (`markerEnd: { type: "dot" }`).
+The **tip is at (0, 0) and the shape faces +x** (like the built-in arrows, which are rotated according to the side of the handle). A shape whose figures are all closed is filled with the edge's colour; an open shape is a simple line. An unknown key falls back to `MarkerEnd` / `MarkerStart`. Keys survive JSON export (`markerEnd: { type: "dot" }`).
 
-## Réglages d'apparence
+## Appearance settings
 
-| Propriété de `FlowView` | Défaut | Rôle |
+| `FlowView` property | Default | Role |
 |---|---|---|
-| `EdgeHitWidth` | 10 | Largeur de la zone cliquable autour d'un edge |
-| `SelectionOutlineGap` | 3 | Écart du contour de sélection (nodes à template) |
-| `SelectionOutlineThickness` | 1,5 | Épaisseur de ce contour |
-| `ConnectionLineStyle` | gris, 1,5 | `Style` (`TargetType="Path"`) de l'aperçu de la connexion en cours |
-| `EdgeStroke`, `EdgeStrokeThickness` | thème, 1 | Trait des edges |
+| `EdgeHitWidth` | 10 | Width of the clickable area around an edge |
+| `SelectionOutlineGap` | 3 | Gap of the selection outline (nodes with a template) |
+| `SelectionOutlineThickness` | 1.5 | Thickness of this outline |
+| `ConnectionLineStyle` | grey, 1.5 | `Style` (`TargetType="Path"`) of the preview of the connection in progress |
+| `EdgeStroke`, `EdgeStrokeThickness` | theme, 1 | Edge stroke |
 
-Les couleurs viennent des clés `Flow.*` (voir [Thèmes](08-theming.md)).
+Colours come from the `Flow.*` keys (see [Theming](08-theming.md)).
 
-Retour à l'[index](../README.md).
+Back to the [index](../README.md).

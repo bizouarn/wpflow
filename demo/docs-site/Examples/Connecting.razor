@@ -3,16 +3,16 @@
 
 <div class="ex">
     <div class="ex-toolbar">
-        <label><input type="checkbox" @bind="_loose" /> Mode libre (tout handle vers tout handle)</label>
-        <label><input type="checkbox" @bind="_clickConnect" /> Connexion en deux clics</label>
-        <label><input type="checkbox" @bind="_refuse" /> Refuser les liens vers « D »</label>
+        <label><input type="checkbox" @bind="_loose" /> Loose mode (any handle to any handle)</label>
+        <label><input type="checkbox" @bind="_clickConnect" /> Two-click connection</label>
+        <label><input type="checkbox" @bind="_refuse" /> Refuse links to "D"</label>
     </div>
     <div class="ex-flow">
         <FlowView @bind-Nodes="_nodes" @bind-Edges="_edges"
                   ConnectionMode="@(_loose ? ConnectionMode.Loose : ConnectionMode.Strict)"
                   ConnectOnClick="_clickConnect" IsValidConnection="IsValid"
                   DefaultEdgeOptions="@(edge => edge with { MarkerEnd = EdgeMarker.ArrowClosed })"
-                  OnConnectEnd="OnConnectEnd" OnReconnect="@(r => _message = $"Lien déplacé : {r.NewConnection.Source} → {r.NewConnection.Target}")">
+                  OnConnectEnd="OnConnectEnd" OnReconnect="@(r => _message = $"Link moved: {r.NewConnection.Source} → {r.NewConnection.Target}")">
             <FlowControls />
         </FlowView>
     </div>
@@ -23,7 +23,7 @@
     private bool _loose;
     private bool _clickConnect = true;
     private bool _refuse = true;
-    private string _message = "Tirez un fil d'un point à un autre ; tirez l'extrémité d'un lien pour le rebrancher.";
+    private string _message = "Drag a wire from one point to another; drag the end of a link to reconnect it.";
 
     private IReadOnlyList<Node> _nodes =
     [
@@ -39,6 +39,6 @@
 
     private void OnConnectEnd(ConnectEndEventArgs e) =>
         _message = e is { Connection: { } c, IsValid: true }
-            ? $"Connexion {c.Source} → {c.Target}"
-            : "Aucune connexion : relâché dans le vide, ou refusé.";
+            ? $"Connection {c.Source} → {c.Target}"
+            : "No connection: released in empty space, or refused.";
 }

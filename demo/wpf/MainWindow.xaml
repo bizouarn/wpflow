@@ -127,12 +127,12 @@
                         <Border DockPanel.Dock="Top" Style="{StaticResource CardHeader}">
                             <StackPanel Orientation="Horizontal">
                                 <Ellipse Width="6" Height="6" Fill="{StaticResource Sky}" Margin="0,0,7,0" />
-                                <TextBlock Text="COULEUR" Style="{StaticResource CardTitle}" />
+                                <TextBlock Text="COLOUR" Style="{StaticResource CardTitle}" />
                             </StackPanel>
                         </Border>
                         <StackPanel Orientation="Horizontal" Margin="12,0" VerticalAlignment="Center">
                             <ToggleButton x:Name="swatch" Width="26" Height="26" Cursor="Hand" Focusable="False"
-                                          ToolTip="Choisir la couleur">
+                                          ToolTip="Pick a colour">
                                 <ToggleButton.Template>
                                     <ControlTemplate TargetType="ToggleButton">
                                         <Border CornerRadius="13" Background="{Binding Data.Brush}"
@@ -166,7 +166,7 @@
                                                 </DataTemplate>
                                             </ItemsControl.ItemTemplate>
                                         </ItemsControl>
-                                        <TextBlock Text="TEINTE" Style="{StaticResource CardTitle}" Margin="0,8,0,4" />
+                                        <TextBlock Text="HUE" Style="{StaticResource CardTitle}" Margin="0,8,0,4" />
                                         <Slider Minimum="0" Maximum="359" Value="{Binding Data.Hue, Mode=TwoWay}"
                                                 Style="{StaticResource AccentSlider}" />
                                     </StackPanel>
@@ -190,7 +190,7 @@
                         <Border DockPanel.Dock="Top" Style="{StaticResource CardHeader}">
                             <StackPanel Orientation="Horizontal">
                                 <Ellipse Width="6" Height="6" Fill="{StaticResource Sky}" Margin="0,0,7,0" />
-                                <TextBlock Text="FORME" Style="{StaticResource CardTitle}" />
+                                <TextBlock Text="SHAPE" Style="{StaticResource CardTitle}" />
                             </StackPanel>
                         </Border>
                         <Border Margin="12,0" Padding="2" CornerRadius="7" Background="{StaticResource Ink}"
@@ -198,7 +198,7 @@
                             <UniformGrid Columns="2">
                                 <RadioButton Content="cubes" GroupName="shape" Style="{StaticResource Segment}"
                                              IsChecked="{Binding Data.IsCube, Mode=TwoWay}" />
-                                <RadioButton Content="pyramides" GroupName="shape" Style="{StaticResource Segment}"
+                                <RadioButton Content="pyramids" GroupName="shape" Style="{StaticResource Segment}"
                                              IsChecked="{Binding Data.IsPyramid, Mode=TwoWay}" />
                             </UniformGrid>
                         </Border>
@@ -237,7 +237,7 @@
                         <Border DockPanel.Dock="Top" Style="{StaticResource CardHeader}">
                             <StackPanel Orientation="Horizontal">
                                 <Ellipse Width="6" Height="6" Fill="{StaticResource Mint}" Margin="0,0,7,0" />
-                                <TextBlock Text="RENDU" Style="{StaticResource CardTitle}" />
+                                <TextBlock Text="RENDER" Style="{StaticResource CardTitle}" />
                             </StackPanel>
                         </Border>
                         <!-- Le nom de chaque entrée, au-dessus de sa douille (mêmes décalages que les Handle). -->
@@ -250,8 +250,8 @@
                                     <Setter Property="Foreground" Value="{StaticResource Muted}" />
                                 </Style>
                             </Canvas.Resources>
-                            <TextBlock Canvas.Left="89" Text="couleur" />
-                            <TextBlock Canvas.Left="149" Text="forme" />
+                            <TextBlock Canvas.Left="89" Text="colour" />
+                            <TextBlock Canvas.Left="149" Text="shape" />
                             <TextBlock Canvas.Left="209" Text="zoom" />
                         </Canvas>
                         <demo:CubeField State="{Binding Data}" ClipToBounds="True" />
@@ -303,20 +303,20 @@
                                VerticalAlignment="Center" Foreground="{StaticResource Muted}" />
                 </StackPanel>
                 <TextBlock Margin="0,14,0,0" FontFamily="{StaticResource Display}" FontSize="42" FontWeight="SemiBold">
-                    <Run Text="Branchez. Réglez. " Foreground="{StaticResource Text}" /><Run Text="Regardez." Foreground="{StaticResource Mint}" />
+                    <Run Text="Plug in. Adjust. " Foreground="{StaticResource Text}" /><Run Text="Watch." Foreground="{StaticResource Mint}" />
                 </TextBlock>
             </StackPanel>
 
             <StackPanel HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,30,36,0" Width="290">
                 <TextBlock FontSize="13" LineHeight="19" TextWrapping="Wrap" TextAlignment="Right"
                            Foreground="{StaticResource Muted}" IsHitTestVisible="False"
-                           Text="L'éditeur de graphes à nodes pour WPF et Blazor. Débranchez un câble : le rendu réagit aussitôt." />
+                           Text="The node-based graph editor for WPF and Blazor. Unplug a cable: the render reacts at once." />
                 <Border HorizontalAlignment="Right" Margin="0,14,0,0" Background="Transparent"
                         BorderBrush="{StaticResource Sky}" BorderThickness="1.5" CornerRadius="6" Padding="16,7" Cursor="Hand">
                     <Border.InputBindings>
                         <MouseBinding MouseAction="LeftClick" Command="{Binding OpenExamplesCommand}" />
                     </Border.InputBindings>
-                    <TextBlock Text="Parcourir les exemples  →" Foreground="{StaticResource Sky}"
+                    <TextBlock Text="Browse the examples  →" Foreground="{StaticResource Sky}"
                                FontFamily="{StaticResource Display}" FontSize="14" />
                 </Border>
             </StackPanel>

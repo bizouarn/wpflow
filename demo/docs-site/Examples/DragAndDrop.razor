@@ -3,10 +3,10 @@
 
 <div class="ex-split">
     <div class="ex-palette" aria-label="Palette">
-        <p>Glissez sur le graphe :</p>
+        <p>Drag onto the graph:</p>
         @foreach (var (type, label) in Items)
         {
-            @* « ondragstart » en JavaScript : Firefox n'entame un glisser que si des données sont posées. *@
+            @* "ondragstart" in JavaScript: Firefox only starts a drag if data is set. *@
             <div class="ex-chip" draggable="true" ondragstart="event.dataTransfer.setData('text/plain', 'node')"
                  @onpointerdown="() => _dragged = type">@label</div>
         }
@@ -20,20 +20,20 @@
 
 @code {
     private static readonly (string Type, string Label)[] Items =
-        [("input", "Node d'entrée"), ("default", "Node de traitement"), ("output", "Node de sortie")];
+        [("input", "Input node"), ("default", "Default node"), ("output", "Output node")];
 
     private FlowView? _flow;
     private string? _dragged;
     private int _next = 1;
 
-    private IReadOnlyList<Node> _nodes = [new Node("depart", new XYPosition(60, 40), "input", "Départ")];
+    private IReadOnlyList<Node> _nodes = [new Node("depart", new XYPosition(60, 40), "input", "Start")];
     private IReadOnlyList<Edge> _edges = [];
 
     private async Task OnDrop(FlowDropEventArgs e)
     {
         if (_dragged is not { } type) return;
         _dragged = null;
-        // e.Position est déjà en coordonnées du graphe, quels que soient le zoom et le défilement.
+        // e.Position is already in graph coordinates, whatever the zoom and scrolling.
         await _flow!.AddNodes([new Node($"n{_next}", e.Position, type, $"Node {_next++}")]);
     }
 }

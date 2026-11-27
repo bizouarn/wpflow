@@ -1,27 +1,27 @@
 # 13. MVVM
 
-*Équivalent React Flow : State Management (le store est ici votre ViewModel).*
+*React Flow equivalent: State Management (here, your ViewModel is the store).*
 
-Wpflow s'utilise de deux façons pour l'état du graphe :
+Wpflow can be used in two ways for the state of the graph:
 
-| Mode | Vous fournissez | La vue modifie | Pour qui |
+| Mode | You provide | The view modifies | For whom |
 |---|---|---|---|
-| **Fonctionnel** (par défaut) | `Nodes` / `Edges` : listes de `record` immuables | `Nodes` / `Edges` (nouvelle liste), ou rien en mode contrôlé | Équivalent exact de React Flow, tests simples |
-| **MVVM** | `NodesSource` / `EdgesSource` : collections de **vos ViewModels** | Les propriétés de vos ViewModels et vos collections | Applications WPF classiques, binding |
+| **Functional** (default) | `Nodes` / `Edges`: lists of immutable `record`s | `Nodes` / `Edges` (new list), or nothing in controlled mode | An exact equivalent of React Flow, simple tests |
+| **MVVM** | `NodesSource` / `EdgesSource`: collections of **your ViewModels** | The properties of your ViewModels and your collections | Classic WPF applications, binding |
 
-Ne mélangez pas les deux sur un même `FlowView` : avec une source, `Nodes` et `Edges` sont calculés pour vous.
+Do not mix both on the same `FlowView`: with a source, `Nodes` and `Edges` are computed for you.
 
-Aucune dépendance n'est imposée : un ViewModel n'a besoin que de `INotifyPropertyChanged` et d'`ICommand`. C'est vérifié avec **CommunityToolkit.Mvvm** (`ObservableObject`, `[ObservableProperty]`, `[RelayCommand]`) par les tests ; Prism et ReactiveUI reposent sur les mêmes interfaces mais ne sont pas testés ici.
+No dependency is imposed: a ViewModel only needs `INotifyPropertyChanged` and `ICommand`. This is verified with **CommunityToolkit.Mvvm** (`ObservableObject`, `[ObservableProperty]`, `[RelayCommand]`) by the tests; Prism and ReactiveUI rely on the same interfaces but are not tested here.
 
-## Un ViewModel de node
+## A node ViewModel
 
-Il suffit d'exposer des propriétés lisibles par nom. Par défaut : `Id`, `X`, `Y`.
+It is enough to expose properties readable by name. By default: `Id`, `X`, `Y`.
 
 ```csharp
-public partial class TaskVm : ObservableObject     // INotifyPropertyChanged, par exemple CommunityToolkit.Mvvm
+public partial class TaskVm : ObservableObject     // INotifyPropertyChanged, for example from CommunityToolkit.Mvvm
 {
     public string Id { get; init; } = "";
-    public string Kind => "task";                  // choisit le template wpflow-node-task
+    public string Kind => "task";                  // selects the wpflow-node-task template
     [ObservableProperty] private double _x, _y;
     [ObservableProperty] private string _title = "";
     [ObservableProperty] private bool _isSelected;
@@ -42,38 +42,38 @@ public class MainViewModel
         <flow:NodeMapping TypePath="Kind" SelectedPath="IsSelected" />
     </flow:FlowView.NodeMapping>
     <flow:FlowView.EdgeMapping>
-        <flow:EdgeMapping />                       <!-- Id, Source, Target par défaut -->
+        <flow:EdgeMapping />                       <!-- Id, Source, Target by default -->
     </flow:FlowView.EdgeMapping>
 </flow:FlowView>
 ```
 
-Le template du node reçoit le `Node` en `DataContext`, et `Node.Data` **est votre ViewModel** : les bindings sont vivants et bidirectionnels (`{Binding Data.Title}`).
+The node template receives the `Node` as its `DataContext`, and `Node.Data` **is your ViewModel**: the bindings are live and two-way (`{Binding Data.Title}`).
 
-## Mappages
+## Mappings
 
-Chaque propriété de `NodeMapping` / `EdgeMapping` est le **nom d'une propriété** du ViewModel ; `null` = non mappé (la valeur courante du node est conservée).
+Each property of `NodeMapping` / `EdgeMapping` is the **name of a property** of the ViewModel; `null` = not mapped (the node's current value is kept).
 
-| `NodeMapping` | Défaut | Rôle |
+| `NodeMapping` | Default | Role |
 |---|---|---|
-| `IdPath` | `Id` | Identifiant (chaîne) |
-| `XPath`, `YPath` | `X`, `Y` | Position (relative au parent si `ParentIdPath`) ; écrites par le glisser |
-| `TypePath` | — | Type de node (`"default"` sinon) |
-| `WidthPath`, `HeightPath` | — | Taille explicite (`FixedWidth/FixedHeight`) ; écrites par `NodeResizer`. `NaN` ou `null` = automatique |
-| `SelectedPath` | — | Sélection, dans les deux sens |
-| `DraggablePath`, `SelectablePath` | — | Lecture seule |
-| `ParentIdPath` | — | Groupe parent |
-| `DataPath` | — | Valeur donnée à `Node.Data` (le ViewModel lui-même si `null`) |
+| `IdPath` | `Id` | Identifier (string) |
+| `XPath`, `YPath` | `X`, `Y` | Position (relative to the parent if `ParentIdPath`); written by dragging |
+| `TypePath` | — | Node type (`"default"` otherwise) |
+| `WidthPath`, `HeightPath` | — | Explicit size (`FixedWidth/FixedHeight`); written by `NodeResizer`. `NaN` or `null` = automatic |
+| `SelectedPath` | — | Selection, in both directions |
+| `DraggablePath`, `SelectablePath` | — | Read-only |
+| `ParentIdPath` | — | Parent group |
+| `DataPath` | — | Value given to `Node.Data` (the ViewModel itself if `null`) |
 
-Les autres propriétés d'un node se mappent aussi, avec une propriété du type indiqué : `HiddenPath`, `ConnectablePath`, `DeletablePath`, `ExtentParentPath`, `ExpandParentPath` (`bool`) ; `ExtentPath` (`Rect?`) ; `SourcePositionPath`, `TargetPositionPath` (`Position?`) ; `OriginPath` (`XYPosition?`) ; `RotationPath`, `InitialWidthPath`, `InitialHeightPath` (nombres) ; `ZIndexPath` (`int?`) ; `DragHandlePath`, `AriaLabelPath` (chaînes) ; `HandlesPath` (`IReadOnlyList<HandleInfo>`).
+The other properties of a node can also be mapped, with a property of the indicated type: `HiddenPath`, `ConnectablePath`, `DeletablePath`, `ExtentParentPath`, `ExpandParentPath` (`bool`); `ExtentPath` (`Rect?`); `SourcePositionPath`, `TargetPositionPath` (`Position?`); `OriginPath` (`XYPosition?`); `RotationPath`, `InitialWidthPath`, `InitialHeightPath` (numbers); `ZIndexPath` (`int?`); `DragHandlePath`, `AriaLabelPath` (strings); `HandlesPath` (`IReadOnlyList<HandleInfo>`).
 
-`EdgeMapping` : `IdPath` (`Id`), `SourcePath` (`Source`), `TargetPath` (`Target`), `SourceHandlePath`, `TargetHandlePath`, `TypePath`, `LabelPath`, `AnimatedPath`, `SelectedPath`, `HiddenPath`, `SelectablePath`, `DeletablePath`, `ReconnectablePath`, `DataPath`, `MarkerStartPath`, `MarkerEndPath`, `MarkerStartKeyPath`, `MarkerEndKeyPath`, `InteractionWidthPath`, `ZIndexPath`, `AriaLabelPath`, `StylePath`, `LabelStylePath`, `PathOptionsPath`, `MarkerStartOptionsPath`, `MarkerEndOptionsPath`.
+`EdgeMapping`: `IdPath` (`Id`), `SourcePath` (`Source`), `TargetPath` (`Target`), `SourceHandlePath`, `TargetHandlePath`, `TypePath`, `LabelPath`, `AnimatedPath`, `SelectedPath`, `HiddenPath`, `SelectablePath`, `DeletablePath`, `ReconnectablePath`, `DataPath`, `MarkerStartPath`, `MarkerEndPath`, `MarkerStartKeyPath`, `MarkerEndKeyPath`, `InteractionWidthPath`, `ZIndexPath`, `AriaLabelPath`, `StylePath`, `LabelStylePath`, `PathOptionsPath`, `MarkerStartOptionsPath`, `MarkerEndOptionsPath`.
 
-En Blazor, tout ce chapitre s'applique aussi, avec les différences décrites dans [Wpflow.Blazor](../blazor.md#mvvm).
+In Blazor, this whole chapter also applies, with the differences described in [Wpflow.Blazor](../blazor.md#mvvm).
 
-- `DataPath` donne la valeur de `Edge.Data`, celle que lisent un [fournisseur de tracé](05-edges.md) ou un modèle d'edge. Contrairement à `NodeMapping.DataPath`, `null` **ne met pas** le ViewModel dans `Data`.
-- `MarkerStartPath` et `MarkerEndPath` désignent des propriétés de type `EdgeMarker`.
+- `DataPath` gives the value of `Edge.Data`, the one read by a [path provider](05-edges.md) or an edge template. Unlike `NodeMapping.DataPath`, `null` **does not** put the ViewModel in `Data`.
+- `MarkerStartPath` and `MarkerEndPath` designate properties of type `EdgeMarker`.
 
-Quand le tracé ou les marqueurs dépendent d'une propriété calculée, levez `PropertyChanged` pour **cette** propriété (pas seulement pour celle dont elle dérive) :
+When the path or the markers depend on a computed property, raise `PropertyChanged` for **that** property (not only for the one it derives from):
 
 ```csharp
 public string Cardinality
@@ -85,36 +85,36 @@ public Relation Data => new(Cardinality);                 // EdgeMapping.DataPat
 public EdgeMarker MarkerEnd => Cardinality == "1-n" ? EdgeMarker.ArrowClosed : EdgeMarker.None;
 ```
 
-Les types numériques sont convertis (un `int` ou un `float` fonctionne pour `X`). Un mappage se fixe avant ou après la source : la source est reconstruite quand il change, mais **modifier ses propriétés après coup n'est pas détecté**.
+Numeric types are converted (an `int` or a `float` works for `X`). A mapping is set before or after the source: the source is rebuilt when it changes, but **changing its properties afterwards is not detected**.
 
-## Ce qui se passe, dans les deux sens
+## What happens, in both directions
 
-**ViewModel → vue.** `CollectionChanged` ajoute et retire des nodes ; un `PropertyChanged` d'une propriété mappée remplace le seul record concerné (les autres gardent leur référence, donc la vue ne retraite rien d'autre). Une propriété non mappée (un titre affiché par le template) ne coûte rien.
+**ViewModel → view.** `CollectionChanged` adds and removes nodes; a `PropertyChanged` of a mapped property replaces only the record concerned (the others keep their reference, so the view does not reprocess anything else). An unmapped property (a title displayed by the template) costs nothing.
 
-**Vue → ViewModel.** Les changes que la vue applique sont reportés dans vos objets :
+**View → ViewModel.** The changes applied by the view are written back to your objects:
 
-| Geste | Écriture |
+| Gesture | Write |
 |---|---|
-| Glisser, flèches | `XPath`, `YPath` |
-| `NodeResizer` | `WidthPath`, `HeightPath` (et `XPath`/`YPath` si le bord gauche ou haut bouge) |
-| Sélection | `SelectedPath` |
-| Suppr | Le ViewModel est retiré de la collection (si elle est modifiable) ; les edges reliés aussi |
-| Reconnexion d'un edge | `SourcePath`, `TargetPath`, `SourceHandlePath`, `TargetHandlePath` |
-| Connexion à la souris, dépôt | **`EdgeFactory` / `NodeFactory`** créent le ViewModel, ajouté à la collection (ou une [commande](#commandes) s'en charge) |
+| Dragging, arrow keys | `XPath`, `YPath` |
+| `NodeResizer` | `WidthPath`, `HeightPath` (and `XPath`/`YPath` if the left or top edge moves) |
+| Selection | `SelectedPath` |
+| Delete | The ViewModel is removed from the collection (if it is modifiable); the connected edges too |
+| Reconnecting an edge | `SourcePath`, `TargetPath`, `SourceHandlePath`, `TargetHandlePath` |
+| Mouse connection, drop | **`EdgeFactory` / `NodeFactory`** create the ViewModel, which is added to the collection (or a [command](#commands) does it) |
 
 ```csharp
-// en code ; ou liées à une propriété du ViewModel : EdgeFactory="{Binding LinkFactory}"
+// in code; or bound to a property of the ViewModel: EdgeFactory="{Binding LinkFactory}"
 flow.EdgeFactory = edge => new LinkVm { Id = edge.Id, Source = edge.Source, Target = edge.Target };
-flow.NodeFactory = node => new TaskVm { Id = node.Id, X = node.Position.X, Y = node.Position.Y, Title = "Nouveau" };
+flow.NodeFactory = node => new TaskVm { Id = node.Id, X = node.Position.X, Y = node.Position.Y, Title = "New" };
 ```
 
-Sans fabrique ni commande, une connexion ou un dépôt n'ajoute rien à la source (les événements `ConnectRequested` / `DropRequested` restent disponibles).
+Without a factory or a command, a connection or a drop adds nothing to the source (the `ConnectRequested` / `DropRequested` events remain available).
 
-Les écritures ne reviennent pas en boucle.
+Writes do not loop back.
 
-### Refuser ou ajuster un changement
+### Refusing or adjusting a change
 
-Un ViewModel a le dernier mot. S'il lève `PropertyChanged` pendant que la vue lui écrit une valeur, la vue le **relit** après l'écriture et affiche ce qu'il contient : un setter qui borne une position, l'aligne sur une grille ou la refuse (élément verrouillé) est suivi. Pour refuser, ne changez pas le champ mais **levez quand même** `PropertyChanged` ; sans notification, la vue garde la valeur qu'elle a écrite.
+A ViewModel has the last word. If it raises `PropertyChanged` while the view is writing a value to it, the view **reads it back** after the write and displays what it contains: a setter that clamps a position, snaps it to a grid or refuses it (locked element) is followed. To refuse, do not change the field but **still raise** `PropertyChanged`; without a notification, the view keeps the value it wrote.
 
 ```csharp
 public double X
@@ -124,69 +124,69 @@ public double X
 }
 ```
 
-Pour refuser une suppression, utilisez `NodesDeleteCommand` / `EdgesDeleteCommand` ; une connexion, le `CanExecute` de `ConnectCommand` ([commandes](#commandes)).
+To refuse a deletion, use `NodesDeleteCommand` / `EdgesDeleteCommand`; for a connection, the `CanExecute` of `ConnectCommand` ([commands](#commands)).
 
-> **Pendant un glisser**, `X` et `Y` sont écrits à chaque mouvement de souris. Si leur setter est coûteux (sauvegarde, recalcul), ne le faites pas dans le setter.
+> **During a drag**, `X` and `Y` are written on every mouse movement. If their setter is expensive (saving, recalculation), do not do it in the setter.
 
-## Sélection bindable
+## Bindable selection
 
-| Propriété | Contenu |
+| Property | Content |
 |---|---|
-| `SelectedNodes` | Les ViewModels sélectionnés (des `Node` sans source) |
-| `SelectedEdges` | Idem pour les edges |
-| `SelectedNode` | Le premier node sélectionné, `null` sinon |
+| `SelectedNodes` | The selected ViewModels (`Node`s without a source) |
+| `SelectedEdges` | Same for edges |
+| `SelectedNode` | The first selected node, `null` otherwise |
 
-Lues avec un binding `OneWay`. Écrites (`TwoWay`, ou en code), elles **sélectionnent** ces éléments. Si vous liez une `ObservableCollection`, elle est **modifiée sur place** par la vue, et ajouter ou retirer des éléments depuis le ViewModel change la sélection à l'écran :
+Read with a `OneWay` binding. Written (`TwoWay`, or in code), they **select** these elements. If you bind an `ObservableCollection`, it is **modified in place** by the view, and adding or removing elements from the ViewModel changes the selection on screen:
 
 ```csharp
-Selection.Add(Tasks[3]);   // le node 4 se sélectionne
-Selection.Clear();         // plus rien n'est sélectionné
+Selection.Add(Tasks[3]);   // node 4 gets selected
+Selection.Clear();         // nothing is selected any more
 ```
 
-Si vous liez une propriété de type `IList` ordinaire, la vue y met une **nouvelle** liste à chaque changement de sélection (jamais la même liste modifiée, sinon un binding ne serait pas notifié). La sélection n'est pas recréée tant qu'elle ne change pas, y compris pendant un glisser.
+If you bind an ordinary `IList` property, the view puts a **new** list in it at each selection change (never the same modified list, otherwise a binding would not be notified). The selection is not recreated as long as it does not change, including during a drag.
 
-## État bindable
+## Bindable state
 
-| Propriété | Type | Rôle |
+| Property | Type | Role |
 |---|---|---|
-| `Zoom` | `double` | Niveau de zoom, `TwoWay` : l'écrire zoome en gardant le centre de la vue (borné par `MinZoom` / `MaxZoom`) |
-| `Viewport` | `Viewport` | Position et zoom, `TwoWay` |
-| `IsConnecting` | `bool` (lecture seule) | Une connexion est en cours de tracé |
-| `CanUndo`, `CanRedo` | `bool` (lecture seule) | Pour griser des boutons ; suivent l'historique de la vue ou celui du ViewModel |
+| `Zoom` | `double` | Zoom level, `TwoWay`: writing it zooms while keeping the centre of the view (bounded by `MinZoom` / `MaxZoom`) |
+| `Viewport` | `Viewport` | Position and zoom, `TwoWay` |
+| `IsConnecting` | `bool` (read-only) | A connection is being drawn |
+| `CanUndo`, `CanRedo` | `bool` (read-only) | To grey out buttons; they follow the view's history or the ViewModel's |
 
-## Commandes
+## Commands
 
-Les actions de l'utilisateur sont exposées en `ICommand` (propriétés de dépendance, donc liables). Règle commune : **`CanExecute` est consulté avant l'action**, et une commande qui *remplace* l'action automatique la fait à la place de la vue.
+The user's actions are exposed as `ICommand`s (dependency properties, so bindable). Common rule: **`CanExecute` is consulted before the action**, and a command that *replaces* the automatic action does it instead of the view.
 
-| Propriété | Paramètre | Effet |
+| Property | Parameter | Effect |
 |---|---|---|
-| `ConnectCommand` | `Connection` | **Remplace** la création de l'edge : le ViewModel ajoute son lien. `CanExecute` faux **refuse** la connexion — c'est le validateur côté ViewModel (une reconnexion d'edge n'est que soumise à `CanExecute`) |
-| `NodesDeleteCommand` | liste des éléments à supprimer (descendants compris) | **Remplace** la suppression automatique des nodes ; `CanExecute` faux annule toute la suppression |
-| `EdgesDeleteCommand` | liste des edges sélectionnés | Remplace la suppression automatique de ces edges |
-| `DropCommand` | `FlowDropEventArgs` | Appelée à chaque dépôt (palette) |
-| `NodeDragStopCommand` | liste des éléments déplacés | Notification en fin de déplacement (les positions sont déjà écrites) |
-| `NodeClickCommand` | l'élément (ViewModel) | Clic sans déplacement sur un node |
-| `EdgeClickCommand` | l'élément | Clic sur un edge |
-| `PaneClickCommand` | `XYPosition` (coordonnées flow) | Clic sur le fond |
-| `NodeDoubleClickCommand`, `EdgeDoubleClickCommand` | l'élément | Double-clic |
-| `NodeContextMenuCommand`, `EdgeContextMenuCommand` | l'élément | Clic droit |
-| `PaneContextMenuCommand` | `XYPosition` | Clic droit sur le fond |
-| `SelectionContextMenuCommand` | liste des éléments sélectionnés | Clic droit sur une sélection de plusieurs nodes (la commande du node est appelée aussi) |
+| `ConnectCommand` | `Connection` | **Replaces** the creation of the edge: the ViewModel adds its link. A `false` `CanExecute` **refuses** the connection — this is the validator on the ViewModel side (an edge reconnection is only subject to `CanExecute`) |
+| `NodesDeleteCommand` | list of the elements to delete (descendants included) | **Replaces** the automatic deletion of nodes; a `false` `CanExecute` cancels the whole deletion |
+| `EdgesDeleteCommand` | list of the selected edges | Replaces the automatic deletion of these edges |
+| `DropCommand` | `FlowDropEventArgs` | Called on every drop (palette) |
+| `NodeDragStopCommand` | list of the moved elements | Notification at the end of a move (the positions are already written) |
+| `NodeClickCommand` | the element (ViewModel) | Click without a move on a node |
+| `EdgeClickCommand` | the element | Click on an edge |
+| `PaneClickCommand` | `XYPosition` (flow coordinates) | Click on the background |
+| `NodeDoubleClickCommand`, `EdgeDoubleClickCommand` | the element | Double click |
+| `NodeContextMenuCommand`, `EdgeContextMenuCommand` | the element | Right click |
+| `PaneContextMenuCommand` | `XYPosition` | Right click on the background |
+| `SelectionContextMenuCommand` | list of the selected elements | Right click on a selection of several nodes (the node's command is also called) |
 
-**Tous les autres évènements ont aussi leur commande**, qui reçoit les arguments de l'évènement et ne remplace aucune action :
+**All the other events also have their command**, which receives the event's arguments and replaces no action:
 
-| Domaine | Commandes |
+| Area | Commands |
 |---|---|
-| Cycle de vie | `InitCommand`, `NodesReadyCommand`, `StateChangedCommand`, `ErrorCommand` |
-| Changements | `NodeChangesCommand`, `EdgeChangesCommand`, `SelectionChangedCommand`, `DeletedCommand` |
-| Survol | `NodeMouseEnterCommand` / `MoveCommand` / `LeaveCommand`, et de même pour `EdgeMouse…` et `PaneMouse…` ; `PaneScrollCommand` |
-| Glisser | `NodeDragStartCommand`, `NodeDragCommand`, `SelectionDragStartCommand`, `SelectionDragCommand`, `SelectionDragStopCommand`, `SelectionStartCommand`, `SelectionEndCommand` |
-| Connexions | `ConnectStartCommand`, `ConnectEndCommand`, `ClickConnectStartCommand`, `ClickConnectEndCommand`, `ReconnectStartCommand`, `ReconnectEndCommand`, `EdgeReconnectCommand` |
-| Vue | `ViewportMoveStartCommand`, `ViewportMoveCommand`, `ViewportMoveEndCommand` |
+| Lifecycle | `InitCommand`, `NodesReadyCommand`, `StateChangedCommand`, `ErrorCommand` |
+| Changes | `NodeChangesCommand`, `EdgeChangesCommand`, `SelectionChangedCommand`, `DeletedCommand` |
+| Hover | `NodeMouseEnterCommand` / `MoveCommand` / `LeaveCommand`, and likewise for `EdgeMouse…` and `PaneMouse…`; `PaneScrollCommand` |
+| Dragging | `NodeDragStartCommand`, `NodeDragCommand`, `SelectionDragStartCommand`, `SelectionDragCommand`, `SelectionDragStopCommand`, `SelectionStartCommand`, `SelectionEndCommand` |
+| Connections | `ConnectStartCommand`, `ConnectEndCommand`, `ClickConnectStartCommand`, `ClickConnectEndCommand`, `ReconnectStartCommand`, `ReconnectEndCommand`, `EdgeReconnectCommand` |
+| View | `ViewportMoveStartCommand`, `ViewportMoveCommand`, `ViewportMoveEndCommand` |
 
-Une commande de notification ne coûte rien tant qu'elle n'est pas définie. La suppression a une seule exception sans commande : `BeforeDelete`, qui doit **répondre** ; liez `BeforeDeleteAsync`.
+A notification command costs nothing as long as it is not set. Deletion has one exception without a command: `BeforeDelete`, which must **answer**; bind `BeforeDeleteAsync`.
 
-Avec `CommandsReceiveEventArgs="True"`, les commandes de clic, de double-clic et de menu contextuel reçoivent à la place un `ElementEventArgs` : élément, position et `TargetData`, la partie du modèle visée (voir [Interactions](09-interactions.md)).
+With `CommandsReceiveEventArgs="True"`, the click, double-click and context-menu commands receive an `ElementEventArgs` instead: element, position and `TargetData`, the part of the model that was targeted (see [Interactions](09-interactions.md)).
 
 ```xml
 <flow:FlowView ConnectCommand="{Binding ConnectCommand}" NodesDeleteCommand="{Binding DeleteCommand}"
@@ -195,67 +195,67 @@ Avec `CommandsReceiveEventArgs="True"`, les commandes de clic, de double-clic et
 
 ```csharp
 ConnectCommand = new RelayCommand<Connection>(c => Links.Add(new LinkVm(c)),
-                                              c => c!.Target != "1");   // validateur : jamais vers la tâche 1
+                                              c => c!.Target != "1");   // validator: never towards task 1
 ```
 
-`IsValidConnection` (un `Func<Connection, bool>`, lui aussi liable) reste disponible pour une règle qui ne passe pas par une commande.
+`IsValidConnection` (a `Func<Connection, bool>`, also bindable) remains available for a rule that does not go through a command.
 
-### Commandes routées : `FlowCommands`
+### Routed commands: `FlowCommands`
 
-Pour des boutons et des menus **sans code-behind** : `FitView`, `ZoomIn`, `ZoomOut`, `Undo`, `Redo`, `SelectAll`, `ClearSelection`, `DeleteSelection`, `ToggleLock`. Leur `CanExecute` suit l'état (Annuler grisé sans historique, Supprimer sans sélection…).
+For buttons and menus **without code-behind**: `FitView`, `ZoomIn`, `ZoomOut`, `Undo`, `Redo`, `SelectAll`, `ClearSelection`, `DeleteSelection`, `ToggleLock`. Their `CanExecute` follows the state (Undo greyed out without history, Delete without a selection…).
 
 ```xml
-<Button Content="Annuler" Command="{x:Static flow:FlowCommands.Undo}" CommandTarget="{Binding ElementName=Flow}" />
+<Button Content="Undo" Command="{x:Static flow:FlowCommands.Undo}" CommandTarget="{Binding ElementName=Flow}" />
 ```
 
-Un bouton placé **dans** le `FlowView` (overlay) n'a pas besoin de `CommandTarget`. `FlowControls` et `MiniMap` se branchent aussi explicitement : `Flow="{Binding ElementName=Flow}"` (par défaut, la vue qui les contient).
+A button placed **inside** the `FlowView` (overlay) does not need `CommandTarget`. `FlowControls` and `MiniMap` are also wired explicitly: `Flow="{Binding ElementName=Flow}"` (by default, the view that contains them).
 
-## Piloter la vue depuis le ViewModel : `IFlowController`
+## Driving the view from the ViewModel: `IFlowController`
 
-Le ViewModel n'a pas à connaître `FlowView`. Le contrôle lui remet un `IFlowController` par une liaison `OneWayToSource` :
+The ViewModel does not need to know `FlowView`. The control hands it an `IFlowController` through a `OneWayToSource` binding:
 
 ```xml
 <flow:FlowView Controller="{Binding Flow, Mode=OneWayToSource}" />
 ```
 
 ```csharp
-public IFlowController? Flow { get; set; }          // renseigné par la vue
+public IFlowController? Flow { get; set; }          // set by the view
 
 Flow?.FitView();  Flow?.ZoomTo(1.5);  Flow?.CenterOn("node-42");
 Flow?.SelectAll();  Flow?.ClearSelection();  Flow?.DeleteSelection();  Flow?.Undo();
-var p = Flow?.FlowToScreen(new XYPosition(10, 20));   // et ScreenToFlow
+var p = Flow?.FlowToScreen(new XYPosition(10, 20));   // and ScreenToFlow
 ```
 
-Le contrôleur ne laisse voir que ces opérations, pas le contrôle.
+The controller only exposes these operations, not the control.
 
 ## Undo / Redo
 
-Avec une source, Ctrl+Z fonctionne pour les changements faits par la vue : l'historique garde des états de records et reporte la différence dans vos ViewModels, pour **toutes les propriétés mappées** (un node supprimé revient avec le **même** ViewModel).
+With a source, Ctrl+Z works for the changes made by the view: the history keeps record states and writes the difference back to your ViewModels, for **all mapped properties** (a deleted node comes back with the **same** ViewModel).
 
-Les modifications faites directement par votre code ne sont pas dans cet historique, et annuler un geste ne les défait pas : une propriété changée par une tâche de fond garde sa nouvelle valeur. La **géométrie** fait exception (position, taille, sélection, rotation, extrémités d'un edge) : elle est restaurée même si votre code l'a ajustée après le geste, par exemple en alignant un node en fin de glisser.
+Changes made directly by your code are not in this history, and undoing a gesture does not revert them: a property changed by a background task keeps its new value. The **geometry** is an exception (position, size, selection, rotation, ends of an edge): it is restored even if your code adjusted it after the gesture, for example by aligning a node at the end of a drag.
 
-Si l'application a **son propre** historique, implémentez `IFlowHistory` (`Checkpoint()`, `Undo()`, `Redo()`, `CanUndo`, `CanRedo`) et liez-le : `History="{Binding History}"`. La vue demande alors `Checkpoint()` avant chaque modification faite par un geste (déplacement, suppression, connexion) et délègue Ctrl+Z / Ctrl+Y ; `CanUndo` / `CanRedo` suivent l'objet (via `INotifyPropertyChanged` s'il l'implémente).
+If the application has **its own** history, implement `IFlowHistory` (`Checkpoint()`, `Undo()`, `Redo()`, `CanUndo`, `CanRedo`) and bind it: `History="{Binding History}"`. The view then asks for `Checkpoint()` before each change made by a gesture (move, delete, connection) and delegates Ctrl+Z / Ctrl+Y; `CanUndo` / `CanRedo` follow the object (via `INotifyPropertyChanged` if it implements it).
 
 ## JSON
 
-`flow.ToJson()` écrit le graphe au format React Flow ; `flow.LoadJson(json)` le charge.
+`flow.ToJson()` writes the graph in React Flow format; `flow.LoadJson(json)` loads it.
 
-- **Sans source** : `Nodes` et `Edges` sont lus et remplacés.
-- **Avec une source** : `Node.Data` **n'est pas écrit par défaut** (un ViewModel n'est pas fait pour être sérialisé tel quel). `ToJson(n => new { title = ((TaskVm)n.Data!).Title })` choisit ce qui est écrit. `LoadJson` vide la collection puis y ajoute les ViewModels créés par `NodeFactory` / `EdgeFactory` (obligatoires, sinon `InvalidOperationException`) dont les propriétés mappées sont renseignées.
+- **Without a source**: `Nodes` and `Edges` are read and replaced.
+- **With a source**: `Node.Data` **is not written by default** (a ViewModel is not meant to be serialised as is). `ToJson(n => new { title = ((TaskVm)n.Data!).Title })` chooses what is written. `LoadJson` empties the collection then adds to it the ViewModels created by `NodeFactory` / `EdgeFactory` (mandatory, otherwise `InvalidOperationException`) whose mapped properties are filled in.
 
-`GraphSerializer.ToJson(nodes, edges, viewport, data: …)` accepte le même sélecteur de données.
+`GraphSerializer.ToJson(nodes, edges, viewport, data: …)` accepts the same data selector.
 
-## Limites
+## Limits
 
-- Les modifications faites par votre code dans un ViewModel ne sont pas annulables par Ctrl+Z de la vue (sauf avec votre `IFlowHistory`) ; voir [Undo / Redo](#undo--redo).
-- Une propriété mappée qui change des milliers de fois par seconde sur de nombreux nodes recopie la liste à chaque fois : regroupez vos mises à jour.
-- Les dimensions mesurées par la vue (`Width`/`Height` du `Node`) ne sont pas écrites dans le ViewModel (seule la taille explicite l'est).
-- Un `ConnectCommand` n'est pas consulté pendant le tracé (pas d'aperçu « connexion refusée »), seulement au relâchement.
+- Changes made by your code in a ViewModel cannot be undone with the view's Ctrl+Z (unless with your `IFlowHistory`); see [Undo / Redo](#undo--redo).
+- A mapped property that changes thousands of times per second on many nodes copies the list every time: batch your updates.
+- The dimensions measured by the view (`Width`/`Height` of the `Node`) are not written to the ViewModel (only the explicit size is).
+- A `ConnectCommand` is not consulted while drawing (no « connection refused » preview), only on release.
 
-## Exemples
+## Examples
 
-L'onglet **MVVM** de la fenêtre d'exemples (`demo/wpf/MvvmExample.xaml`, `MvvmViewModel.cs`) n'a **aucun code-behind** : collections de `TaskVm` et de `LinkVm`, template de node avec `TextBox` et `CheckBox` liés, commandes de connexion (avec règle métier), de suppression, de clic et de fin de déplacement, boutons Annuler / Rétablir / Supprimer en commandes routées (grisés selon l'état), zoom lié à un curseur, `IFlowController` pour Cadrer et Centrer, et un indicateur `IsConnecting`.
+The **MVVM** tab of the examples window (`demo/wpf/MvvmExample.xaml`, `MvvmViewModel.cs`) has **no code-behind**: collections of `TaskVm` and `LinkVm`, a node template with bound `TextBox` and `CheckBox`, connection (with a business rule), deletion, click and end-of-move commands, Undo / Redo / Delete buttons as routed commands (greyed out depending on the state), zoom bound to a slider, `IFlowController` for Fit and Center, and an `IsConnecting` indicator.
 
-La **page d'accueil** (l'anneau de cubes) est aussi pilotée par un ViewModel (`demo/wpf/HomeViewModel.cs`) : nodes et liens sont des collections, le viewport est lié en `TwoWay`, et c'est le ViewModel qui décide que couleur, forme et zoom n'agissent que si leur lien existe.
+The **home page** (the ring of cubes) is also driven by a ViewModel (`demo/wpf/HomeViewModel.cs`): nodes and links are collections, the viewport is bound in `TwoWay`, and it is the ViewModel that decides that colour, shape and zoom only act if their link exists.
 
-Suivant : [Personnaliser](14-customization.md).
+Next: [Customization](14-customization.md).

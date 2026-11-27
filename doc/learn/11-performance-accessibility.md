@@ -1,75 +1,76 @@
-# 11. Performance et accessibilité
+# 11. Performance and accessibility
 
-*Équivalent React Flow : Performance, Accessibility.*
+*React Flow equivalent: Performance, Accessibility.*
 
 ## Performance
 
-### Mesures
+### Measurements
 
-Faites dans la démo (`WPFLOW_PERF=N`), nodes par défaut, un edge par node, sur la machine de développement. Ce sont des ordres de grandeur, pas des garanties :
+Taken in the demo (`WPFLOW_PERF=N`), default nodes, one edge per node, on the development machine. These are orders of magnitude, not guarantees:
 
-| | 3 000 nodes | 5 000 nodes, `OnlyRenderVisibleElements` | 20 000 nodes, `OnlyRenderVisibleElements` |
+| | 3,000 nodes | 5,000 nodes, `OnlyRenderVisibleElements` | 20,000 nodes, `OnlyRenderVisibleElements` |
 |---|---|---|---|
-| Premier affichage + mesure | 3,5 à 3,8 s | 0,4 s | 0,4 s |
-| Déplacer un node (par image) | 65 à 95 ms | 9 à 12 ms | 24 ms |
-| Déplacer la vue (par image) | 65 à 90 ms | 9 à 13 ms | 26 ms |
-| Mémoire managée ajoutée | +32 Mo (≈ 11 Ko/node) | +6,8 Mo | +8,4 Mo |
-| Mémoire résidente (working set) ajoutée | +84 Mo | +13 à 18 Mo | +21 Mo |
+| First display + measurement | 3.5 to 3.8 s | 0.4 s | 0.4 s |
+| Moving a node (per frame) | 65 to 95 ms | 9 to 12 ms | 24 ms |
+| Panning the view (per frame) | 65 to 90 ms | 9 to 13 ms | 26 ms |
+| Managed memory added | +32 MB (≈ 11 KB/node) | +6.8 MB | +8.4 MB |
+| Working set added | +84 MB | +13 to 18 MB | +21 MB |
 
-### Activer la virtualisation
+### Enabling virtualisation
 
 ```xml
 <flow:FlowView OnlyRenderVisibleElements="True" />
 ```
 
-Seuls les nodes et edges proches de la zone visible ont un élément visuel : ceux de la vue plus 300 px sont affichés, ceux jusqu'à 900 px sont gardés masqués (pour ne pas les recréer à chaque va-et-vient du pan), les autres **n'existent pas** — ni en mémoire visuelle, ni en mise en page, ni au rendu. Les nodes sélectionnés restent toujours affichés. Ce n'est donc pas qu'un gain de vitesse : la mémoire ne dépend plus du nombre total de nodes (voir les mesures ci-dessous). À activer dès ~1 000 nodes.
+Only the nodes and edges near the visible area have a visual element: those in the view plus 300 px are displayed, those up to 900 px are kept hidden (so they are not recreated on every back-and-forth pan), the others **do not exist** — neither in visual memory, nor in layout, nor in rendering. Selected nodes always stay displayed. So it is not only a speed gain: memory no longer depends on the total number of nodes (see the measurements below). Enable it from about 1,000 nodes.
 
-**Limite connue** : un node n'est mesuré que s'il a été affiché. Les nodes jamais vus restent sans dimensions, donc `FitViewOnInit`, `FitView()` et la minimap ne connaissent que les nodes mesurés. Pour un grand graphe virtualisé, donnez une taille explicite :
+**Known limitation**: a node is only measured once it has been displayed. Nodes never seen remain without dimensions, so `FitViewOnInit`, `FitView()` and the minimap only know the measured nodes. For a large virtualised graph, give an explicit size:
 
 ```csharp
 new Node(id, position, "default", data, FixedWidth: 150, FixedHeight: 40)
 ```
 
-### Ce que Wpflow fait déjà pour vous
+### What Wpflow already does for you
 
-- Les mesures de nodes sont **regroupées** : N nodes mesurés = une seule mise à jour (sans cela, le chargement était quadratique).
-- Une mise à jour ne recalcule que les nodes dont la référence ou la position absolue a changé, et les edges qui y sont reliés.
-- Un edge dont le tracé, les extrémités et le style n'ont pas changé n'est ni re-parsé ni redessiné ; chaque edge est un seul élément qui se dessine lui-même.
+- Node measurements are **batched**: N measured nodes = a single update (without this, loading was quadratic).
+- An update only recalculates the nodes whose reference or absolute position has changed, and the edges connected to them.
+- An edge whose path, ends and style have not changed is neither re-parsed nor redrawn; each edge is a single element that draws itself.
 
-### Conseils
+### Tips
 
-- Gardez les templates de nodes légers : le coût par node vient surtout du nombre d'éléments visuels (un handle, un edge et un contour de sélection sont dessinés par un seul élément chacun).
-- Évitez les `Effect` (ombres portées) sur des centaines de nodes ; un seul effet par carte reste raisonnable.
-- Ne reconstruisez pas toute la liste quand un seul node change : `Flow.Nodes.Select(n => n.Id == x ? n with { … } : n)` conserve la référence des autres.
+- Keep node templates light: the cost per node mainly comes from the number of visual elements (a handle, an edge and a selection outline are each drawn by a single element).
+- Avoid `Effect`s (drop shadows) on hundreds of nodes; one effect per card remains reasonable.
+- Do not rebuild the whole list when a single node changes: `Flow.Nodes.Select(n => n.Id == x ? n with { … } : n)` keeps the reference of the others.
 
-## Accessibilité
+## Accessibility
 
-### Clavier
+### Keyboard
 
-Tout est faisable sans souris : Tab / Maj+Tab pour parcourir les nodes, flèches pour les déplacer, Suppr, Ctrl+A, Échap, Ctrl+Z / Ctrl+Y. Voir [Interactions](09-interactions.md#clavier).
+Everything can be done without a mouse: Tab / Shift+Tab to go through the nodes, arrow keys to move them, Delete, Ctrl+A, Esc, Ctrl+Z / Ctrl+Y. See [Interactions](09-interactions.md#keyboard).
 
 ### UI Automation
 
-| Contrôle | Peer | Expose |
+| Control | Peer | Exposes |
 |---|---|---|
-| `FlowView` | `FlowViewAutomationPeer` | `Pane` nommé « Flow diagram » (ou `AutomationProperties.Name`) |
-| `NodeHost` | `NodeHostAutomationPeer` | `ListItem` nommé d'après `Data` (texte) ou l'`Id`, pattern **SelectionItem** (`Select`, `AddToSelection`, `RemoveFromSelection`) |
+| `FlowView` | `FlowViewAutomationPeer` | A `Pane` named « Flow diagram » (or `AutomationProperties.Name`) |
+| `NodeHost` | `NodeHostAutomationPeer` | A `ListItem` named after `Data` (text) or the `Id`, with the **SelectionItem** pattern (`Select`, `AddToSelection`, `RemoveFromSelection`) |
 
-Nommez votre flow :
+Name your flow:
 
 ```xml
-<flow:FlowView AutomationProperties.Name="Processus de validation" … />
+<flow:FlowView AutomationProperties.Name="Validation process" … />
 ```
 
-Pour qu'un node à template personnalisé soit annoncé clairement, renseignez `AutomationProperties.Name` sur la racine de son template.
+For a node with a custom template to be announced clearly, set `AutomationProperties.Name` on the root of its template.
 
-> Les peers sont vérifiés par des tests de code ; ils n'ont pas été éprouvés avec un lecteur d'écran réel (Narrateur, NVDA).
+> The peers are checked by code tests; they have not been tested with a real screen reader (Narrator, NVDA).
 
-### Contraste et thèmes
+### Contrast and themes
 
-Le thème sombre (`ColorMode="Dark"`) est fourni ; surchargez les clés `Flow.*` pour un thème à fort contraste. Les couleurs ne portent jamais seules l'information (les edges animés et sélectionnés changent aussi de style).
+The dark theme (`ColorMode="Dark"`) is provided; override the `Flow.*` keys for a high-contrast theme. Colours never carry information on their own (animated and selected edges also change style).
 
-### Tactile
+### Touch
 
-Le pincement à deux doigts zoome (`ManipulationDelta`) ; le glisser à un doigt déplace nodes ou vue via les événements souris promus par WPF.
-Suivant : [Sauvegarde et JSON](12-serialization.md).
+Two-finger pinch zooms (`ManipulationDelta`); single-finger dragging moves nodes or the view through the mouse events promoted by WPF.
+
+Next: [Saving and JSON](12-serialization.md).

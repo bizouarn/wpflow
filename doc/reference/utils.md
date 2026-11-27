@@ -1,10 +1,10 @@
-# Utilitaires
+# Utilities
 
-Fonctions statiques de `Wpflow.Core`. Toutes sont pures (pas d'état, pas d'UI) et couvertes par des tests.
+Static functions of `Wpflow.Core`. All are pure (no state, no UI) and covered by tests.
 
 ## EdgePaths
 
-Chemins d'edges, portés de `getBezierPath`, `getSmoothStepPath`, `getStraightPath`. Les paramètres `source` et `target` sont les points d'attache (voir `GraphUtils.GetHandlePosition`).
+Edge paths, ported from `getBezierPath`, `getSmoothStepPath`, `getStraightPath`. The `source` and `target` parameters are the attachment points (see `GraphUtils.GetHandlePosition`).
 
 ```csharp
 EdgePath Bezier(XYPosition source, Position sourcePosition, XYPosition target, Position targetPosition,
@@ -20,17 +20,17 @@ EdgePath SmoothStep(XYPosition source, Position sourcePosition, XYPosition targe
 (List<XYPosition> Points, double CenterX, double CenterY, double OffsetX, double OffsetY) StepPoints(…);
 ```
 
-| Paramètre | Rôle |
+| Parameter | Role |
 |---|---|
-| `curvature` | Courbure du Bézier quand la cible est « derrière » la source. |
-| `offset` | Distance (px) parcourue en ligne droite en sortie de handle avant le premier coude. |
-| `stepPosition` | Où se place le coude, de 0 (côté source) à 1 (côté cible). |
-| `borderRadius` | Rayon des coins (`Step` = `SmoothStep` avec 0). |
-| `centerX`/`centerY` | Force la position du coude. |
+| `curvature` | Curvature of the Bézier when the target is « behind » the source. |
+| `offset` | Distance (px) travelled in a straight line leaving the handle before the first bend. |
+| `stepPosition` | Where the bend is placed, from 0 (source side) to 1 (target side). |
+| `borderRadius` | Radius of the corners (`Step` = `SmoothStep` with 0). |
+| `centerX`/`centerY` | Forces the position of the bend. |
 
-`EdgePath.Path` est une chaîne SVG (`M…C…`, `M…L…Q…`) ; `LabelX`/`LabelY` donnent le centre pour un label.
+`EdgePath.Path` is an SVG string (`M…C…`, `M…L…Q…`); `LabelX`/`LabelY` give the centre for a label.
 
-Les points alignés sont retirés du tracé « step », comme dans la version récente de xyflow.
+Aligned points are removed from the « step » path, as in the recent version of xyflow.
 
 ## ViewportMath
 
@@ -44,33 +44,33 @@ double     Clamp(double value, double min, double max);
 
 Viewport PanBy(Viewport v, double dx, double dy);
 Viewport ZoomAt(Viewport v, XYPosition screenPoint, double newZoom, double minZoom = 0.5, double maxZoom = 2);
-double   WheelZoomFactor(double deltaY, bool ctrlKey = false);      // 2^(-deltaY × 0.002), ×10 si Ctrl
+double   WheelZoomFactor(double deltaY, bool ctrlKey = false);      // 2^(-deltaY × 0.002), ×10 if Ctrl
 
 Viewport GetViewportForBounds(Rect bounds, double width, double height,
                               double minZoom = 0.5, double maxZoom = 2, double padding = 0.1);   // fitView
-Rect     GetVisibleRect(Viewport v, double width, double height);                                // zone visible en coordonnées flow
+Rect     GetVisibleRect(Viewport v, double width, double height);                                // visible area in flow coordinates
 Viewport ClampToExtent(Viewport v, double width, double height, Rect extent);                    // translateExtent
 ```
 
-`ZoomAt` garde fixe le point écran donné : le point sous le curseur ne bouge pas pendant le zoom.
+`ZoomAt` keeps the given screen point fixed: the point under the cursor does not move during the zoom.
 
 ## GraphUtils
 
 ```csharp
-Rect? GetNodesBounds(IEnumerable<Node> nodes);      // nodes mesurés, en coordonnées absolues ; null s'il n'y en a pas
-XYPosition GetHandlePosition(Node node, Position position, HandleInfo? handle = null);   // point d'attache d'un edge
-XYPosition GetHandleCenter(Node node, HandleInfo handle);                                // centre du handle (distance de connexion)
-Position GetHandleSide(Node node, Position position);                                    // côté vers lequel regarde un handle une fois le node tourné
+Rect? GetNodesBounds(IEnumerable<Node> nodes);      // measured nodes, in absolute coordinates; null if there are none
+XYPosition GetHandlePosition(Node node, Position position, HandleInfo? handle = null);   // attachment point of an edge
+XYPosition GetHandleCenter(Node node, HandleInfo handle);                                // centre of the handle (connection distance)
+Position GetHandleSide(Node node, Position position);                                    // side a handle faces once the node is rotated
 T? GetClosestHandle<T>(XYPosition point, double radius,
                        IEnumerable<(T Handle, XYPosition Position)> candidates) where T : class;
 XYPosition ClampToExtent(XYPosition position, double width, double height, Rect extent); // nodeExtent
-bool ConnectionExists(Connection c, IEnumerable<Edge> edges);   // null et "" désignent le même handle
+bool ConnectionExists(Connection c, IEnumerable<Edge> edges);   // null and "" designate the same handle
 bool IsEdgeVisible(Rect sourceNode, Rect targetNode, Rect visible);
 ```
 
-`GetHandlePosition` renvoie le **bord extérieur** du handle du côté indiqué (comme `getHandlePosition` de xyflow) : c'est là qu'un edge se termine, ce qui laisse visible une flèche.
+`GetHandlePosition` returns the **outer edge** of the handle on the indicated side (like `getHandlePosition` in xyflow): this is where an edge ends, which leaves an arrow visible.
 
-Sur un node tourné (`Node.Rotation`), `GetHandlePosition` et `GetHandleCenter` rendent le point tel qu'il est affiché, le node tournant autour de son centre ; les `HandleInfo` restent exprimés dans le node non tourné. `GetHandleSide` donne la direction que prennent alors les edges, au quart de tour le plus proche.
+On a rotated node (`Node.Rotation`), `GetHandlePosition` and `GetHandleCenter` return the point as it is displayed, the node rotating around its centre; the `HandleInfo`s remain expressed in the unrotated node. `GetHandleSide` gives the direction the edges then take, to the nearest quarter turn.
 
 ## NodeTree
 
@@ -78,19 +78,19 @@ Sur un node tourné (`Node.Rotation`), `GetHandlePosition` et `GetHandleCenter` 
 Dictionary<string, XYPosition> AbsolutePositions(IEnumerable<Node> nodes);
 Dictionary<string, int> Depths(IEnumerable<Node> nodes);
 HashSet<string> Descendants(string id, IEnumerable<Node> nodes);
-HashSet<string> DescendantsOf(IEnumerable<string> ids, IEnumerable<Node> nodes);   // plusieurs racines, un seul parcours
+HashSet<string> DescendantsOf(IEnumerable<string> ids, IEnumerable<Node> nodes);   // several roots, a single traversal
 XYPosition ClampToParent(Node child, XYPosition relativePosition, Node? parent);   // extent: 'parent'
 ```
 
 ## Connections
 
 ```csharp
-bool AreTypesCompatible(HandleType from, HandleType to, ConnectionMode mode);   // Strict : types différents ; Loose : toujours
+bool AreTypesCompatible(HandleType from, HandleType to, ConnectionMode mode);   // Strict: different types; Loose: always
 Connection Create(string fromNode, string? fromHandle, HandleType fromType, string toNode, string? toHandle);
 bool IsValid(Connection connection, Func<Connection, bool>? isValidConnection);
 ```
 
-`Create` oriente la connexion d'après le type du handle de **départ**.
+`Create` orients the connection according to the type of the **starting** handle.
 
 ## NodeResize
 
@@ -101,7 +101,7 @@ Rect Resize(ResizeDirection direction, Rect start, double dx, double dy,
             bool keepAspectRatio = false);
 ```
 
-`dx`/`dy` sont le déplacement de la poignée depuis `start`. Le bord opposé reste fixe, même quand un minimum ou un maximum est atteint.
+`dx`/`dy` are the movement of the handle from `start`. The opposite edge stays fixed, even when a minimum or a maximum is reached.
 
 ## GraphLayout
 
@@ -110,62 +110,62 @@ Dictionary<string, XYPosition> LayeredLeftToRight(IReadOnlyList<Node> nodes, IRe
     double horizontalGap = 80, double verticalGap = 30, double defaultWidth = 150, double defaultHeight = 40);
 ```
 
-Voir [Disposition automatique](../learn/07-layouting.md).
+See [Automatic layout](../learn/07-layouting.md).
 
 ## GraphSerializer
 
 ```csharp
 string ToJson(IEnumerable<Node> nodes, IEnumerable<Edge> edges, Viewport viewport, bool indented = true);
-FlowGraph FromJson(string json);       // JsonException si un id ou une extrémité manque
+FlowGraph FromJson(string json);       // JsonException if an id or an end is missing
 ```
 
-Voir [Sauvegarde et JSON](../learn/12-serialization.md).
+See [Saving and JSON](../learn/12-serialization.md).
 
 ## Changes
 
-Voir [Changes](changes.md).
+See [Changes](changes.md).
 
 ## GraphQueries
 
-Requêtes sur le graphe, équivalents de `getIncomers`, `getOutgoers`, `getConnectedEdges` et `addEdge`.
+Queries on the graph, equivalents of `getIncomers`, `getOutgoers`, `getConnectedEdges` and `addEdge`.
 
-| Méthode | Description |
+| Method | Description |
 |---|---|
-| `GetIncomers(node, nodes, edges)` | Nodes qui ont un edge vers `node`. |
-| `GetOutgoers(node, nodes, edges)` | Nodes vers lesquels `node` a un edge. |
-| `GetConnectedEdges(nodes, edges)` | Edges touchant l'un des `nodes`. |
-| `AddEdge(edge, edges)` | Ajoute l'edge sauf si une connexion identique existe déjà ; renvoie la liste (inchangée en cas de doublon). |
-| `ConnectionId(source, sourceHandle, target, targetHandle)` | Identifiant `xy-edge__…` fabriqué comme React Flow. |
-| `GetNode(id, nodes)` / `GetEdge(id, edges)` | Recherche par identifiant. |
-| `IsNodeIntersecting(node, area, partially = true)` | Le node (mesuré) touche la zone, ou y est entièrement avec `partially = false`. |
-| `GetIntersectingNodes(area or node, nodes, partially = true)` | Nodes qui touchent une zone ou un autre node ; les nodes cachés sont ignorés. |
-| `GetNodeConnections(nodeId, edges, type?, handleId?)` | Connexions d'un node (`NodeConnection` : `Connection` et `EdgeId`), filtrables par sens et par handle. |
-| `ReconnectEdge(oldEdge, connection, edges, shouldReplaceId = true)` | Change les extrémités d'un edge ; liste inchangée si la connexion existe déjà. |
+| `GetIncomers(node, nodes, edges)` | Nodes that have an edge to `node`. |
+| `GetOutgoers(node, nodes, edges)` | Nodes to which `node` has an edge. |
+| `GetConnectedEdges(nodes, edges)` | Edges touching one of the `nodes`. |
+| `AddEdge(edge, edges)` | Adds the edge unless an identical connection already exists; returns the list (unchanged in case of a duplicate). |
+| `ConnectionId(source, sourceHandle, target, targetHandle)` | `xy-edge__…` identifier built as in React Flow. |
+| `GetNode(id, nodes)` / `GetEdge(id, edges)` | Search by identifier. |
+| `IsNodeIntersecting(node, area, partially = true)` | The (measured) node touches the area, or lies entirely within it with `partially = false`. |
+| `GetIntersectingNodes(area or node, nodes, partially = true)` | Nodes that touch an area or another node; hidden nodes are ignored. |
+| `GetNodeConnections(nodeId, edges, type?, handleId?)` | Connections of a node (`NodeConnection`: `Connection` and `EdgeId`), filterable by direction and by handle. |
+| `ReconnectEdge(oldEdge, connection, edges, shouldReplaceId = true)` | Changes the ends of an edge; list unchanged if the connection already exists. |
 
 ## GraphClipboard
 
-Copier / couper / coller de nodes et d'edges, sans interface.
+Copy / cut / paste of nodes and edges, without UI.
 
 ```csharp
-ClipboardData? Copy(IReadOnlyList<Node> nodes, IReadOnlyList<Edge> edges);   // sélection + descendants + edges internes ; null si rien
+ClipboardData? Copy(IReadOnlyList<Node> nodes, IReadOnlyList<Edge> edges);   // selection + descendants + internal edges; null if nothing
 ClipboardData Paste(ClipboardData data, IEnumerable<Node> existingNodes, IEnumerable<Edge> existingEdges, XYPosition offset);
 ```
 
-`Paste` fabrique des ids neufs (`a-copy`, `a-copy2`…), décale les racines de `offset`, remappe parents et extrémités d'edges, sélectionne les nodes collés. Un node dont le parent n'est pas copié devient une racine à sa position absolue.
+`Paste` creates new ids (`a-copy`, `a-copy2`…), shifts the roots by `offset`, remaps parents and edge ends, and selects the pasted nodes. A node whose parent was not copied becomes a root at its absolute position.
 
-## Autres ajouts du noyau
+## Other additions to the core
 
-| Élément | Description |
+| Item | Description |
 |---|---|
-| `EdgePaths.SimpleBezier(...)` | Chemin `simplebezier` (`getSimpleBezierPath`). |
-| `EdgeGeometry.Edge` (`Edge?`) | L'edge tracé, transmis aux fournisseurs de chemin (`null` sans edge). Les types `default`, `step`, `smoothstep` respectent ses `PathOptions` (`Curvature`, `BorderRadius`, `Offset`, `StepPosition`). |
-| `GraphLayout.Layered(nodes, edges, LayoutDirection, rankGap, nodeGap, …)` | Disposition en couches dans les quatre directions (`LeftToRight`, `RightToLeft`, `TopToBottom`, `BottomToTop`). |
-| `ViewportMath.GetViewportForCenter(x, y, zoom, w, h)` | Viewport centré sur un point (`setCenter`). |
-| `ViewportMath.Interpolate(from, to, t)` / `EaseInOut(t)` | Transition de viewport (zoom géométrique, translation linéaire). |
-| `Rect.Contains(Rect)` | Inclusion d'un rectangle. |
+| `EdgePaths.SimpleBezier(...)` | `simplebezier` path (`getSimpleBezierPath`). |
+| `EdgeGeometry.Edge` (`Edge?`) | The edge being drawn, passed to path providers (`null` without an edge). The `default`, `step` and `smoothstep` types respect its `PathOptions` (`Curvature`, `BorderRadius`, `Offset`, `StepPosition`). |
+| `GraphLayout.Layered(nodes, edges, LayoutDirection, rankGap, nodeGap, …)` | Layered layout in the four directions (`LeftToRight`, `RightToLeft`, `TopToBottom`, `BottomToTop`). |
+| `ViewportMath.GetViewportForCenter(x, y, zoom, w, h)` | Viewport centred on a point (`setCenter`). |
+| `ViewportMath.Interpolate(from, to, t)` / `EaseInOut(t)` | Viewport transition (geometric zoom, linear translation). |
+| `Rect.Contains(Rect)` | Inclusion of a rectangle. |
 
 ## Changesets
 
-`Changesets.Diff(before, after)` (nodes ou edges) renvoie la liste de changes (`Add`, `Remove`, `Replace`) qui transforme `before` en `after` (`getNodesChangeset`, `getEdgesChangeset`) : `Changes.Apply(Changesets.Diff(a, b), a)` redonne `b`.
+`Changesets.Diff(before, after)` (nodes or edges) returns the list of changes (`Add`, `Remove`, `Replace`) that transforms `before` into `after` (`getNodesChangeset`, `getEdgesChangeset`): `Changes.Apply(Changesets.Diff(a, b), a)` gives back `b`.
 
-`GraphLayout.LayeredLeftToRight` et `Layered` réduisent les croisements d'edges : dans chaque couche, les nodes sont triés par barycentre de leurs voisins (balayages avant et arrière, tri stable : sans voisin, l'ordre d'entrée est conservé).
+`GraphLayout.LayeredLeftToRight` and `Layered` reduce edge crossings: within each layer, the nodes are sorted by the barycentre of their neighbours (forward and backward sweeps, stable sort: without neighbours, the input order is kept).

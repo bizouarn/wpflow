@@ -1,50 +1,50 @@
-# Documentation de Wpflow
+# Wpflow documentation
 
-Wpflow est un éditeur de graphes à nodes pour WPF et Blazor. Cette documentation suit l'organisation du site de React Flow : **Learn** (guides), **API Reference**, **Examples**. Quand un concept existe dans React Flow, la page indique son équivalent.
+Wpflow is a node-based graph editor for WPF and Blazor. This documentation follows the organisation of the React Flow site: **Learn** (guides), **API Reference**, **Examples**. When a concept exists in React Flow, the page names its equivalent.
 
-Cette documentation est aussi [en ligne, avec des exemples Blazor interactifs](https://bizouarn.github.io/wpflow/) (le site est construit à partir de ces fichiers, voir [`demo/docs-site`](../demo/docs-site/)).
+This documentation is also [online, with interactive Blazor examples](https://bizouarn.github.io/wpflow/) (the site is built from these files, see [`demo/docs-site`](../demo/docs-site/)).
 
 ## Learn
 
-| Page | Équivalent React Flow |
+| Page | React Flow equivalent |
 |---|---|
-| [1. Démarrage rapide](learn/01-quickstart.md) | Quick Start |
-| [2. Termes et concepts](learn/02-concepts.md) | Terms and Concepts, Built-In Components |
-| [3. Construire un flow](learn/03-building-a-flow.md) | Adding Interactivity, State Management |
-| [4. Nodes personnalisés](learn/04-custom-nodes.md) | Custom Nodes, Handles, Node Resizer, Node Toolbar |
+| [1. Quick start](learn/01-quickstart.md) | Quick Start |
+| [2. Terms and concepts](learn/02-concepts.md) | Terms and Concepts, Built-In Components |
+| [3. Building a flow](learn/03-building-a-flow.md) | Adding Interactivity, State Management |
+| [4. Custom nodes](learn/04-custom-nodes.md) | Custom Nodes, Handles, Node Resizer, Node Toolbar |
 | [5. Edges](learn/05-edges.md) | Custom Edges, Edge Labels, Markers, Reconnecting |
-| [6. Sous-flows et groupes](learn/06-sub-flows.md) | Sub Flows |
-| [7. Disposition automatique](learn/07-layouting.md) | Layouting |
-| [8. Thèmes et styles](learn/08-theming.md) | Theming, Dark mode |
-| [9. Interactions et connexions](learn/09-interactions.md) | Interaction props, Connection validation, Drag and Drop |
-| [10. Calculer avec un flow](learn/10-computing-flows.md) | Computing Flows (la démo de la page d'accueil) |
-| [11. Performance et accessibilité](learn/11-performance-accessibility.md) | Performance, Accessibility |
-| [12. Sauvegarde et JSON](learn/12-serialization.md) | Save and Restore, `toObject` |
-| [13. MVVM](learn/13-mvvm.md) | State Management (ViewModels, binding, sélection) |
-| [14. Personnaliser](learn/14-customization.md) | Custom Nodes, Custom Edges, Custom Markers (`nodeTypes`, `edgeTypes`) |
+| [6. Sub-flows and groups](learn/06-sub-flows.md) | Sub Flows |
+| [7. Automatic layout](learn/07-layouting.md) | Layouting |
+| [8. Theming and styles](learn/08-theming.md) | Theming, Dark mode |
+| [9. Interactions and connections](learn/09-interactions.md) | Interaction props, Connection validation, Drag and Drop |
+| [10. Computing with a flow](learn/10-computing-flows.md) | Computing Flows (the home page demo) |
+| [11. Performance and accessibility](learn/11-performance-accessibility.md) | Performance, Accessibility |
+| [12. Saving and JSON](learn/12-serialization.md) | Save and Restore, `toObject` |
+| [13. MVVM](learn/13-mvvm.md) | State Management (ViewModels, binding, selection) |
+| [14. Customization](learn/14-customization.md) | Custom Nodes, Custom Edges, Custom Markers (`nodeTypes`, `edgeTypes`) |
 
 ## Blazor
 
-| Page | Contenu |
+| Page | Content |
 |---|---|
-| [Wpflow.Blazor](blazor.md) | La version Blazor : installation, premier graphe, paramètres, évènements, méthodes, composants, thème, différences avec WPF |
+| [Wpflow.Blazor](blazor.md) | The Blazor version: installation, first graph, parameters, events, methods, components, theme, differences from WPF |
 
 ## API Reference
 
-| Page | Contenu |
+| Page | Content |
 |---|---|
-| [FlowView](reference/flowview.md) | Propriétés, événements et méthodes (`<ReactFlow>` + `useReactFlow`) |
-| [Composants](reference/components.md) | `Handle`, `MiniMap`, `FlowControls`, `FlowPanel`, `NodeResizer`, `NodeToolbar` |
+| [FlowView](reference/flowview.md) | Properties, events and methods (`<ReactFlow>` + `useReactFlow`) |
+| [Components](reference/components.md) | `Handle`, `MiniMap`, `FlowControls`, `FlowPanel`, `NodeResizer`, `NodeToolbar` |
 | [Types](reference/types.md) | `Node`, `Edge`, `Connection`, `Viewport`, `HandleInfo`… |
 | [Changes](reference/changes.md) | `NodeChange`, `EdgeChange`, `Changes.Apply` |
-| [Utilitaires](reference/utils.md) | `EdgePaths`, `ViewportMath`, `GraphUtils`, `NodeTree`, `Connections`, `NodeResize`, `GraphLayout`, `GraphSerializer` |
-| [Clés de thème](reference/theme-keys.md) | Ressources `Flow.*` |
+| [Utilities](reference/utils.md) | `EdgePaths`, `ViewportMath`, `GraphUtils`, `NodeTree`, `Connections`, `NodeResize`, `GraphLayout`, `GraphSerializer` |
+| [Theme keys](reference/theme-keys.md) | `Flow.*` resources |
 
 ## Examples
 
-[Liste des exemples](examples/README.md) : page d'accueil animée, types d'edges, groupes, toolbar et resizer, palette glisser-déposer, disposition automatique, options et JSON, personnalisation, MVVM, performance.
+[List of examples](examples/README.md): animated home page, edge types, groups, toolbar and resizer, drag-and-drop palette, automatic layout, options and JSON, customization, MVVM, performance.
 
-## Deux niveaux d'API
+## Two levels of API
 
-- **`Wpflow.Core`** (net8.0, net472, netstandard2.0) : tout ce qui ne dépend pas de l'interface — modèle, mathématiques, chemins d'edges, JSON. Utilisable dans un service, un test ou un autre framework UI.
-- **`Wpflow.Wpf`** (net8.0-windows, net472) : les contrôles. Ils ne contiennent que de la présentation et de l'interaction ; la logique vient de `Wpflow.Core`.
+- **`Wpflow.Core`** (net8.0, net472, netstandard2.0): everything that does not depend on the UI: model, maths, edge paths, JSON. Usable in a service, a test or another UI framework.
+- **`Wpflow.Wpf`** (net8.0-windows, net472): the controls. They only contain presentation and interaction; the logic comes from `Wpflow.Core`.

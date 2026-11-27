@@ -1,59 +1,59 @@
-# 2. Termes et concepts
+# 2. Terms and concepts
 
-*Équivalent React Flow : Terms and Concepts, Built-In Components.*
+*React Flow equivalent: Terms and Concepts, Built-In Components.*
 
-## Vocabulaire
+## Vocabulary
 
-| Terme | Signification |
+| Term | Meaning |
 |---|---|
-| **Flow** | Le graphe affiché par un `FlowView`. |
-| **Node** | Un élément déplaçable du graphe (`Node`). Son contenu est n'importe quel contrôle WPF. |
-| **Edge** | Une liaison entre deux nodes (`Edge`). |
-| **Handle** | Un point de connexion sur le bord d'un node (`Handle`). Il est de type `Source` (départ) ou `Target` (arrivée). |
-| **Connection** | Une liaison en cours de création ou terminée : `Source`, `Target`, `SourceHandle`, `TargetHandle`. |
-| **Viewport** | La transformation affichée : `Viewport(X, Y, Zoom)`. |
-| **Coordonnées flow** | Le référentiel des nodes, indépendant du zoom et du déplacement de la vue. |
-| **Coordonnées écran** | Les pixels du contrôle. `écran = flow × Zoom + (X, Y)`. |
-| **Change** | Une modification atomique demandée par l'interface (`NodeChange`, `EdgeChange`). |
+| **Flow** | The graph displayed by a `FlowView`. |
+| **Node** | A draggable element of the graph (`Node`). Its content can be any WPF control. |
+| **Edge** | A link between two nodes (`Edge`). |
+| **Handle** | A connection point on the edge of a node (`Handle`). It is of type `Source` (start) or `Target` (end). |
+| **Connection** | A link being created or completed: `Source`, `Target`, `SourceHandle`, `TargetHandle`. |
+| **Viewport** | The displayed transformation: `Viewport(X, Y, Zoom)`. |
+| **Flow coordinates** | The coordinate space of the nodes, independent of the zoom and of the view's position. |
+| **Screen coordinates** | The pixels of the control. `screen = flow × Zoom + (X, Y)`. |
+| **Change** | An atomic modification requested by the interface (`NodeChange`, `EdgeChange`). |
 
-## Le viewport
+## The viewport
 
 ```csharp
 Flow.Viewport = new Viewport(x: 100, y: 50, zoom: 1.5);
 
-XYPosition flowPoint = Flow.ScreenToFlow(Mouse.GetPosition(Flow));   // écran -> flow
+XYPosition flowPoint = Flow.ScreenToFlow(Mouse.GetPosition(Flow));   // screen -> flow
 ```
 
-Le zoom est borné par `MinZoom` (0,5) et `MaxZoom` (2). `FitView()` cadre tous les nodes mesurés ; `FitViewOnInit="True"` le fait une fois que tous les nodes ont été mesurés.
+The zoom is bounded by `MinZoom` (0.5) and `MaxZoom` (2). `FitView()` frames all measured nodes; `FitViewOnInit="True"` does it once all nodes have been measured.
 
-## Les trois couches
+## The three layers
 
-À l'intérieur de `FlowView`, de bas en haut :
+Inside `FlowView`, from bottom to top:
 
-1. le **fond** (points, lignes ou croix), qui suit le viewport ;
-2. la **surface transformée** : les edges, puis les nodes, puis la ligne de connexion en cours ;
-3. l'**overlay** : le `Content` du `FlowView` (minimap, contrôles, panneaux, textes…), qui ne bouge pas avec le viewport.
+1. the **background** (dots, lines or crosses), which follows the viewport;
+2. the **transformed surface**: the edges, then the nodes, then the connection line in progress;
+3. the **overlay**: the `Content` of the `FlowView` (minimap, controls, panels, texts…), which does not move with the viewport.
 
-## Composants intégrés
+## Built-in components
 
-| React Flow | Wpflow | Rôle |
+| React Flow | Wpflow | Role |
 |---|---|---|
-| `<Background>` | `BackgroundVariant`, `BackgroundGap`, `BackgroundColor` (propriétés de `FlowView`) | Fond |
-| `<Controls>` | `FlowControls` | Zoom +/−, cadrage, verrouillage |
-| `<MiniMap>` | `MiniMap` | Vue d'ensemble, cliquable |
-| `<Panel>` | `FlowPanel` | Ancrer du contenu à un coin |
-| `<NodeResizer>` | `NodeResizer` | Poignées de redimensionnement |
-| `<NodeToolbar>` | `NodeToolbar` | Barre d'outils flottante |
-| `<Handle>` | `Handle` | Point de connexion |
+| `<Background>` | `BackgroundVariant`, `BackgroundGap`, `BackgroundColor` (properties of `FlowView`) | Background |
+| `<Controls>` | `FlowControls` | Zoom +/−, fit, lock |
+| `<MiniMap>` | `MiniMap` | Overview, clickable |
+| `<Panel>` | `FlowPanel` | Anchor content to a corner |
+| `<NodeResizer>` | `NodeResizer` | Resize handles |
+| `<NodeToolbar>` | `NodeToolbar` | Floating toolbar |
+| `<Handle>` | `Handle` | Connection point |
 
-## Mesure des nodes
+## Measuring nodes
 
-React Flow mesure les nodes dans le DOM ; Wpflow les mesure dans l'arbre visuel WPF. Après la mise en page, chaque `NodeHost` rapporte sa taille et les positions de ses handles. Conséquences :
+React Flow measures nodes in the DOM; Wpflow measures them in the WPF visual tree. After layout, each `NodeHost` reports its size and the positions of its handles. Consequences:
 
-- `Node.Width` / `Node.Height` sont **mesurés** (ne les renseignez pas pour dimensionner un node) ;
-- une taille imposée se donne avec `FixedWidth` / `FixedHeight` ;
-- un edge n'est dessiné qu'une fois ses deux extrémités mesurées.
+- `Node.Width` / `Node.Height` are **measured** (do not set them to size a node);
+- a fixed size is given with `FixedWidth` / `FixedHeight`;
+- an edge is only drawn once both of its ends have been measured.
 
-## Immutabilité et changes
+## Immutability and changes
 
-Les nodes et edges sont des `record` immuables. L'interface ne les modifie jamais : elle émet des *changes* et les applique à une **nouvelle** liste. Voir [Construire un flow](03-building-a-flow.md).
+Nodes and edges are immutable `record`s. The interface never modifies them: it emits *changes* and applies them to a **new** list. See [Building a flow](03-building-a-flow.md).

@@ -3,7 +3,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:flow="clr-namespace:Wpflow.Wpf;assembly=Wpflow.Wpf"
         xmlns:demo="clr-namespace:demo"
-        Title="WPFlow - Exemples" Height="760" Width="1200" FontFamily="Segoe UI">
+        Title="WPFlow - Examples" Height="760" Width="1200" FontFamily="Segoe UI">
     <Window.Resources>
         <!-- Label d'edge personnalisé (équivalent d'EdgeLabelRenderer) -->
         <DataTemplate x:Key="PillLabel">
@@ -25,15 +25,15 @@
                     <StackPanel>
                         <TextBlock Text="{Binding Data.Title}" FontWeight="SemiBold"
                                    Foreground="{DynamicResource Flow.NodeText}" />
-                        <TextBlock Text="Sélectionnez-moi : barre d'outils + poignées" FontSize="10" TextWrapping="Wrap"
+                        <TextBlock Text="Select me: toolbar + resize grips" FontSize="10" TextWrapping="Wrap"
                                    Margin="0,4,0,0" Foreground="{DynamicResource Flow.NodeText}" />
                     </StackPanel>
                 </Border>
                 <flow:NodeResizer NodeMinWidth="150" NodeMinHeight="70" />
                 <flow:NodeToolbar ToolbarPosition="Top">
                     <StackPanel Orientation="Horizontal">
-                        <Button x:Name="dup" Content="Dupliquer" Command="{Binding Data.DuplicateCommand}" Padding="8,2" />
-                        <Button x:Name="del" Content="Supprimer" Command="{Binding Data.DeleteCommand}" Padding="8,2"
+                        <Button x:Name="dup" Content="Duplicate" Command="{Binding Data.DuplicateCommand}" Padding="8,2" />
+                        <Button x:Name="del" Content="Delete" Command="{Binding Data.DeleteCommand}" Padding="8,2"
                                 Margin="4,0,0,0" />
                     </StackPanel>
                 </flow:NodeToolbar>
@@ -54,7 +54,7 @@
     </Window.Resources>
 
     <TabControl x:Name="Tabs">
-        <TabItem Header="Types d'edges">
+        <TabItem Header="Edge types">
             <flow:FlowView x:Name="EdgesFlow" FitViewOnInit="True" FitViewPadding="0.15"
                            EdgeLabelTemplate="{StaticResource PillLabel}">
                 <flow:FlowView.Resources>
@@ -62,17 +62,17 @@
                     <SolidColorBrush x:Key="Flow.Edge" Color="#1B86D6" />
                 </flow:FlowView.Resources>
                 <flow:FlowPanel PanelPosition="TopLeft">
-                    <TextBlock Text="straight · bezier · step · smoothstep · marqueurs · edges animés · labels personnalisés"
+                    <TextBlock Text="straight · bezier · step · smoothstep · markers · animated edges · custom labels"
                                Foreground="#666" />
                 </flow:FlowPanel>
             </flow:FlowView>
         </TabItem>
 
-        <TabItem Header="Groupes">
+        <TabItem Header="Groups">
             <flow:FlowView x:Name="GroupsFlow" FitViewOnInit="True" FitViewPadding="0.2">
 <Grid>
                 <flow:FlowPanel PanelPosition="TopLeft">
-                    <TextBlock Text="Nodes imbriqués : les enfants suivent leur parent et restent dans le groupe (extent: parent). Supprimer le groupe supprime ses enfants."
+                    <TextBlock Text="Nested nodes: children follow their parent and stay inside the group (extent: parent). Deleting the group deletes its children."
                                Foreground="#666" TextWrapping="Wrap" MaxWidth="600" />
                 </flow:FlowPanel>
                 <flow:MiniMap />
@@ -81,7 +81,7 @@
             </flow:FlowView>
         </TabItem>
 
-        <TabItem Header="Toolbar et resizer">
+        <TabItem Header="Toolbar and resizer">
             <flow:FlowView x:Name="ToolFlow" FitViewOnInit="True" FitViewPadding="0.4">
                 <flow:FlowControls />
             </flow:FlowView>
@@ -90,7 +90,7 @@
         <TabItem Header="Palette">
             <DockPanel>
                 <StackPanel DockPanel.Dock="Left" Width="170" Margin="12">
-                    <TextBlock Text="Glissez un node" FontWeight="SemiBold" Margin="0,0,0,10" />
+                    <TextBlock Text="Drag a node" FontWeight="SemiBold" Margin="0,0,0,10" />
                     <Border Style="{StaticResource PaletteItem}" Tag="input" PreviewMouseMove="OnPaletteMove">
                         <TextBlock Text="Input node" />
                     </Border>
@@ -107,11 +107,11 @@
             </DockPanel>
         </TabItem>
 
-        <TabItem Header="Disposition auto">
+        <TabItem Header="Auto layout">
             <DockPanel>
                 <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="12">
-                    <Button Content="Disposition automatique" Padding="12,4" Click="OnAutoLayout" />
-                    <Button Content="Mélanger" Padding="12,4" Margin="8,0,0,0" Click="OnShuffle" />
+                    <Button Content="Auto layout" Padding="12,4" Click="OnAutoLayout" />
+                    <Button Content="Shuffle" Padding="12,4" Margin="8,0,0,0" Click="OnShuffle" />
                 </StackPanel>
                 <flow:FlowView x:Name="LayoutFlow" FitViewPadding="0.2">
                     <flow:MiniMap />
@@ -119,22 +119,22 @@
             </DockPanel>
         </TabItem>
 
-        <TabItem Header="Options et JSON">
+        <TabItem Header="Options and JSON">
             <DockPanel>
                 <StackPanel DockPanel.Dock="Left" Width="260" Margin="12">
-                    <CheckBox x:Name="DarkBox" Content="Mode sombre" Click="OnOptionsChanged" Margin="0,0,0,6" />
-                    <CheckBox x:Name="LooseBox" Content="Connexion « loose » (tout handle vers tout handle)"
+                    <CheckBox x:Name="DarkBox" Content="Dark mode" Click="OnOptionsChanged" Margin="0,0,0,6" />
+                    <CheckBox x:Name="LooseBox" Content="Loose connection (any handle to any handle)"
                               Click="OnOptionsChanged" Margin="0,0,0,6" />
-                    <CheckBox x:Name="SnapBox" Content="Magnétisme sur la grille (20 px)" Click="OnOptionsChanged"
+                    <CheckBox x:Name="SnapBox" Content="Snap to grid (20 px)" Click="OnOptionsChanged"
                               Margin="0,0,0,6" />
-                    <CheckBox x:Name="LockBox" Content="Verrouiller" Click="OnOptionsChanged" Margin="0,0,0,6" />
-                    <CheckBox x:Name="ExtentBox" Content="Limiter le pan (translateExtent)" Click="OnOptionsChanged"
+                    <CheckBox x:Name="LockBox" Content="Lock" Click="OnOptionsChanged" Margin="0,0,0,6" />
+                    <CheckBox x:Name="ExtentBox" Content="Limit panning (translateExtent)" Click="OnOptionsChanged"
                               Margin="0,0,0,6" />
-                    <CheckBox x:Name="NoSelfBox" Content="Refuser les connexions vers « Node D » (isValidConnection)"
+                    <CheckBox x:Name="NoSelfBox" Content="Refuse connections to Node D (isValidConnection)"
                               Click="OnOptionsChanged" Margin="0,0,0,14" />
                     <StackPanel Orientation="Horizontal">
-                        <Button Content="Exporter JSON" Padding="10,4" Click="OnExport" />
-                        <Button Content="Importer JSON" Padding="10,4" Margin="8,0,0,0" Click="OnImport" />
+                        <Button Content="Export JSON" Padding="10,4" Click="OnExport" />
+                        <Button Content="Import JSON" Padding="10,4" Margin="8,0,0,0" Click="OnImport" />
                     </StackPanel>
                     <TextBox x:Name="JsonBox" Margin="0,8,0,0" Height="380" AcceptsReturn="True" FontFamily="Consolas"
                              FontSize="10" VerticalScrollBarVisibility="Auto" />
@@ -151,8 +151,8 @@
         <TabItem Header="Performance">
             <DockPanel>
                 <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="12">
-                    <Button Content="Charger 3 000 nodes" Padding="12,4" Click="OnLoadMany" />
-                    <CheckBox x:Name="VirtBox" Content="Ne rendre que les éléments visibles" IsChecked="True"
+                    <Button Content="Load 3,000 nodes" Padding="12,4" Click="OnLoadMany" />
+                    <CheckBox x:Name="VirtBox" Content="Only render visible elements" IsChecked="True"
                               Margin="12,0,0,0" VerticalAlignment="Center" Click="OnVirtChanged" />
                     <TextBlock x:Name="PerfStatus" Margin="12,0,0,0" VerticalAlignment="Center" />
                 </StackPanel>
@@ -164,7 +164,7 @@
                 </flow:FlowView>
             </DockPanel>
         </TabItem>
-        <TabItem Header="Personnalisation">
+        <TabItem Header="Customization">
             <demo:CustomizationExample />
         </TabItem>
         <TabItem Header="MVVM">

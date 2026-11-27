@@ -1,15 +1,15 @@
-# 3. Construire un flow
+# 3. Building a flow
 
-*Équivalent React Flow : Adding Interactivity, State Management.*
+*React Flow equivalent: Adding Interactivity, State Management.*
 
-## Le modèle : des listes immuables et des changes
+## The model: immutable lists and changes
 
 ```csharp
 public sealed record Node(string Id, XYPosition Position, string Type = "default", object? Data = null, …);
 public sealed record Edge(string Id, string Source, string Target, …);
 ```
 
-Modifier un node, c'est en créer une copie :
+To modify a node, create a copy of it:
 
 ```csharp
 Flow.Nodes = Flow.Nodes
@@ -17,26 +17,26 @@ Flow.Nodes = Flow.Nodes
     .ToList();
 ```
 
-`FlowView` détecte les nodes dont la référence a changé et ne met à jour que ceux-là (et les edges concernés) : une liste de 1 000 nodes dont un seul change reste fluide.
+`FlowView` detects the nodes whose reference has changed and only updates those (and the edges concerned): a list of 1,000 nodes in which only one changes stays smooth.
 
-## Mode non contrôlé (par défaut)
+## Uncontrolled mode (default)
 
-`AutoApplyChanges="True"` : quand l'utilisateur déplace un node, `FlowView` produit un `NodePositionChange`, l'applique avec `Changes.Apply` et réaffecte `Nodes`. Vous n'avez rien à faire ; relisez `Flow.Nodes` quand vous en avez besoin. C'est l'équivalent de `useNodesState` / `useEdgesState`.
+`AutoApplyChanges="True"`: when the user moves a node, `FlowView` produces a `NodePositionChange`, applies it with `Changes.Apply` and reassigns `Nodes`. You have nothing to do; read `Flow.Nodes` whenever you need it. This is the equivalent of `useNodesState` / `useEdgesState`.
 
-Pour être prévenu :
+To be notified:
 
 ```csharp
 Flow.NodeChangesRequested += (_, e) =>
 {
     foreach (var change in e.Changes)
-        if (change is NodeRemoveChange remove) Console.WriteLine($"Suppression de {remove.Id}");
+        if (change is NodeRemoveChange remove) Console.WriteLine($"Removed {remove.Id}");
 };
 Flow.ConnectRequested += (_, e) => Console.WriteLine($"{e.Connection.Source} -> {e.Connection.Target}");
 ```
 
-## Mode contrôlé
+## Controlled mode
 
-Pour que **votre** code possède l'état (store centralisé, validation, journal d'actions) :
+For **your** code to own the state (centralised store, validation, action log):
 
 ```csharp
 Flow.AutoApplyChanges = false;
@@ -45,14 +45,14 @@ Flow.NodeChangesRequested += (_, e) => _store.Nodes = Changes.Apply(e.Changes, _
 Flow.EdgeChangesRequested += (_, e) => _store.Edges = Changes.Apply(e.Changes, _store.Edges);
 Flow.ConnectRequested     += (_, e) => _store.AddEdge(e.Connection);
 
-// et dans le XAML : Nodes="{Binding Nodes}" Edges="{Binding Edges}"
+// and in the XAML: Nodes="{Binding Nodes}" Edges="{Binding Edges}"
 ```
 
-Dans ce mode, `FlowView` ne modifie rien lui-même : les connexions n'ajoutent aucun edge : c'est à vous de le faire dans `ConnectRequested`, et Ctrl+Z / Ctrl+Y sont désactivés (l'historique est à vous).
+In this mode, `FlowView` does not change anything itself: connections do not add any edge — it is up to you to do so in `ConnectRequested` — and Ctrl+Z / Ctrl+Y are disabled (the history is yours).
 
-## Binding MVVM
+## MVVM binding
 
-`Nodes`, `Edges` et `Viewport` sont des propriétés de dépendance liables en mode `TwoWay` :
+`Nodes`, `Edges` and `Viewport` are dependency properties that can be bound in `TwoWay` mode:
 
 ```xml
 <flow:FlowView Nodes="{Binding Nodes, Mode=TwoWay}"
@@ -60,33 +60,33 @@ Dans ce mode, `FlowView` ne modifie rien lui-même : les connexions n'ajoutent a
                Viewport="{Binding Viewport, Mode=TwoWay}" />
 ```
 
-Elles portent des `IReadOnlyList<T>`, pas des `ObservableCollection` : remplacez la liste entière quand elle change.
+They hold `IReadOnlyList<T>`, not `ObservableCollection`s: replace the whole list when it changes.
 
-## Changes disponibles
+## Available changes
 
-| Change | Émis quand |
+| Change | Emitted when |
 |---|---|
-| `NodePositionChange` | un node est déplacé (souris ou flèches) |
-| `NodeDimensionsChange` | un node a été mesuré ou a changé de taille |
-| `NodeResizeChange` | un node est redimensionné avec `NodeResizer` |
-| `NodeSelectChange` / `EdgeSelectChange` | la sélection change |
-| `NodeRemoveChange` / `EdgeRemoveChange` | suppression (touche Suppr, y compris les descendants et les edges liés) |
-| `NodeAddChange` / `EdgeAddChange` | une connexion est créée |
-| `NodeReplaceChange` / `EdgeReplaceChange` | un edge est reconnecté |
+| `NodePositionChange` | a node is moved (mouse or arrow keys) |
+| `NodeDimensionsChange` | a node has been measured or has changed size |
+| `NodeResizeChange` | a node is resized with `NodeResizer` |
+| `NodeSelectChange` / `EdgeSelectChange` | the selection changes |
+| `NodeRemoveChange` / `EdgeRemoveChange` | deletion (Delete key, including descendants and linked edges) |
+| `NodeAddChange` / `EdgeAddChange` | a connection is created |
+| `NodeReplaceChange` / `EdgeReplaceChange` | an edge is reconnected |
 
-Détail dans la [référence](../reference/changes.md).
+Details in the [reference](../reference/changes.md).
 
-## Annuler / rétablir
+## Undo / redo
 
-`Undo()` et `Redo()` (ou Ctrl+Z / Ctrl+Y) gardent 100 niveaux : l'état est enregistré avant un déplacement, une connexion, une reconnexion ou une suppression. Les listes étant immuables, un instantané ne coûte presque rien. `CanUndo` / `CanRedo` permettent d'activer vos boutons.
+`Undo()` and `Redo()` (or Ctrl+Z / Ctrl+Y) keep 100 levels: the state is saved before a move, a connection, a reconnection or a deletion. Since the lists are immutable, a snapshot costs almost nothing. `CanUndo` / `CanRedo` let you enable your buttons.
 
-## Contrôler la vue
+## Controlling the view
 
 ```csharp
 Flow.ZoomIn();  Flow.ZoomOut();  Flow.ZoomBy(1.5);
 Flow.FitView();
 Flow.Viewport = new Viewport(0, 0, 1);
-Flow.IsLocked = true;            // plus de déplacement, connexion ni suppression (pan et zoom restent actifs)
+Flow.IsLocked = true;            // no moving, connecting or deleting (pan and zoom stay active)
 ```
 
-Suivant : [Nodes personnalisés](04-custom-nodes.md).
+Next: [Custom nodes](04-custom-nodes.md).

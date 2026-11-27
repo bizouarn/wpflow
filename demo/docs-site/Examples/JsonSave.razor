@@ -3,9 +3,9 @@
 
 <div class="ex">
     <div class="ex-toolbar">
-        <button @onclick="Export">Exporter en JSON</button>
-        <button @onclick="Import" disabled="@(_json.Length == 0)">Recharger depuis le texte</button>
-        <button @onclick="@(() => _flow!.SaveImage("graphe.png"))">Télécharger en PNG</button>
+        <button @onclick="Export">Export as JSON</button>
+        <button @onclick="Import" disabled="@(_json.Length == 0)">Reload from the text</button>
+        <button @onclick="@(() => _flow!.SaveImage("graph.png"))">Download as PNG</button>
         <span role="status">@_message</span>
     </div>
     <div class="ex-split">
@@ -14,8 +14,8 @@
                 <FlowControls />
             </FlowView>
         </div>
-        <textarea class="ex-text" aria-label="Graphe au format JSON" spellcheck="false" @bind="_json" @bind:event="oninput"
-                  placeholder="Exportez, modifiez un label ou une position, puis rechargez."></textarea>
+        <textarea class="ex-text" aria-label="Graph in JSON format" spellcheck="false" @bind="_json" @bind:event="oninput"
+                  placeholder="Export, edit a label or a position, then reload."></textarea>
     </div>
 </div>
 
@@ -26,26 +26,26 @@
 
     private IReadOnlyList<Node> _nodes =
     [
-        new Node("1", new XYPosition(0, 0), "input", "Commande"),
-        new Node("2", new XYPosition(40, 130), "output", "Livraison")
+        new Node("1", new XYPosition(0, 0), "input", "Order"),
+        new Node("2", new XYPosition(40, 130), "output", "Delivery")
     ];
 
     private IReadOnlyList<Edge> _edges = [new Edge("1-2", "1", "2", Label: "48 h", MarkerEnd: EdgeMarker.ArrowClosed)];
 
-    // La forme { nodes, edges, viewport } est celle de React Flow.
-    private void Export() => (_json, _message) = (_flow!.ToJson(), "Exporté.");
+    // The { nodes, edges, viewport } shape is React Flow's.
+    private void Export() => (_json, _message) = (_flow!.ToJson(), "Exported.");
 
     private async Task Import()
     {
         try
         {
             await _flow!.LoadJson(_json);
-            _message = "Rechargé.";
+            _message = "Reloaded.";
         }
         catch (Exception error) when (error is System.Text.Json.JsonException or InvalidOperationException
                                           or KeyNotFoundException or FormatException)
         {
-            _message = "JSON refusé : " + error.Message;
+            _message = "JSON rejected: " + error.Message;
         }
     }
 }

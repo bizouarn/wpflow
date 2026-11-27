@@ -74,7 +74,7 @@
         <Grid>
             <flow:FlowPanel PanelPosition="TopLeft">
                 <TextBlock Margin="12" FontSize="11" Foreground="Gray"
-                           Text="node « default » redéfini · handles en losange · edges wave / pulse · marqueurs dot et diamond · aperçu de connexion en pointillés" />
+                           Text="redefined default node · diamond handles · wave / pulse edges · dot and diamond markers · dashed connection preview" />
             </flow:FlowPanel>
             <flow:FlowControls />
         </Grid>

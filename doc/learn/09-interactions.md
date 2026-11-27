@@ -1,89 +1,89 @@
-# 9. Interactions et connexions
+# 9. Interactions and connections
 
-*Équivalent React Flow : Interaction props, Connection validation, Drag and Drop, Keyboard.*
+*React Flow equivalent: Interaction props, Connection validation, Drag and Drop, Keyboard.*
 
-## Gestes
+## Gestures
 
-| Action | Geste |
+| Action | Gesture |
 |---|---|
-| Zoomer | Molette (centré sur le curseur) ; pincement tactile ; `FlowControls` |
-| Déplacer la vue | Glisser le fond ; clic milieu ; **Espace** maintenu + glisser (même sur un node) |
-| Déplacer des nodes | Glisser un node (tous les nodes sélectionnés suivent) |
-| Sélectionner | Clic ; Ctrl/Maj + clic pour ajouter ou retirer ; **Maj + glisser** sur le fond pour un rectangle |
-| Tout sélectionner / désélectionner | Ctrl+A / Échap |
-| Supprimer | Suppr ou Retour arrière |
-| Annuler / rétablir | Ctrl+Z / Ctrl+Y (ou Ctrl+Maj+Z) |
-| Connecter | Glisser d'un handle vers un autre |
-| Reconnecter | Attraper un edge près de son extrémité et le déposer sur un autre handle |
+| Zoom | Mouse wheel (centred on the cursor); touch pinch; `FlowControls` |
+| Pan the view | Drag the background; middle click; hold **Space** + drag (even over a node) |
+| Move nodes | Drag a node (all selected nodes follow) |
+| Select | Click; Ctrl/Shift + click to add or remove; **Shift + drag** on the background for a rectangle |
+| Select all / deselect all | Ctrl+A / Esc |
+| Delete | Delete or Backspace |
+| Undo / redo | Ctrl+Z / Ctrl+Y (or Ctrl+Shift+Z) |
+| Connect | Drag from one handle to another |
+| Reconnect | Grab an edge near its end and drop it on another handle |
 
-## Clavier
+## Keyboard
 
-| Touche | Effet |
+| Key | Effect |
 |---|---|
-| Tab / Maj+Tab | Sélectionne le node suivant / précédent |
-| ← ↑ → ↓ | Déplace la sélection de 5 px (20 avec Maj) |
-| Échap | Désélectionne |
+| Tab / Shift+Tab | Selects the next / previous node |
+| ← ↑ → ↓ | Moves the selection by 5 px (20 with Shift) |
+| Esc | Deselects |
 
-Le clavier agit quand `FlowView` a le focus (un clic sur la surface le lui donne). Si le focus est dans un contrôle d'un node (un `TextBox`…), Tab et les flèches restent à ce contrôle.
+The keyboard acts when `FlowView` has focus (a click on the surface gives it focus). If focus is inside a control of a node (a `TextBox`…), Tab and the arrow keys stay with that control.
 
-## Verrouiller
+## Locking
 
-`IsLocked="True"` désactive le déplacement des nodes, les connexions, la sélection et la suppression ; le pan et le zoom restent possibles. Le bouton cadenas de `FlowControls` agit sur cette propriété.
+`IsLocked="True"` disables moving nodes, connecting, selecting and deleting; panning and zooming remain possible. The padlock button of `FlowControls` acts on this property.
 
-## Magnétisme et limites
+## Snapping and limits
 
 ```xml
 <flow:FlowView SnapToGrid="True" SnapGrid="20" />
 ```
 
 ```csharp
-Flow.NodeExtent      = new Rect(0, 0, 2000, 1200);    // nodes: ne sortent pas de cette zone (coordonnées flow)
-Flow.TranslateExtent = new Rect(-100, -100, 800, 500); // vue: ne montre jamais plus que cette zone
+Flow.NodeExtent      = new Rect(0, 0, 2000, 1200);    // nodes: they cannot leave this area (flow coordinates)
+Flow.TranslateExtent = new Rect(-100, -100, 800, 500); // view: never shows more than this area
 Flow.MinZoom = 0.2; Flow.MaxZoom = 4;
 ```
 
-(`Rect` désigne ici `Wpflow.Core.Rect`.) Si la zone est plus petite que la vue, elle est centrée.
+(`Rect` here means `Wpflow.Core.Rect`.) If the area is smaller than the view, it is centred.
 
-## Connexions
-
-```csharp
-Flow.ConnectionMode = ConnectionMode.Strict;   // défaut : un handle source ne se relie qu'à un handle cible
-Flow.ConnectionMode = ConnectionMode.Loose;    // n'importe quel handle vers n'importe quel handle
-Flow.ConnectionRadius = 20;                    // distance d'accroche autour du curseur (unités flow)
-```
-
-Pendant le glisser, une ligne suit le curseur. Au relâchement, le handle compatible le plus proche **dans le rayon** est choisi (à distance égale, celui de type opposé). En mode `Loose`, la connexion est orientée selon le type du handle de **départ** : partir d'une cible inverse la connexion.
-
-### Valider une connexion
+## Connections
 
 ```csharp
-Flow.IsValidConnection = c => c.Source != c.Target                      // pas de boucle
-                           && !Flow.Edges.Any(e => e.Target == c.Target); // une seule entrée par node
+Flow.ConnectionMode = ConnectionMode.Strict;   // default: a source handle only connects to a target handle
+Flow.ConnectionMode = ConnectionMode.Loose;    // any handle to any handle
+Flow.ConnectionRadius = 20;                    // snap distance around the cursor (flow units)
 ```
 
-Le prédicat reçoit la `Connection` déjà orientée. Retourner `false` annule le geste. Les doublons exacts sont toujours refusés.
+While dragging, a line follows the cursor. On release, the nearest compatible handle **within the radius** is chosen (for equal distances, the one of the opposite type). In `Loose` mode, the connection is oriented according to the type of the **starting** handle: starting from a target reverses the connection.
 
-### Réagir à une connexion
+### Validating a connection
+
+```csharp
+Flow.IsValidConnection = c => c.Source != c.Target                      // no loops
+                           && !Flow.Edges.Any(e => e.Target == c.Target); // a single input per node
+```
+
+The predicate receives the `Connection`, already oriented. Returning `false` cancels the gesture. Exact duplicates are always refused.
+
+### Reacting to a connection
 
 ```csharp
 Flow.ConnectRequested += (_, e) => Log($"{e.Connection.Source} -> {e.Connection.Target}");
 ```
 
-En mode non contrôlé l'edge est ajouté ensuite, avec l'identifiant `xy-edge__{source}{sourceHandle}-{target}{targetHandle}` (même format que React Flow).
+In uncontrolled mode the edge is added afterwards, with the identifier `xy-edge__{source}{sourceHandle}-{target}{targetHandle}` (same format as React Flow).
 
-## Glisser-déposer depuis une palette
+## Drag and drop from a palette
 
-`FlowView` accepte les dépôts (`AllowDrop`). Démarrez le glisser depuis n'importe quel élément avec `DragDrop.DoDragDrop`, puis créez le node à la position du dépôt :
+`FlowView` accepts drops (`AllowDrop`). Start the drag from any element with `DragDrop.DoDragDrop`, then create the node at the drop position:
 
 ```csharp
-// Palette : un élément qui lance le glisser
+// Palette: an element that starts the drag
 private void OnPaletteMove(object sender, MouseEventArgs e)
 {
     if (e.LeftButton == MouseButtonState.Pressed && sender is FrameworkElement { Tag: string type } item)
         DragDrop.DoDragDrop(item, new DataObject("wpflow-node-type", type), DragDropEffects.Copy);
 }
 
-// Surface : réception
+// Surface: receiving
 Flow.DropRequested += (_, e) =>
 {
     if (e.Data.GetData("wpflow-node-type") is not string type) return;
@@ -92,39 +92,39 @@ Flow.DropRequested += (_, e) =>
 };
 ```
 
-`e.Position` est déjà en coordonnées flow (zoom et déplacement pris en compte).
+`e.Position` is already in flow coordinates (zoom and offset taken into account).
 
-## Sélection programmatique
+## Programmatic selection
 
 ```csharp
-Flow.SelectNode("2");                    // seul
-Flow.SelectNode("3", additive: true);    // en plus
+Flow.SelectNode("2");                    // alone
+Flow.SelectNode("3", additive: true);    // in addition
 Flow.Nodes = Flow.Nodes.Select(n => n with { Selected = n.Id == "2" }).ToList();
 ```
 
-## Événements de la surface
+## Surface events
 
-| Événement | Quand |
+| Event | When |
 |---|---|
-| `NodeChangesRequested` / `EdgeChangesRequested` | avant l'application d'un lot de changes |
-| `ConnectRequested` | connexion valide créée à la souris |
-| `DropRequested` | objet déposé |
-| `StateChanged` | nodes, edges, viewport ou verrouillage modifiés (pour dessiner vos propres vues liées) |
+| `NodeChangesRequested` / `EdgeChangesRequested` | before a batch of changes is applied |
+| `ConnectRequested` | valid connection created with the mouse |
+| `DropRequested` | object dropped |
+| `StateChanged` | nodes, edges, viewport or lock changed (to draw your own bound views) |
 
-## Événements supplémentaires
+## Additional events
 
-`ConnectStarted` / `ConnectEnded` (position du relâchement et connexion réalisée, pour « créer un node en lâchant le fil dans le vide »), `NodeDoubleClick`, `NodeContextMenuRequested` (et `Edge…`, `Pane…`, `SelectionContextMenuRequested`), `NodeMouseEnter`/`Move`/`Leave`, `NodeDragStarted`/`NodeDragging`/`NodeDragStopped`, `ViewportMoveStarted`/`Ended`, `FlowInitialized`, `BeforeDelete` (annulable), `ErrorOccurred`… La liste complète est dans la [référence de `FlowView`](../reference/flowview.md#événements-supplémentaires). Pour savoir quelle colonne ou quelle zone d'un node est visée, marquez-la avec `flow:FlowView.TargetData` ([détails](../reference/flowview.md#savoir-quelle-partie-dun-node-est-visée)).
+`ConnectStarted` / `ConnectEnded` (release position and whether a connection was made, to « create a node when the wire is dropped in empty space »), `NodeDoubleClick`, `NodeContextMenuRequested` (and `Edge…`, `Pane…`, `SelectionContextMenuRequested`), `NodeMouseEnter`/`Move`/`Leave`, `NodeDragStarted`/`NodeDragging`/`NodeDragStopped`, `ViewportMoveStarted`/`Ended`, `FlowInitialized`, `BeforeDelete` (cancellable), `ErrorOccurred`… The full list is in the [`FlowView` reference](../reference/flowview.md#additional-events). To know which column or area of a node is targeted, mark it with `flow:FlowView.TargetData` ([details](../reference/flowview.md#knowing-which-part-of-a-node-is-targeted)).
 
-## Réglages d'interaction
+## Interaction settings
 
-Tout ce que React Flow règle par props est une propriété de `FlowView` : `NodesDraggable`, `NodesConnectable`, `ElementsSelectable`, `PanOnDrag`, `PanOnScroll`, `ZoomOnScroll`, `ZoomOnDoubleClick`, `SelectionOnDrag`, `SelectionMode`, `DeleteKeys`, `SelectionKey`, `MultiSelectionKey`, `PanActivationKey`, `NodeOrigin`, `ConnectOnClick`, `ConnectionLineType`, seuils de glisser, auto-défilement… ([tableau](../reference/flowview.md#options-dinteraction-avancées)). Sur un élément d'un template de node, `flow:FlowView.NoDrag="True"` / `NoPan` / `NoWheel` empêchent le déplacement du node, de la vue ou le zoom, et `flow:NodeHost.DragHandle="grip"` (avec `Node.DragHandle = "grip"`) limite le déplacement à une zone.
+Everything React Flow sets through props is a property of `FlowView`: `NodesDraggable`, `NodesConnectable`, `ElementsSelectable`, `PanOnDrag`, `PanOnScroll`, `ZoomOnScroll`, `ZoomOnDoubleClick`, `SelectionOnDrag`, `SelectionMode`, `DeleteKeys`, `SelectionKey`, `MultiSelectionKey`, `PanActivationKey`, `NodeOrigin`, `ConnectOnClick`, `ConnectionLineType`, drag thresholds, auto-panning… ([table](../reference/flowview.md#advanced-interaction-options)). On an element of a node template, `flow:FlowView.NoDrag="True"` / `NoPan` / `NoWheel` prevent the node from being moved, the view from being panned or zooming, and `flow:NodeHost.DragHandle="grip"` (with `Node.DragHandle = "grip"`) limits dragging to one area.
 
-## Copier-coller, transitions, image
+## Copy and paste, transitions, image
 
-- Ctrl+C / Ctrl+X / Ctrl+V (ou `Flow.Copy()`, `Cut()`, `Paste()`, `FlowCommands.Copy`…) : les nodes sélectionnés, leurs descendants et les edges qui les relient sont dupliqués avec des ids neufs.
-- `Flow.SetCenter(x, y, zoom, TimeSpan.FromMilliseconds(400))`, `FitView(new FitViewOptions(Duration: …, NodeIds: …))`, `FitBounds`, `SetViewport` : le viewport se déplace avec une transition ; un geste de l'utilisateur l'interrompt.
-- `Flow.SaveImage("graphe.png")` ou `Flow.RenderToBitmap()` exporte le graphe entier (pour imprimer, passez le bitmap à `PrintDialog`).
-- **Zoom contextuel** : liez-vous à `Flow.Viewport` (ou `Zoom`) et changez l'affichage d'un node selon le niveau de zoom dans votre ViewModel.
-- **Collisions, lignes d'aide, connexion de proximité** : écoutez `NodeDragging` et utilisez `Flow.GetIntersectingNodes(node)` ou `GraphQueries`.
+- Ctrl+C / Ctrl+X / Ctrl+V (or `Flow.Copy()`, `Cut()`, `Paste()`, `FlowCommands.Copy`…): the selected nodes, their descendants and the edges that link them are duplicated with new ids.
+- `Flow.SetCenter(x, y, zoom, TimeSpan.FromMilliseconds(400))`, `FitView(new FitViewOptions(Duration: …, NodeIds: …))`, `FitBounds`, `SetViewport`: the viewport moves with a transition; a user gesture interrupts it.
+- `Flow.SaveImage("graph.png")` or `Flow.RenderToBitmap()` exports the whole graph (to print, pass the bitmap to `PrintDialog`).
+- **Contextual zoom**: bind to `Flow.Viewport` (or `Zoom`) and change how a node is displayed according to the zoom level in your ViewModel.
+- **Collisions, guide lines, proximity connection**: listen to `NodeDragging` and use `Flow.GetIntersectingNodes(node)` or `GraphQueries`.
 
-Suivant : [Calculer avec un flow](10-computing-flows.md).
+Next: [Computing with a flow](10-computing-flows.md).

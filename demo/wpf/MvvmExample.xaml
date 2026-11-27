@@ -14,7 +14,7 @@
                         BorderThickness="1" CornerRadius="0" Padding="10" MinWidth="170">
                     <StackPanel>
                         <TextBox x:Name="TitleBox" Text="{Binding Data.Title, UpdateSourceTrigger=PropertyChanged}" />
-                        <CheckBox Content="Terminé" IsChecked="{Binding Data.Done}" Margin="0,6,0,0" />
+                        <CheckBox Content="Done" IsChecked="{Binding Data.Done}" Margin="0,6,0,0" />
                         <TextBlock FontSize="10" Margin="0,4,0,0" Foreground="Gray">
                             <Run Text="x =" /><Run Text="{Binding Data.X, Mode=OneWay, StringFormat={}{0:0}}" />
                             <Run Text="  y =" /><Run Text="{Binding Data.Y, Mode=OneWay, StringFormat={}{0:0}}" />
@@ -30,16 +30,16 @@
     <DockPanel>
         <!-- Barre d'outils hors de la vue : les commandes routées ciblent le FlowView par CommandTarget. -->
         <WrapPanel DockPanel.Dock="Top" Margin="8">
-            <Button Content="Ajouter" Command="{Binding AddCommand}" Padding="10,3" />
-            <Button Content="Supprimer" Command="{x:Static flow:FlowCommands.DeleteSelection}"
+            <Button Content="Add" Command="{Binding AddCommand}" Padding="10,3" />
+            <Button Content="Delete" Command="{x:Static flow:FlowCommands.DeleteSelection}"
                     CommandTarget="{Binding ElementName=Flow}" Padding="10,3" Margin="6,0,0,0" />
-            <Button Content="Replacer (ViewModel)" Command="{Binding ShuffleCommand}" Padding="10,3" Margin="6,0,0,0" />
-            <Button Content="Annuler" Command="{x:Static flow:FlowCommands.Undo}" CommandTarget="{Binding ElementName=Flow}"
+            <Button Content="Reposition (ViewModel)" Command="{Binding ShuffleCommand}" Padding="10,3" Margin="6,0,0,0" />
+            <Button Content="Undo" Command="{x:Static flow:FlowCommands.Undo}" CommandTarget="{Binding ElementName=Flow}"
                     Padding="10,3" Margin="14,0,0,0" />
-            <Button Content="Rétablir" Command="{x:Static flow:FlowCommands.Redo}" CommandTarget="{Binding ElementName=Flow}"
+            <Button Content="Redo" Command="{x:Static flow:FlowCommands.Redo}" CommandTarget="{Binding ElementName=Flow}"
                     Padding="10,3" Margin="6,0,0,0" />
-            <Button Content="Cadrer" Command="{Binding FitCommand}" Padding="10,3" Margin="14,0,0,0" />
-            <Button Content="Centrer sur le dernier" Command="{Binding CenterLastCommand}" Padding="10,3" Margin="6,0,0,0" />
+            <Button Content="Fit view" Command="{Binding FitCommand}" Padding="10,3" Margin="14,0,0,0" />
+            <Button Content="Center on last" Command="{Binding CenterLastCommand}" Padding="10,3" Margin="6,0,0,0" />
             <TextBlock Text="zoom" VerticalAlignment="Center" Margin="14,0,4,0" />
             <Slider Minimum="0.3" Maximum="2" Width="110" Value="{Binding Zoom, Mode=TwoWay}" VerticalAlignment="Center" />
         </WrapPanel>
@@ -47,7 +47,7 @@
         <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Height="22" Margin="8,0,8,4">
             <TextBlock Text="{Binding Summary}" VerticalAlignment="Center" />
             <TextBlock Text="{Binding Hint}" VerticalAlignment="Center" Margin="16,0,0,0" Foreground="#1B86D6" />
-            <TextBlock x:Name="Connecting" Text="connexion en cours…" VerticalAlignment="Center" Margin="12,0,0,0"
+            <TextBlock x:Name="Connecting" Text="connecting…" VerticalAlignment="Center" Margin="12,0,0,0"
                        Foreground="Gray">
                 <TextBlock.Style>
                     <Style TargetType="TextBlock">

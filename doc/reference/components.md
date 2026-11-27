@@ -1,110 +1,110 @@
-# Composants
+# Components
 
-Tous dans `Wpflow.Wpf` (`xmlns:flow="clr-namespace:Wpflow.Wpf;assembly=Wpflow.Wpf"`).
+All in `Wpflow.Wpf` (`xmlns:flow="clr-namespace:Wpflow.Wpf;assembly=Wpflow.Wpf"`).
 
 ## Handle
 
-Point de connexion, à placer dans le template d'un node (enfant du `Grid` racine). Équivalent de `<Handle>`.
+Connection point, to place in a node template (child of the root `Grid`). Equivalent of `<Handle>`.
 
-| Propriété | Type | Défaut | Description |
+| Property | Type | Default | Description |
 |---|---|---|---|
-| `Type` | `HandleType` | `Source` | `Source` (départ) ou `Target` (arrivée). |
-| `Position` | `Position` | `Top` | Côté du node : `Left`, `Top`, `Right`, `Bottom`. |
-| `HandleId` | `string?` | `null` | Identifiant (`Edge.SourceHandle` / `TargetHandle`). |
-| `Offset` | `double` | `NaN` | Décalage le long du côté depuis le haut (gauche/droite) ou la gauche (haut/bas) ; `NaN` = centré. |
-| `ConnectionStatus` | `HandleConnectionStatus` | `None` | Piloté par la vue pendant un fil : `Origin`, `Valid`, `Invalid` ; le dessin par défaut change de couleur, un `Template` peut s'en servir. |
-| `IsConnectable` | `bool` | `true` | Le handle accepte des connexions. |
-| `IsConnectableStart` / `IsConnectableEnd` | `bool` | `true` | Une connexion peut partir de / aboutir à ce handle. |
-| `IsValidConnection` | `Func<Connection,bool>?` | `null` | Validateur propre au handle, en plus de celui de la vue. |
-| événement `Connected` (`Connection`) | | | Une connexion vient d'aboutir à ce handle ou d'en partir (`onConnect` d'un handle). |
+| `Type` | `HandleType` | `Source` | `Source` (start) or `Target` (end). |
+| `Position` | `Position` | `Top` | Side of the node: `Left`, `Top`, `Right`, `Bottom`. |
+| `HandleId` | `string?` | `null` | Identifier (`Edge.SourceHandle` / `TargetHandle`). |
+| `Offset` | `double` | `NaN` | Offset along the side from the top (left/right) or from the left (top/bottom); `NaN` = centred. |
+| `ConnectionStatus` | `HandleConnectionStatus` | `None` | Driven by the view during a wire: `Origin`, `Valid`, `Invalid`; the default drawing changes colour, a `Template` can use it. |
+| `IsConnectable` | `bool` | `true` | The handle accepts connections. |
+| `IsConnectableStart` / `IsConnectableEnd` | `bool` | `true` | A connection can start from / end at this handle. |
+| `IsValidConnection` | `Func<Connection,bool>?` | `null` | Validator specific to the handle, in addition to the view's. |
+| `Connected` event (`Connection`) | | | A connection has just ended at this handle or started from it (`onConnect` of a handle). |
 
-Le handle fait 8 × 8 par défaut (`Width` / `Height` modifiables) et déborde de la moitié de sa taille sur le bord de son conteneur ; sa zone de clic est élargie de 6 px. Il se stylise comme un `Control` (`Background`, `BorderBrush`, `BorderThickness`, `Width`, `Height`) et un `Template` remplace son dessin : ciblez `flow:Handle` dans un `Style` (voir [Personnaliser](../learn/14-customization.md#handles)).
+The handle is 8 × 8 by default (`Width` / `Height` can be changed) and overflows by half its size over the edge of its container; its click area is widened by 6 px. It is styled like a `Control` (`Background`, `BorderBrush`, `BorderThickness`, `Width`, `Height`) and a `Template` replaces its drawing: target `flow:Handle` in a `Style` (see [Customization](../learn/14-customization.md#handles)).
 
 ## MiniMap
 
-Vue d'ensemble du graphe ; cliquer ou glisser recentre le viewport. À placer dans le `Content` de `FlowView`, ou ailleurs avec `Flow="{Binding ElementName=Flow}"`.
+Overview of the graph; clicking or dragging recentres the viewport. Place it in the `Content` of `FlowView`, or elsewhere with `Flow="{Binding ElementName=Flow}"`.
 
-Valeurs par défaut : 200 × 150, en bas à droite, marge de 15. Redimensionnez avec `Width`/`Height`, repositionnez avec `HorizontalAlignment`/`VerticalAlignment`/`Margin`. Couleurs : `Flow.MiniMapBackground`, `Flow.MiniMapNode`, `Flow.MiniMapNodeSelected`, `Flow.MiniMapMask`.
+Default values: 200 × 150, bottom right, margin of 15. Resize with `Width`/`Height`, reposition with `HorizontalAlignment`/`VerticalAlignment`/`Margin`. Colours: `Flow.MiniMapBackground`, `Flow.MiniMapNode`, `Flow.MiniMapNodeSelected`, `Flow.MiniMapMask`.
 
-| Propriété | Type | Défaut | Description |
+| Property | Type | Default | Description |
 |---|---|---|---|
-| `NodeColor` / `NodeStrokeColor` | `Func<Node, Brush?>?` | `null` | Couleur et contour par node (`nodeColor`, `nodeStrokeColor`) ; résultat `null` = thème. |
-| `NodeStrokeWidth` / `NodeBorderRadius` | `double` | 2 / 3 | Contour et arrondi. |
-| `NodeRenderer` | `Action<DrawingContext, Node, Rect>?` | `null` | Dessin libre d'un node (`nodeComponent`). |
-| `MaskColor` | `Brush?` | `null` | Voile hors de la vue ; `null` = `Flow.MiniMapMask`. |
-| `Pannable` / `Zoomable` / `InversePan` / `ZoomStep` | `bool` / `bool` / `bool` / `double` | `true` / `false` / `false` / 10 | Glisser recentre la vue, molette zoome (`zoomable`), sens inversé, sensibilité. |
-| événement `NodeClick` (`MiniMapNodeClickEventArgs`) | | | Clic sur un node de la minimap. |
+| `NodeColor` / `NodeStrokeColor` | `Func<Node, Brush?>?` | `null` | Colour and outline per node (`nodeColor`, `nodeStrokeColor`); a `null` result = theme. |
+| `NodeStrokeWidth` / `NodeBorderRadius` | `double` | 2 / 3 | Outline and corner radius. |
+| `NodeRenderer` | `Action<DrawingContext, Node, Rect>?` | `null` | Free drawing of a node (`nodeComponent`). |
+| `MaskColor` | `Brush?` | `null` | Veil outside the view; `null` = `Flow.MiniMapMask`. |
+| `Pannable` / `Zoomable` / `InversePan` / `ZoomStep` | `bool` / `bool` / `bool` / `double` | `true` / `false` / `false` / 10 | Dragging recentres the view, the mouse wheel zooms (`zoomable`), inverted direction, sensitivity. |
+| `NodeClick` event (`MiniMapNodeClickEventArgs`) | | | Click on a node of the minimap. |
 
 ## FlowControls
 
-Boutons zoom +, zoom −, cadrage (`FitView`) et verrou (`IsLocked`). Placé en bas à gauche par défaut ; la vue pilotée est celle qui le contient, ou `Flow="{Binding ElementName=Flow}"`. Couleurs : `Flow.Controls*`. Le cadenas reflète `FlowView.IsLocked` (y compris quand il est modifié ailleurs).
+Buttons for zoom in, zoom out, fit (`FitView`) and lock (`IsLocked`). Placed at the bottom left by default; the view it drives is the one that contains it, or `Flow="{Binding ElementName=Flow}"`. Colours: `Flow.Controls*`. The padlock reflects `FlowView.IsLocked` (including when it is changed elsewhere).
 
-| Propriété | Type | Défaut | Description |
+| Property | Type | Default | Description |
 |---|---|---|---|
-| `ShowZoom` / `ShowFitView` / `ShowInteractive` | `bool` | `true` | Affiche les boutons de zoom, de cadrage, de verrou. |
-| `Orientation` | `Orientation` | `Vertical` | Disposition des boutons. |
-| `ExtraContent` | `object?` | `null` | Boutons supplémentaires (`ControlButton`), avant le verrou. |
-| `AnimationDuration` | `TimeSpan` | 0 | Transition des zooms et du cadrage. |
-| `FitViewOptions` | `FitViewOptions?` | `null` | Options du bouton de cadrage (sinon celles de la vue). |
-| événements | | | `ZoomedIn`, `ZoomedOut`, `FitViewClicked`, `InteractiveChanged` (`bool` : vrai = déverrouillé). |
+| `ShowZoom` / `ShowFitView` / `ShowInteractive` | `bool` | `true` | Shows the zoom, fit and lock buttons. |
+| `Orientation` | `Orientation` | `Vertical` | Layout of the buttons. |
+| `ExtraContent` | `object?` | `null` | Additional buttons (`ControlButton`), before the lock. |
+| `AnimationDuration` | `TimeSpan` | 0 | Transition of zooms and fit. |
+| `FitViewOptions` | `FitViewOptions?` | `null` | Options of the fit button (otherwise those of the view). |
+| events | | | `ZoomedIn`, `ZoomedOut`, `FitViewClicked`, `InteractiveChanged` (`bool`: true = unlocked). |
 
 ## FlowPanel
 
-`ContentControl` qui ancre son contenu à une position de l'overlay. Équivalent de `<Panel position="…">`.
+`ContentControl` that anchors its content to a position of the overlay. Equivalent of `<Panel position="…">`.
 
-| Propriété | Valeurs |
+| Property | Values |
 |---|---|
-| `PanelPosition` | `TopLeft` (défaut), `TopCenter`, `TopRight`, `CenterLeft`, `CenterRight`, `BottomLeft`, `BottomCenter`, `BottomRight` |
+| `PanelPosition` | `TopLeft` (default), `TopCenter`, `TopRight`, `CenterLeft`, `CenterRight`, `BottomLeft`, `BottomCenter`, `BottomRight` |
 
-Marge par défaut : 15.
+Default margin: 15.
 
 ```xml
-<flow:FlowPanel PanelPosition="TopRight"><Button Content="Enregistrer" /></flow:FlowPanel>
+<flow:FlowPanel PanelPosition="TopRight"><Button Content="Save" /></flow:FlowPanel>
 ```
 
 ## NodeResizer
 
-Poignées de redimensionnement d'un node (4 coins, 4 côtés), visibles quand le node est sélectionné. À placer dans le `Grid` racine du template, **après** la carte et **avant** les handles ; le contenu du node doit s'étirer.
+Resize handles of a node (4 corners, 4 sides), visible when the node is selected. Place it in the root `Grid` of the template, **after** the card and **before** the handles; the node's content must stretch.
 
-| Propriété | Type | Défaut | Description |
+| Property | Type | Default | Description |
 |---|---|---|---|
-| `NodeMinWidth` / `NodeMinHeight` | `double` | 60 / 40 | Taille minimale. |
-| `NodeMaxWidth` / `NodeMaxHeight` | `double` | ∞ | Taille maximale. |
-| `KeepAspectRatio` | `bool` | `false` | Conserve le rapport largeur/hauteur pendant le redimensionnement. |
-| `ShowResizer` | `bool` | `true` | Faux : poignées masquées (`isVisible`). |
-| `AutoScale` | `bool` | `false` | Poignées à taille constante à l'écran quel que soit le zoom (`autoScale`). |
-| `Variant` | `ResizerVariant` | `Handle` | `Handle` (carrés aux coins) ou `Line` (traits sur les côtés). |
-| `ShouldResize` | `Func<ResizeDirection, Rect, bool>?` | `null` | Refuse une taille proposée. |
-| événements `ResizeStarted`, `Resizing`, `ResizeEnded` | `NodeResizeEventArgs` | | Poignée, rectangle de départ et courant. |
-| `Accent` | `Brush` | bleu #3367D9 | Couleur des poignées de coin. |
+| `NodeMinWidth` / `NodeMinHeight` | `double` | 60 / 40 | Minimum size. |
+| `NodeMaxWidth` / `NodeMaxHeight` | `double` | ∞ | Maximum size. |
+| `KeepAspectRatio` | `bool` | `false` | Keeps the width/height ratio while resizing. |
+| `ShowResizer` | `bool` | `true` | False: handles hidden (`isVisible`). |
+| `AutoScale` | `bool` | `false` | Handles of constant size on screen whatever the zoom (`autoScale`). |
+| `Variant` | `ResizerVariant` | `Handle` | `Handle` (squares at the corners) or `Line` (lines on the sides). |
+| `ShouldResize` | `Func<ResizeDirection, Rect, bool>?` | `null` | Refuses a proposed size. |
+| events `ResizeStarted`, `Resizing`, `ResizeEnded` | `NodeResizeEventArgs` | | Handle, starting and current rectangle. |
+| `Accent` | `Brush` | blue #3367D9 | Colour of the corner handles. |
 
-`Thumb? GetThumb(ResizeDirection)` donne accès à chaque poignée (tests d'interface). Chaque geste émet un `NodeResizeChange` ; l'historique enregistre l'état au début du geste.
+`Thumb? GetThumb(ResizeDirection)` gives access to each handle (interface tests). Each gesture emits a `NodeResizeChange`; the history records the state at the start of the gesture.
 
 ## NodeToolbar
 
-`ContentControl` affiché à côté du node quand il est sélectionné. Équivalent de `<NodeToolbar>`.
+`ContentControl` displayed next to the node when it is selected. Equivalent of `<NodeToolbar>`.
 
-| Propriété | Type | Défaut | Description |
+| Property | Type | Default | Description |
 |---|---|---|---|
-| `ToolbarPosition` | `Position` | `Top` | Côté du node. |
-| `Offset` | `double` | 10 | Distance au node. |
-| `Align` | `ToolbarAlign` | `Center` | `Start`, `Center`, `End` le long du côté. |
-| `IsToolbarVisible` | `bool?` | `null` | Force la visibilité ; `null` = visible quand le node est sélectionné. |
+| `ToolbarPosition` | `Position` | `Top` | Side of the node. |
+| `Offset` | `double` | 10 | Distance from the node. |
+| `Align` | `ToolbarAlign` | `Center` | `Start`, `Center`, `End` along the side. |
+| `IsToolbarVisible` | `bool?` | `null` | Forces visibility; `null` = visible when the node is selected. |
 
-Style : fond `Flow.ControlsBackground`, coins arrondis, ombre.
+Style: background `Flow.ControlsBackground`, rounded corners, shadow.
 
 ## EdgeToolbar
 
-Barre d'outils d'un edge (`<EdgeToolbar>`) : visible quand l'edge est sélectionné. À placer dans un template de label (`EdgeLabelTemplate`, `wpflow-edge-label-{type}`) ou d'edge ; le `DataContext` est l'`Edge` (ou un `EdgeRenderContext`). Propriétés : `ToolbarPosition` (`Top`), `Offset` (10), `IsToolbarVisible` (`bool?`).
+Toolbar of an edge (`<EdgeToolbar>`): visible when the edge is selected. Place it in a label template (`EdgeLabelTemplate`, `wpflow-edge-label-{type}`) or an edge template; the `DataContext` is the `Edge` (or an `EdgeRenderContext`). Properties: `ToolbarPosition` (`Top`), `Offset` (10), `IsToolbarVisible` (`bool?`).
 
 ## BackgroundLayer
 
-Un motif de fond : `new BackgroundLayer(Variant, Gap, Color, Size, LineWidth, Offset)`. À superposer avec `FlowView.AdditionalBackgrounds` (plusieurs `<Background id="…">`).
+A background pattern: `new BackgroundLayer(Variant, Gap, Color, Size, LineWidth, Offset)`. To overlay with `FlowView.AdditionalBackgrounds` (several `<Background id="…">`).
 
 
 ## NodeHost
 
-Conteneur interne d'un node (public pour l'automatisation et les tests). Propriétés utiles : `Node`, `IsSelected` (utilisable dans un `Trigger` du style), `ShowOutline`, `OutlineCornerRadius` (0 par défaut : contour à angles droits ; une valeur positive arrondit le contour).
+Internal container of a node (public for automation and tests). Useful properties: `Node`, `IsSelected` (usable in a `Trigger` of the style), `ShowOutline`, `OutlineCornerRadius` (0 by default: outline with square corners; a positive value rounds the outline).
 
 ## BackgroundVariant, ColorMode, PanelPosition
 
@@ -116,12 +116,12 @@ enum PanelPosition { TopLeft, TopCenter, TopRight, CenterLeft, CenterRight, Bott
 
 ## SelectionToolbar
 
-Barre d'outils d'une sélection multiple : apparaît au-dessus du rectangle englobant les nodes sélectionnés quand au moins `MinSelected` (2) le sont. Avec `NodeIds` (liste d'identifiants), elle suit ces nodes et s'affiche dès que l'un d'eux est sélectionné ; `IsToolbarVisible` force la visibilité. À placer dans l'overlay de `FlowView` (ou `Flow="{Binding ElementName=Flow}"`) ; propriétés `MinSelected`, `Offset` (10).
+Toolbar of a multiple selection: appears above the bounding rectangle of the selected nodes when at least `MinSelected` (2) of them are selected. With `NodeIds` (list of identifiers), it follows these nodes and is displayed as soon as one of them is selected; `IsToolbarVisible` forces visibility. Place it in the overlay of `FlowView` (or `Flow="{Binding ElementName=Flow}"`); properties `MinSelected`, `Offset` (10).
 
 ## NodeRotator
 
-Poignée de rotation (exemple « Rotatable Node ») : un rond au-dessus du node, visible quand il est sélectionné ; le glisser fait tourner le node autour de son centre en écrivant `Node.Rotation` (degrés), avec historique. Maj arrondit à `SnapAngle` (15°). À placer dans le `Grid` racine du template. Les handles et les edges restent attachés aux positions non tournées, comme dans React Flow.
+Rotation handle (« Rotatable Node » example): a round grip above the node, visible when it is selected; dragging it rotates the node around its centre by writing `Node.Rotation` (degrees), with history. Shift rounds to `SnapAngle` (15°). Place it in the root `Grid` of the template. The handles and edges stay attached to the unrotated positions, as in React Flow.
 
 ## NodeResizeControl
 
-Poignée de redimensionnement libre (`<NodeResizeControl>`) : un `Thumb` que vous habillez (`Template`, `Content`) et placez où vous voulez dans le template, avec la `Direction` qu'il pilote (`TopLeft`…`Bottom`). Mêmes réglages que `NodeResizer` : `NodeMinWidth`/`Height`, `NodeMaxWidth`/`Height`, `KeepAspectRatio`, `ShouldResize`, événements `ResizeStarted`, `Resizing`, `ResizeEnded`.
+Free resize handle (`<NodeResizeControl>`): a `Thumb` that you style (`Template`, `Content`) and place wherever you want in the template, with the `Direction` it drives (`TopLeft`…`Bottom`). Same settings as `NodeResizer`: `NodeMinWidth`/`Height`, `NodeMaxWidth`/`Height`, `KeepAspectRatio`, `ShouldResize`, events `ResizeStarted`, `Resizing`, `ResizeEnded`.

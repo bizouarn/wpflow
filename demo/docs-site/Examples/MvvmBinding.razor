@@ -7,8 +7,8 @@
 
 <div class="ex">
     <div class="ex-toolbar">
-        <button @onclick="Add">Ajouter une tâche (depuis le ViewModel)</button>
-        <span>Glissez, sélectionnez, supprimez : les ViewModels suivent.</span>
+        <button @onclick="Add">Add a task (from the ViewModel)</button>
+        <span>Drag, select, delete: the ViewModels follow.</span>
     </div>
     <div class="ex-split">
         <div class="ex-flow">
@@ -19,21 +19,21 @@
         </div>
         <div class="ex-table">
             <table>
-                <caption>État des ViewModels</caption>
-                <thead><tr><th>Titre</th><th>X</th><th>Y</th><th>Choisi</th></tr></thead>
+                <caption>State of the ViewModels</caption>
+                <thead><tr><th>Title</th><th>X</th><th>Y</th><th>Selected</th></tr></thead>
                 <tbody>
                     @foreach (var task in _tasks)
                     {
                         <tr>
-                            <td><input aria-label="@($"Titre de la tâche {task.Id}")" value="@task.Title" @oninput="e => task.Title = e.Value?.ToString() ?? string.Empty" /></td>
+                            <td><input aria-label="@($"Title of task {task.Id}")" value="@task.Title" @oninput="e => task.Title = e.Value?.ToString() ?? string.Empty" /></td>
                             <td>@task.X.ToString("0")</td>
                             <td>@task.Y.ToString("0")</td>
-                            <td>@(task.IsSelected ? "oui" : "non")</td>
+                            <td>@(task.IsSelected ? "yes" : "no")</td>
                         </tr>
                     }
                 </tbody>
             </table>
-            <p>@_links.Count lien(s)</p>
+            <p>@_links.Count link(s)</p>
         </div>
     </div>
 </div>
@@ -63,7 +63,7 @@
 
     public sealed record LinkVm(string Id, string Source, string Target);
 
-    // Dans un champ : un mappage écrit dans le balisage serait recréé à chaque rendu.
+    // In a field: a mapping written in the markup would be recreated on every render.
     private readonly NodeMapping _mapping = new() { SelectedPath = nameof(TaskVm.IsSelected) };
 
     private readonly ObservableCollection<TaskVm> _tasks = [];
@@ -71,7 +71,7 @@
 
     private readonly Dictionary<string, RenderFragment<Node>> _templates = new()
     {
-        // Node.Data est le ViewModel.
+        // Node.Data is the ViewModel.
         ["default"] = n => @<div class="ex-card">
             <FlowHandle Type="HandleType.Target" Position="Position.Left" />
             <strong>@(((TaskVm)n.Data!).Title)</strong>
@@ -81,11 +81,11 @@
 
     protected override void OnInitialized()
     {
-        AddTask("Écrire", 0, 0);
-        AddTask("Relire", 240, 110);
+        AddTask("Write", 0, 0);
+        AddTask("Review", 240, 110);
     }
 
-    private void Add() => AddTask($"Tâche {_tasks.Count + 1}", 40 * _tasks.Count, 200);
+    private void Add() => AddTask($"Task {_tasks.Count + 1}", 40 * _tasks.Count, 200);
 
     private void AddTask(string title, double x, double y)
     {
@@ -95,7 +95,7 @@
         _tasks.Add(task);
     }
 
-    // La vue écrit dans les ViewModels ; le tableau, lui, doit être prévenu pour se redessiner.
+    // The view writes into the ViewModels; the table must be told so it redraws.
     private void OnTaskChanged(object? sender, PropertyChangedEventArgs e) => InvokeAsync(StateHasChanged);
 
     public void Dispose()

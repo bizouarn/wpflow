@@ -93,14 +93,14 @@ public partial class ExamplesWindow : Window
         {
             var y = i * 110;
             nodes.Add(new Node($"s{i}", new XYPosition(0, y), "input", types[i]));
-            nodes.Add(new Node($"t{i}", new XYPosition(380, y + 20), "output", $"{types[i]} (cible)"));
+            nodes.Add(new Node($"t{i}", new XYPosition(380, y + 20), "output", $"{types[i]} (target)"));
             edges.Add(new Edge($"e{i}", $"s{i}", $"t{i}", Type: types[i], Label: types[i],
                 Animated: i == 0, MarkerEnd: i % 2 == 0 ? EdgeMarker.ArrowClosed : EdgeMarker.Arrow));
         }
 
         // Handles latéraux : un edge qui part du bas pour arriver à gauche.
-        nodes.Add(new Node("a", new XYPosition(120, 460), "default", "Bas vers gauche"));
-        nodes.Add(new Node("b", new XYPosition(380, 520), "output", "Cible"));
+        nodes.Add(new Node("a", new XYPosition(120, 460), "default", "Bottom to left"));
+        nodes.Add(new Node("b", new XYPosition(380, 520), "output", "Target"));
         edges.Add(new Edge("e-ab", "a", "b", Type: "smoothstep"));
         EdgesFlow.Nodes = nodes;
         EdgesFlow.Edges = edges;
@@ -112,10 +112,10 @@ public partial class ExamplesWindow : Window
     {
         GroupsFlow.Nodes =
         [
-            new Node("g1", new XYPosition(0, 0), "group", "Groupe A", FixedWidth: 360, FixedHeight: 230),
-            new Node("c1", new XYPosition(20, 40), "default", "Enfant 1", ParentId: "g1", ExtentParent: true),
-            new Node("c2", new XYPosition(180, 130), "default", "Enfant 2", ParentId: "g1", ExtentParent: true),
-            new Node("free", new XYPosition(520, 70), "output", "Hors groupe")
+            new Node("g1", new XYPosition(0, 0), "group", "Group A", FixedWidth: 360, FixedHeight: 230),
+            new Node("c1", new XYPosition(20, 40), "default", "Child 1", ParentId: "g1", ExtentParent: true),
+            new Node("c2", new XYPosition(180, 130), "default", "Child 2", ParentId: "g1", ExtentParent: true),
+            new Node("free", new XYPosition(520, 70), "output", "Outside the group")
         ];
         GroupsFlow.Edges =
         [
@@ -128,7 +128,7 @@ public partial class ExamplesWindow : Window
 
     private void BuildTools()
     {
-        ToolFlow.Nodes = [MakeTool("t1", 0, 0, "Node outillé"), MakeTool("t2", 330, 60, "Autre node")];
+        ToolFlow.Nodes = [MakeTool("t1", 0, 0, "Node with tools"), MakeTool("t2", 330, 60, "Another node")];
         ToolFlow.Edges = [new Edge("t-e", "t1", "t2", MarkerEnd: EdgeMarker.ArrowClosed)];
     }
 
@@ -143,7 +143,7 @@ public partial class ExamplesWindow : Window
         data.DuplicateCommand = new RelayCommand(() =>
         {
             var source = ToolFlow.Nodes.First(n => n.Id == id);
-            var copy = MakeTool($"t{++_counter}", source.Position.X + 30, source.Position.Y + 110, title + " (copie)");
+            var copy = MakeTool($"t{++_counter}", source.Position.X + 30, source.Position.Y + 110, title + " (copy)");
             ToolFlow.Nodes = ToolFlow.Nodes.Append(copy with { FixedWidth = source.FixedWidth, FixedHeight = source.FixedHeight }).ToList();
         });
         return new Node(id, new XYPosition(x, y), "tool", data, FixedWidth: 200, FixedHeight: 90);
@@ -153,7 +153,7 @@ public partial class ExamplesWindow : Window
 
     private void BuildPalette()
     {
-        PaletteFlow.Nodes = [new Node("p0", new XYPosition(120, 120), "input", "Déjà là")];
+        PaletteFlow.Nodes = [new Node("p0", new XYPosition(120, 120), "input", "Already here")];
         PaletteFlow.Viewport = new Viewport(100, 80, 1);
         PaletteFlow.DropRequested += (_, e) =>
         {
@@ -243,7 +243,7 @@ public partial class ExamplesWindow : Window
         }
         catch (Exception ex) when (ex is System.Text.Json.JsonException or ArgumentException)
         {
-            MessageBox.Show(this, ex.Message, "JSON invalide");
+            MessageBox.Show(this, ex.Message, "Invalid JSON");
         }
     }
 
@@ -284,5 +284,5 @@ public partial class ExamplesWindow : Window
     }
 
     internal void UpdatePerfStatus() =>
-        PerfStatus.Text = $"{PerfFlow.Nodes.Count} nodes, {CountVisibleNodes()} rendus";
+        PerfStatus.Text = $"{PerfFlow.Nodes.Count} nodes, {CountVisibleNodes()} rendered";
 }

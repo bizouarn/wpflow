@@ -1,8 +1,8 @@
 @inject IJSRuntime Js
 
-@* L'anneau de solides du rendu, comme CubeField dans la démo WPF ; dessiné et animé par ring.js. *@
+@* The ring of solids of the render node, like CubeField in the WPF demo; drawn and animated by ring.js. *@
 <canvas @ref="_canvas" class="ring" role="img"
-        aria-label="@($"Anneau de {(Pyramids ? "pyramides" : "cubes")}")"></canvas>
+        aria-label="@($"Ring of {(Pyramids ? "pyramids" : "cubes")}")"></canvas>
 
 @code {
     private static readonly double[][] Solids = CreateSolids();

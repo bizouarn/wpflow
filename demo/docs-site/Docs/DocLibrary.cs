@@ -10,10 +10,10 @@ using Markdig.Syntax.Inlines;
 
 namespace DocsSite.Docs;
 
-/// <summary>Un titre de la page, pour la table des matières.</summary>
+/// <summary>A heading of the page, for the table of contents.</summary>
 public sealed record Heading(int Level, string Id, string Text);
 
-/// <summary>Un morceau de page : du HTML, puis éventuellement un exemple interactif à insérer après lui.</summary>
+/// <summary>A piece of a page: HTML, then optionally an interactive example to insert after it.</summary>
 public sealed record DocSegment(string Html, string? ExampleId);
 
 public sealed record DocPage(string File, string Route, string Title, IReadOnlyList<DocSegment> Segments,
@@ -22,16 +22,19 @@ public sealed record DocPage(string File, string Route, string Title, IReadOnlyL
 public sealed record NavGroup(string Title, IReadOnlyList<DocPage> Pages);
 
 /// <summary>
-///     La documentation du dépôt (<c>doc/**/*.md</c>, embarquée dans l'assembly) convertie en pages du site. Les liens
-///     relatifs deviennent des routes quand ils visent une page de <c>doc/</c>, et des liens vers GitHub sinon.
-///     Dans un fichier Markdown, la ligne <c>&lt;!-- exemple-blazor: id --&gt;</c> (invisible sur GitHub) insère
-///     l'exemple interactif <c>id</c> à cet endroit.
+///     The repository documentation (<c>doc/**/*.md</c>, embedded in the assembly) converted into site pages.
+///     Relative links become routes when they point to a page of <c>doc/</c>, and links to GitHub otherwise.
+///     In a Markdown file, the line <c>&lt;!-- exemple-blazor: id --&gt;</c> (invisible on GitHub) inserts the
+///     interactive example <c>id</c> at that place.
 /// </summary>
 public sealed partial class DocLibrary
 {
     public const string Repository = "https://github.com/bizouarn/wpflow";
     private const string Prefix = "repo/";
-    private const string Index = "doc/README.md";
+    // Folder of the documentation in the repository, and the route root under which the site serves it.
+    private const string Folder = "doc";
+    private const string Root = "doc";
+    private const string Index = Folder + "/README.md";
 
     private static readonly Assembly Assembly = typeof(DocLibrary).Assembly;
 
@@ -50,20 +53,21 @@ public sealed partial class DocLibrary
     private readonly Dictionary<string, DocPage> _pages = new(StringComparer.Ordinal);
     private IReadOnlyList<NavGroup>? _navigation;
 
-    /// <summary>La page d'une route (« doc », « doc/blazor », « doc/learn/05-edges »), ou <c>null</c>.</summary>
+    /// <summary>The page of a route (« doc », « doc/blazor », « doc/learn/05-edges »), or <c>null</c>.</summary>
     public DocPage? Find(string route)
     {
         route = route.Trim('/');
-        var file = _files.ContainsKey(route + ".md") ? route + ".md" : route + "/README.md";
+        var path = (route == Root ? Folder : Folder + route[Root.Length..]).TrimEnd('/');
+        var file = _files.ContainsKey(path + ".md") ? path + ".md" : path + "/README.md";
         return _files.ContainsKey(file) ? Load(file) : null;
     }
 
-    /// <summary>La page d'un fichier du dépôt (« doc/learn/05-edges.md »).</summary>
+    /// <summary>The page of a repository file (« doc/learn/05-edges.md »).</summary>
     public DocPage? FindFile(string file) => _files.ContainsKey(file) ? Load(file) : null;
 
     /// <summary>
-    ///     Le menu : un groupe par dossier, les pages dans l'ordre où <c>doc/README.md</c> les cite, les titres tirés du
-    ///     premier titre de chaque fichier. Une page ajoutée à <c>doc/</c> apparaît sans toucher au site.
+    ///     The menu: one group per folder, pages in the order in which <c>doc/README.md</c> cites them, titles taken
+    ///     from the first heading of each file. A page added to <c>doc/</c> appears without touching the site.
     /// </summary>
     public IReadOnlyList<NavGroup> Navigation => _navigation ??= BuildNavigation();
 
@@ -74,7 +78,7 @@ public sealed partial class DocLibrary
         int Rank(string file)
         {
             if (file == Index) return -1;
-            var at = index.IndexOf("](" + file["doc/".Length..], StringComparison.Ordinal);
+            var at = index.IndexOf("](" + file[(Folder.Length + 1)..], StringComparison.Ordinal);
             return at < 0 ? int.MaxValue : at;
         }
 
@@ -84,23 +88,25 @@ public sealed partial class DocLibrary
             .ToList();
 
         static bool InFolder(DocPage page, string folder) =>
-            page.File.StartsWith("doc/" + folder + "/", StringComparison.Ordinal);
+            page.File.StartsWith(Folder + "/" + folder + "/", StringComparison.Ordinal);
 
         NavGroup Group(string title, Func<DocPage, bool> filter) => new(title, pages.Where(filter).ToList());
 
         return new[]
         {
-            Group("Blazor", p => p.File == "doc/blazor.md"),
+            Group("Blazor", p => p.File == Folder + "/blazor.md"),
             Group("Guides", p => InFolder(p, "learn")),
-            Group("Référence de l'API", p => InFolder(p, "reference")),
-            Group("Autres pages", p => p.File != "doc/blazor.md" && !InFolder(p, "learn") && !InFolder(p, "reference"))
+            Group("API reference", p => InFolder(p, "reference")),
+            Group("Other pages", p => p.File != Folder + "/blazor.md" && !InFolder(p, "learn") && !InFolder(p, "reference"))
         }.Where(g => g.Pages.Count > 0).ToList();
     }
 
+    // « doc/learn/05-edges.md » -> « doc/learn/05-edges » ; « doc/README.md » -> « doc ».
     private static string RouteOf(string file)
     {
         var route = file[..^".md".Length];
-        return route.EndsWith("/README", StringComparison.Ordinal) ? route[..^"/README".Length] : route;
+        route = route.EndsWith("/README", StringComparison.Ordinal) ? route[..^"/README".Length] : route;
+        return Root + route[Folder.Length..];
     }
 
     private DocPage Load(string file)
@@ -204,6 +210,7 @@ public sealed partial class DocLibrary
         return reader.ReadToEnd();
     }
 
+    // The marker keeps its French name: it is written in the Markdown files.
     [GeneratedRegex(@"<!--\s*exemple-blazor:\s*([a-z0-9-]+)\s*-->")]
     private static partial Regex ExampleMarker();
 

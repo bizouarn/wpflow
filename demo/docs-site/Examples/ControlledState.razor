@@ -3,8 +3,8 @@
 
 <div class="ex">
     <div class="ex-toolbar">
-        <label><input type="checkbox" @bind="_protect" /> Refuser la suppression du node « Protégé »</label>
-        <button @onclick="Add">Ajouter un node</button>
+        <label><input type="checkbox" @bind="_protect" /> Refuse deleting the "Protected" node</label>
+        <button @onclick="Add">Add a node</button>
     </div>
     <div class="ex-split">
         <div class="ex-flow">
@@ -14,7 +14,7 @@
                 <FlowControls />
             </FlowView>
         </div>
-        <ol class="ex-log" aria-label="Changes reçus">
+        <ol class="ex-log" aria-label="Changes received">
             @foreach (var line in _log)
             {
                 <li>@line</li>
@@ -28,31 +28,31 @@
     private bool _protect = true;
     private int _next = 3;
     private string? _toShow;
-    private readonly List<string> _log = ["Déplacez, sélectionnez, supprimez (Suppr)."];
+    private readonly List<string> _log = ["Move, select, delete (Delete)."];
 
     private IReadOnlyList<Node> _nodes =
     [
-        new Node("1", new XYPosition(0, 0), "input", "Libre"),
-        new Node("2", new XYPosition(60, 140), "output", "Protégé")
+        new Node("1", new XYPosition(0, 0), "input", "Free"),
+        new Node("2", new XYPosition(60, 140), "output", "Protected")
     ];
 
     private IReadOnlyList<Edge> _edges = [new Edge("e1-2", "1", "2")];
 
     private void OnNodesChange(IReadOnlyList<NodeChange> changes)
     {
-        // L'application filtre ce qu'elle refuse, puis applique le reste avec Changes.Apply.
+        // The application filters what it refuses, then applies the rest with Changes.Apply.
         var accepted = changes.Where(c => !(_protect && c is NodeRemoveChange { Id: "2" })).ToList();
         foreach (var change in changes.Where(c => c is not NodeDimensionsChange))
-            Log((accepted.Contains(change) ? "" : "REFUSÉ : ") + Describe(change));
+            Log((accepted.Contains(change) ? "" : "REFUSED: ") + Describe(change));
         _nodes = Changes.Apply(accepted, _nodes);
     }
 
     private void OnEdgesChange(IReadOnlyList<EdgeChange> changes)
     {
-        // Le lien vers un node protégé reste, lui aussi.
+        // The link to a protected node stays too.
         var accepted = changes.Where(c => !(_protect && c is EdgeRemoveChange { Id: "e1-2" })).ToList();
         foreach (var change in changes)
-            Log((accepted.Contains(change) ? "" : "REFUSÉ : ") + Describe(change));
+            Log((accepted.Contains(change) ? "" : "REFUSED: ") + Describe(change));
         _edges = Changes.Apply(accepted, _edges);
     }
 
@@ -60,21 +60,21 @@
     {
         var edge = new Edge($"e{c.Source}-{c.Target}-{_edges.Count}", c.Source, c.Target, c.SourceHandle, c.TargetHandle);
         _edges = Changes.Apply([new EdgeAddChange(edge)], _edges);
-        Log($"Connexion {c.Source} → {c.Target}");
+        Log($"Connection {c.Source} → {c.Target}");
     }
 
     private Task Add()
     {
-        // Les ajouts se rangent à droite du graphe, par colonnes de trois : ils ne se superposent pas entre eux.
+        // Additions line up to the right of the graph, in columns of three: they do not overlap each other.
         var index = _next - 3;
         var position = new XYPosition(260 + 180 * (index / 3), 70 * (index % 3));
         var id = _next++.ToString();
         _toShow = id;
-        // ApplyNodeChanges injecte des changes : ils repassent par OnNodesChange.
+        // ApplyNodeChanges injects changes: they go through OnNodesChange again.
         return _flow!.ApplyNodeChanges([new NodeAddChange(new Node(id, position, Data: $"Node {id}"))]);
     }
 
-    // Recadre la vue sur le node ajouté, une fois qu'il est mesuré (FitView ignore les nodes sans dimensions).
+    // Frames the view on the added node once it is measured (FitView ignores nodes without dimensions).
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (_toShow is null || !_nodes.Any(n => n.Id == _toShow && n.Width != null)) return;
@@ -85,18 +85,18 @@
     private static string Describe(NodeChange change) => change switch
     {
         NodePositionChange c => $"position {c.Id} → ({c.Position.X:0} ; {c.Position.Y:0})",
-        NodeSelectChange c => $"sélection {c.Id} : {(c.Selected ? "oui" : "non")}",
-        NodeInteractionChange c => $"geste sur {c.Id}",
-        NodeAddChange c => $"ajout du node {c.Item.Id}",
-        NodeRemoveChange c => $"suppression du node {c.Id}",
+        NodeSelectChange c => $"selection {c.Id}: {(c.Selected ? "yes" : "no")}",
+        NodeInteractionChange c => $"gesture on {c.Id}",
+        NodeAddChange c => $"node added {c.Item.Id}",
+        NodeRemoveChange c => $"node removed {c.Id}",
         _ => change.GetType().Name
     };
 
     private static string Describe(EdgeChange change) => change switch
     {
-        EdgeSelectChange c => $"sélection du lien {c.Id} : {(c.Selected ? "oui" : "non")}",
-        EdgeAddChange c => $"ajout du lien {c.Item.Id}",
-        EdgeRemoveChange c => $"suppression du lien {c.Id}",
+        EdgeSelectChange c => $"link selection {c.Id}: {(c.Selected ? "yes" : "no")}",
+        EdgeAddChange c => $"link added {c.Item.Id}",
+        EdgeRemoveChange c => $"link removed {c.Id}",
         _ => change.GetType().Name
     };
 

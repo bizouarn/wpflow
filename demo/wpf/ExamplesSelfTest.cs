@@ -111,7 +111,7 @@ internal static class ExamplesSelfTest
 
         // Accessibilité : les peers existent et exposent nom + sélection.
         var peer = System.Windows.Automation.Peers.UIElementAutomationPeer.CreatePeerForElement(Host(f, "c1"));
-        Check("accessibilité: peer de node", peer is NodeHostAutomationPeer && peer.GetName().Contains("Enfant 1"), peer?.GetName() ?? "null");
+        Check("accessibilité: peer de node", peer is NodeHostAutomationPeer && peer.GetName().Contains("Child 1"), peer?.GetName() ?? "null");
         var flowPeer = System.Windows.Automation.Peers.UIElementAutomationPeer.CreatePeerForElement(f);
         Check("accessibilité: peer de la surface", flowPeer is FlowViewAutomationPeer, flowPeer?.GetClassName() ?? "null");
 
@@ -138,7 +138,7 @@ internal static class ExamplesSelfTest
         Check("resizer: visible quand le node est sélectionné", resizer.Visibility == Visibility.Visible);
         await Shot("tools");
 
-        var dup = Find<Button>(t1).First(b => (string)b.Content == "Dupliquer");
+        var dup = Find<Button>(t1).First(b => (string)b.Content == "Duplicate");
         await Click(Screen(dup, new Point(dup.ActualWidth / 2, dup.ActualHeight / 2)));
         await Task.Delay(400);
         Check("toolbar: le bouton Dupliquer agit", f.Nodes.Count == 3, $"{f.Nodes.Count} nodes");
@@ -693,17 +693,17 @@ internal static class ExamplesSelfTest
             Math.Abs(first.X - (x0 + 90 / f.Viewport.Zoom)) < 1.5 && Math.Abs(first.Y - (y0 + 40 / f.Viewport.Zoom)) < 1.5,
             $"({x0},{y0}) -> ({first.X:0.0},{first.Y:0.0}), zoom {f.Viewport.Zoom:0.00}, départ écran {start}");
         Check("mvvm: le node glissé apparaît dans SelectedNodes (ObservableCollection du ViewModel)",
-            vm.Selection.Count == 1 && ReferenceEquals(vm.Selection[0], first) && vm.Summary.Contains("1 sélectionné"), vm.Summary);
+            vm.Selection.Count == 1 && ReferenceEquals(vm.Selection[0], first) && vm.Summary.Contains("1 selected"), vm.Summary);
 
         // Commandes de clic : elles reçoivent le ViewModel, ou la position flow pour le fond.
         await Click(Screen(Host(f, "2"), new Point(4, 4)));
-        Check("mvvm: NodeClickCommand reçoit le ViewModel cliqué", vm.Hint.Contains("Binder NodesSource"), vm.Hint);
+        Check("mvvm: NodeClickCommand reçoit le ViewModel cliqué", vm.Hint.Contains("Bind NodesSource"), vm.Hint);
         await Click(Screen(f, new Point(f.ActualWidth - 60, 60)));
-        Check("mvvm: PaneClickCommand reçoit la position flow du clic sur le fond", vm.Hint.Contains("clic sur le fond"), vm.Hint);
+        Check("mvvm: PaneClickCommand reçoit la position flow du clic sur le fond", vm.Hint.Contains("background click"), vm.Hint);
         var host3 = Host(f, "3");
         var grab = Screen(host3, new Point(4, 4));
         await Drag(grab, (grab.X + 30, grab.Y + 20));
-        Check("mvvm: NodeDragStopCommand est appelée à la fin du déplacement", vm.Hint.Contains("déplacé"), vm.Hint);
+        Check("mvvm: NodeDragStopCommand est appelée à la fin du déplacement", vm.Hint.Contains("moved"), vm.Hint);
 
 
         // ViewModel -> vue : commande « Replacer », puis changement de titre.
@@ -763,7 +763,7 @@ internal static class ExamplesSelfTest
             return Task.CompletedTask;
         });
         Check("mvvm: IsConnecting est vrai pendant le tracé, faux ensuite", connecting && !f.IsConnecting);
-        Check("mvvm: ConnectCommand ajoute le lien (et la vue n'en crée pas en double)", vm.Links.Count == linksBefore + 1 && f.Edges.Count == linksBefore + 1 && vm.Hint.Contains("lien 3"),
+        Check("mvvm: ConnectCommand ajoute le lien (et la vue n'en crée pas en double)", vm.Links.Count == linksBefore + 1 && f.Edges.Count == linksBefore + 1 && vm.Hint.Contains("link 3"),
             $"{vm.Links.Count} liens, {vm.Hint}");
 
         Check("mvvm: la commande routée Annuler est disponible", FlowCommands.Undo.CanExecute(null, f) && f.CanUndo);

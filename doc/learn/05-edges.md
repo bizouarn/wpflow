@@ -1,47 +1,47 @@
 # 5. Edges
 
-*Équivalent React Flow : Custom Edges, Edge Labels, Markers, Reconnecting Edges.*
+*React Flow equivalent: Custom Edges, Edge Labels, Markers, Reconnecting Edges.*
 
-## Types d'edges
+## Edge types
 
-| `Edge.Type` | Tracé | Chemin Core |
+| `Edge.Type` | Path | Core path |
 |---|---|---|
-| `default` | Courbe de Bézier | `EdgePaths.Bezier` |
-| `straight` | Ligne droite | `EdgePaths.Straight` |
-| `step` | Angles droits | `EdgePaths.Step` |
-| `smoothstep` | Angles droits arrondis (rayon 5) | `EdgePaths.SmoothStep` |
+| `default` | Bézier curve | `EdgePaths.Bezier` |
+| `straight` | Straight line | `EdgePaths.Straight` |
+| `step` | Right angles | `EdgePaths.Step` |
+| `smoothstep` | Rounded right angles (radius 5) | `EdgePaths.SmoothStep` |
 
 ```csharp
 new Edge("e1", "a", "b", Type: "smoothstep")
 ```
 
-Le tracé tient compte du côté de chaque handle (`Left`, `Right`, `Top`, `Bottom`) : un edge qui part du bas d'un node et arrive à gauche d'un autre contourne correctement.
+The path takes into account the side of each handle (`Left`, `Right`, `Top`, `Bottom`): an edge that leaves the bottom of one node and arrives at the left of another is routed correctly.
 
-## Handles précis
+## Precise handles
 
-Quand un node a plusieurs handles, désignez-les par leur `HandleId` :
+When a node has several handles, refer to them by their `HandleId`:
 
 ```csharp
-new Edge("e", "source", "cible", SourceHandle: "sortie-1", TargetHandle: "entrée-2")
+new Edge("e", "source", "target", SourceHandle: "output-1", TargetHandle: "input-2")
 ```
 
-Sans identifiant, c'est le premier handle du bon type du node qui est utilisé.
+Without an identifier, the first handle of the right type on the node is used.
 
-## Animation, marqueurs, label
+## Animation, markers, label
 
 ```csharp
 new Edge("e", "a", "b",
-    Animated: true,                              // pointillés qui défilent
-    MarkerEnd: EdgeMarker.ArrowClosed,           // flèche pleine côté cible
-    MarkerStart: EdgeMarker.Arrow,               // flèche ouverte côté source
-    Label: "valide")
+    Animated: true,                              // dashes that move along the path
+    MarkerEnd: EdgeMarker.ArrowClosed,           // filled arrow on the target side
+    MarkerStart: EdgeMarker.Arrow,               // open arrow on the source side
+    Label: "valid")
 ```
 
-La flèche pointe toujours vers le node, quel que soit le côté du handle.
+The arrow always points towards the node, whatever the side of the handle.
 
-## Contenu libre dans un label (équivalent d'`EdgeLabelRenderer`)
+## Free content in a label (equivalent of `EdgeLabelRenderer`)
 
-Définissez un `DataTemplate` dont le `DataContext` est l'`Edge` et affectez-le à `EdgeLabelTemplate` :
+Define a `DataTemplate` whose `DataContext` is the `Edge` and assign it to `EdgeLabelTemplate`:
 
 ```xml
 <DataTemplate x:Key="PillLabel">
@@ -58,35 +58,35 @@ Définissez un `DataTemplate` dont le `DataContext` est l'`Edge` et affectez-le 
 <flow:FlowView EdgeLabelTemplate="{StaticResource PillLabel}" … />
 ```
 
-Le modèle est appliqué à **tous** les edges (masquez-le avec un `DataTrigger` quand il n'y a pas de label, comme ci-dessus). Le contenu est centré sur le milieu du tracé (`EdgePath.LabelX/LabelY`).
+The template is applied to **all** edges (hide it with a `DataTrigger` when there is no label, as above). The content is centred on the middle of the path (`EdgePath.LabelX/LabelY`).
 
-## Style des edges
+## Edge style
 
-| Propriété de `FlowView` | Effet |
+| `FlowView` property | Effect |
 |---|---|
-| `EdgeStroke` | Couleur (sinon `Flow.Edge` du thème) |
-| `EdgeStrokeThickness` | Épaisseur (1 par défaut) |
+| `EdgeStroke` | Colour (otherwise `Flow.Edge` from the theme) |
+| `EdgeStrokeThickness` | Thickness (1 by default) |
 
-Un edge sélectionné utilise `Flow.EdgeSelected`.
+A selected edge uses `Flow.EdgeSelected`.
 
-## Reconnecter un edge
+## Reconnecting an edge
 
-Attrapez un edge **près d'une de ses extrémités** (à moins de 24 px) et déposez-le sur un autre handle : l'edge garde son `Id`, seules ses extrémités changent (`EdgeReplaceChange`). La reconnexion respecte `ConnectionMode`, `IsValidConnection` et refuse de créer un doublon.
+Grab an edge **near one of its ends** (within 24 px) and drop it on another handle: the edge keeps its `Id`, only its ends change (`EdgeReplaceChange`). Reconnection respects `ConnectionMode` and `IsValidConnection`, and refuses to create a duplicate.
 
-## Tracer vous-même
+## Drawing it yourself
 
-Les chemins sont des chaînes au format SVG, directement utilisables en WPF :
+Paths are strings in SVG format, directly usable in WPF:
 
 ```csharp
 EdgePath path = EdgePaths.SmoothStep(source, Position.Right, target, Position.Left, borderRadius: 10, offset: 30);
 var geometry = Geometry.Parse(path.Path);
-// path.LabelX, path.LabelY : centre du tracé ; path.OffsetX/OffsetY : distance depuis la source
+// path.LabelX, path.LabelY: centre of the path; path.OffsetX/OffsetY: distance from the source
 ```
 
-Ces fonctions sont un port de `getBezierPath` / `getSmoothStepPath` de `@xyflow/system`, comparées au code source de la bibliothèque. Voir la [référence](../reference/utils.md#edgepaths).
+These functions are a port of `getBezierPath` / `getSmoothStepPath` from `@xyflow/system`, checked against the library's source code. See the [reference](../reference/utils.md#edgepaths).
 
-## Limites actuelles
+## Current limitations
 
-Pour un type d'edge à vous (tracé, rendu, marqueurs), voir [Personnaliser](14-customization.md).
+For a custom edge type of your own (path, rendering, markers), see [Customization](14-customization.md).
 
-Suivant : [Sous-flows et groupes](06-sub-flows.md).
+Next: [Sub-flows and groups](06-sub-flows.md).

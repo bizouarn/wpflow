@@ -1,18 +1,18 @@
 # Wpflow.Blazor
 
-La version Blazor de Wpflow : le même éditeur de graphes que la version WPF, rendu en HTML/SVG, au-dessus du noyau `Wpflow.Core` (modèle immuable, changes, chemins d'edges, viewport, connexions, JSON). Les noms suivent React Flow et la version WPF ; chaque page de ce dossier s'applique aussi ici pour les concepts (`Node`, `Edge`, changes, handles…).
+The Blazor version of Wpflow: the same graph editor as the WPF version, rendered in HTML/SVG, on top of the `Wpflow.Core` core (immutable model, changes, edge paths, viewport, connections, JSON). Names follow React Flow and the WPF version; each page of this folder also applies here for the concepts (`Node`, `Edge`, changes, handles…).
 
 ## Installation
 
-Référencez le projet `Wpflow.Blazor` (ou le paquet NuGet du même nom) puis ajoutez la feuille de style dans la page hôte (`App.razor`, `index.html`…) :
+Reference the `Wpflow.Blazor` project (or the NuGet package of the same name), then add the stylesheet to the host page (`App.razor`, `index.html`…):
 
 ```html
 <link rel="stylesheet" href="_content/Wpflow.Blazor/wpflow.css" />
 ```
 
-Le script du pont JS (`_content/Wpflow.Blazor/wpflow.js`) est chargé par le composant lui-même.
+The JS bridge script (`_content/Wpflow.Blazor/wpflow.js`) is loaded by the component itself.
 
-## Premier graphe
+## First graph
 
 ```razor
 @using Wpflow.Blazor
@@ -28,27 +28,27 @@ Le script du pont JS (`_content/Wpflow.Blazor/wpflow.js`) est chargé par le com
 @code {
     private IReadOnlyList<Node> _nodes =
     [
-        new Node("1", new XYPosition(0, 0), "input", "Entrée"),
-        new Node("2", new XYPosition(0, 120), "output", "Sortie")
+        new Node("1", new XYPosition(0, 0), "input", "Input"),
+        new Node("2", new XYPosition(0, 120), "output", "Output")
     ];
 
     private IReadOnlyList<Edge> _edges = [new Edge("e1-2", "1", "2", Animated: true, MarkerEnd: EdgeMarker.ArrowClosed)];
 }
 ```
 
-Le conteneur doit avoir une hauteur (la vue remplit son parent). `@bind-Nodes` / `@bind-Edges` / `@bind-Viewport` publient l'état après chaque interaction.
+The container must have a height (the view fills its parent). `@bind-Nodes` / `@bind-Edges` / `@bind-Viewport` publish the state after each interaction.
 
 <!-- exemple-blazor: premier-graphe -->
 
-## État : les changes
+## State: the changes
 
-Comme dans React Flow, une interaction ne modifie jamais les listes : elle produit des `NodeChange` / `EdgeChange`, publiés par `OnNodesChange` / `OnEdgesChange` puis appliqués (`AutoApplyChanges`, vrai par défaut) avec `Changes.Apply`. Avec `AutoApplyChanges="false"` (mode contrôlé), vous appliquez les changes vous-même. Une connexion lève alors seulement `OnConnect`, comme en WPF : créez-y l'edge. `ApplyNodeChanges` / `ApplyEdgeChanges` permettent d'en injecter.
+As in React Flow, an interaction never modifies the lists: it produces `NodeChange` / `EdgeChange` values, published by `OnNodesChange` / `OnEdgesChange` and then applied (`AutoApplyChanges`, true by default) with `Changes.Apply`. With `AutoApplyChanges="false"` (controlled mode), you apply the changes yourself. A connection then only raises `OnConnect`, as in WPF: create the edge there. `ApplyNodeChanges` / `ApplyEdgeChanges` allow you to inject some.
 
 <!-- exemple-blazor: etat-controle -->
 
-## Contenu des nodes
+## Node content
 
-Types intégrés : `input`, `output`, `default`, `group` (`<FlowDefaultNode Node="n" />`). Pour du contenu propre, un modèle par type (`NodeTemplates`) ou un modèle unique (`NodeTemplate`) :
+Built-in types: `input`, `output`, `default`, `group` (`<FlowDefaultNode Node="n" />`). For custom content, one template per type (`NodeTemplates`) or a single template (`NodeTemplate`):
 
 ```razor
 <FlowView @bind-Nodes="_nodes" @bind-Edges="_edges" NodeTemplates="_templates" />
@@ -66,56 +66,56 @@ Types intégrés : `input`, `output`, `default`, `group` (`<FlowDefaultNode Node
 }
 ```
 
-Les contrôles HTML (`input`, `button`, `select`…) et tout élément de classe `nodrag` ne font pas glisser le node ; `nopan` empêche le défilement de la vue, `nowheel` laisse la molette à l'élément. `Node.DragHandle` restreint le glisser à un sélecteur CSS (`.poignee`).
+HTML controls (`input`, `button`, `select`…) and any element with the `nodrag` class do not drag the node; `nopan` prevents the view from panning, `nowheel` leaves the mouse wheel to the element. `Node.DragHandle` restricts dragging to a CSS selector (`.grip`).
 
 <!-- exemple-blazor: nodes-personnalises -->
 
 ## FlowView
 
-### Données et état
+### Data and state
 
-| Paramètre | Défaut | Description |
+| Parameter | Default | Description |
 |---|---|---|
-| `Nodes`, `Edges`, `Viewport` (+ `…Changed`) | | Données et vue, liables. |
-| `AutoApplyChanges` | vrai | Faux : mode contrôlé. |
-| `IsLocked` (+ `IsLockedChanged`) | faux | Plus de glisser, connexion ni sélection (cadenas des contrôles). |
-| `HistoryEnabled`, `HistoryLimit` | vrai, 100 | Annuler / rétablir (Ctrl+Z, Ctrl+Y). Sans effet en mode contrôlé : l'historique appartient à l'application. |
-| `NodesSource`, `EdgesSource`… | | Voir [MVVM](#mvvm). |
-| `Debug` | faux | Journalise les changes dans la console. |
+| `Nodes`, `Edges`, `Viewport` (+ `…Changed`) | | Data and view, bindable. |
+| `AutoApplyChanges` | true | False: controlled mode. |
+| `IsLocked` (+ `IsLockedChanged`) | false | No dragging, connecting or selecting (padlock of the controls). |
+| `HistoryEnabled`, `HistoryLimit` | true, 100 | Undo / redo (Ctrl+Z, Ctrl+Y). No effect in controlled mode: the history belongs to the application. |
+| `NodesSource`, `EdgesSource`… | | See [MVVM](#mvvm). |
+| `Debug` | false | Logs the changes to the console. |
 
 ### Viewport
 
-`MinZoom` (0,5), `MaxZoom` (2), `FitViewOnInit`, `FitViewPadding`, `FitViewOptions`, `TranslateExtent`, `NodeExtent`, `NodeOrigin`, `SnapGrid` (pas d'aimantation, `null` = aucune), `OnlyRenderVisibleElements` (virtualisation : nodes et edges hors de la vue ne sont pas rendus ; avec `FitViewOnInit`, après le premier cadrage, sinon dès que la taille de la vue est connue).
+`MinZoom` (0.5), `MaxZoom` (2), `FitViewOnInit`, `FitViewPadding`, `FitViewOptions`, `TranslateExtent`, `NodeExtent`, `NodeOrigin`, `SnapGrid` (snapping step, `null` = none), `OnlyRenderVisibleElements` (virtualisation: nodes and edges outside the view are not rendered; with `FitViewOnInit`, after the first fit, otherwise as soon as the size of the view is known).
 
 ### Interactions
 
 `PanOnDrag`, `PanOnDragButtons` (`[0, 1]`), `PanOnScroll`, `PanOnScrollSpeed`, `PanOnScrollMode`, `ZoomOnScroll`, `ZoomOnPinch`, `ZoomOnDoubleClick`, `PreventScrolling`, `NodesDraggable`, `NodesConnectable`, `ElementsSelectable`, `EdgesReconnectable`, `SelectNodesOnDrag`, `SelectionOnDrag`, `SelectionMode` (`Partial` / `Full`), `SelectionKey` (`Shift`), `MultiSelectionKey` (`Control`), `PanActivationKey` (`Space`), `ZoomActivationKey` (`Control`), `DeleteKeys`, `DeleteKeyEnabled`, `NodeDragThreshold`, `ConnectionDragThreshold`, `PaneDragThreshold`, `AutoPanOnNodeDrag`, `AutoPanOnConnect`, `AutoPanOnSelection`, `AutoPanOnNodeFocus`, `AutoPanSpeed`, `EdgeHitWidth`, `ElevateNodesOnSelect`, `ElevateEdgesOnSelect`, `ZIndexMode`.
 
-Clavier : Suppr / Retour arrière supprime, Ctrl+A tout sélectionner, Ctrl+C / X / V presse-papier (copies décalées de 20 px), Ctrl+Z / Ctrl+Y historique, flèches déplacent la sélection (Maj : ×4, `SnapGrid` sinon 5 px), Échap efface la sélection ou annule une connexion par clics, Entrée / Espace sélectionne le node ayant le focus, Espace + glisser fait défiler la vue. Tactile : pincement à deux doigts.
+Keyboard: Delete / Backspace deletes, Ctrl+A selects everything, Ctrl+C / X / V clipboard (copies offset by 20 px), Ctrl+Z / Ctrl+Y history, arrow keys move the selection (Shift: ×4, `SnapGrid` otherwise 5 px), Escape clears the selection or cancels a click-based connection, Enter / Space selects the node that has focus, Space + drag scrolls the view. Touch: two-finger pinch.
 
-### Connexions
+### Connections
 
-`ConnectionMode` (`Strict` / `Loose`), `IsValidConnection`, `ConnectionRadius` (20 px), `ReconnectRadius` (24 px), `ConnectOnClick` (clic sur un handle puis sur un autre), `ConnectionLineType`, `ConnectionLineTemplate` (reçoit l'état de la connexion, avec le tracé du fil dans `Path`), `AutoConnect` (ajoute l'edge), `DefaultEdgeType`, `DefaultEdgeOptions` (`edge => edge with { Animated = true }`). Reconnexion : tirez l'extrémité d'un edge vers un autre handle (relâcher dans le vide la laisse en place) ; un simple clic près d'une extrémité reste un clic sur l'edge. Comme en WPF, elle lève `OnConnectStart` (`IsReconnection`), `OnReconnectStart`, puis `OnReconnect` si elle aboutit, `OnReconnectEnd` et `OnConnectEnd`. `FlowHandle` : `Type`, `Position`, `HandleId`, `Offset`, `IsConnectable`, `IsConnectableStart`, `IsConnectableEnd`, `IsValidConnection`, `OnConnected`. `CurrentConnection` expose la connexion en cours (`useConnection`).
+`ConnectionMode` (`Strict` / `Loose`), `IsValidConnection`, `ConnectionRadius` (20 px), `ReconnectRadius` (24 px), `ConnectOnClick` (click on a handle, then on another), `ConnectionLineType`, `ConnectionLineTemplate` (receives the connection state, with the wire path in `Path`), `AutoConnect` (adds the edge), `DefaultEdgeType`, `DefaultEdgeOptions` (`edge => edge with { Animated = true }`). Reconnection: drag the end of an edge onto another handle (releasing in empty space leaves it in place); a simple click near an end remains a click on the edge. As in WPF, it raises `OnConnectStart` (`IsReconnection`), `OnReconnectStart`, then `OnReconnect` if it succeeds, `OnReconnectEnd` and `OnConnectEnd`. `FlowHandle`: `Type`, `Position`, `HandleId`, `Offset`, `IsConnectable`, `IsConnectableStart`, `IsConnectableEnd`, `IsValidConnection`, `OnConnected`. `CurrentConnection` exposes the connection in progress (`useConnection`).
 
 <!-- exemple-blazor: connexions -->
 
-### Rendu
+### Rendering
 
-`ShowBackground`, `BackgroundVariant` (`Dots`, `Lines`, `Cross`), `BackgroundGap`, `BackgroundSize`, `BackgroundLineWidth`, `BackgroundColor`, `BackgroundOffset`, `AdditionalBackgrounds` (liste de `BackgroundLayer`), `Dark` (ou les variables CSS `--wf-*`), `DefaultMarkerColor`, `NodeTemplate(s)`, `EdgeTypes` (un `IEdgePathProvider` par type ; il reçoit l'edge tracé dans `EdgeGeometry.Edge`, par exemple pour qu'un seul type de lien ERD varie selon `Edge.Data`), `EdgeTemplates` (dessin complet d'un type d'edge), `EdgeLabelTemplate`, `MarkerTemplates` (marqueur SVG personnalisé, `Edge.MarkerEndKey`).
+`ShowBackground`, `BackgroundVariant` (`Dots`, `Lines`, `Cross`), `BackgroundGap`, `BackgroundSize`, `BackgroundLineWidth`, `BackgroundColor`, `BackgroundOffset`, `AdditionalBackgrounds` (list of `BackgroundLayer`), `Dark` (or the `--wf-*` CSS variables), `DefaultMarkerColor`, `NodeTemplate(s)`, `EdgeTypes` (one `IEdgePathProvider` per type; it receives the edge being drawn in `EdgeGeometry.Edge`, for example so that a single ERD link type varies according to `Edge.Data`), `EdgeTemplates` (full drawing of an edge type), `EdgeLabelTemplate`, `MarkerTemplates` (custom SVG marker, `Edge.MarkerEndKey`).
 
-### Accessibilité
+### Accessibility
 
-`NodesFocusable`, `EdgesFocusable`, `DisableKeyboardA11y`, `AnnounceSelection` (région `aria-live`), `NodeAriaLabelProvider`, `EdgeAriaLabelProvider`, rôles et `aria-selected` sur nodes et edges.
+`NodesFocusable`, `EdgesFocusable`, `DisableKeyboardA11y`, `AnnounceSelection` (`aria-live` region), `NodeAriaLabelProvider`, `EdgeAriaLabelProvider`, roles and `aria-selected` on nodes and edges.
 
-### Évènements
+### Events
 
-`OnNodesChange`, `OnEdgesChange`, `OnConnect`, `OnConnectStart`, `OnConnectEnd`, `OnClickConnectStart`, `OnClickConnectEnd`, `OnReconnectStart`, `OnReconnect`, `OnReconnectEnd`, `OnNodeClick`, `OnNodeDoubleClick`, `OnNodeContextMenu`, `OnNodeMouseEnter`, `OnNodeMouseLeave`, `OnEdgeClick`, `OnEdgeDoubleClick`, `OnEdgeContextMenu`, `OnEdgeMouseEnter`, `OnEdgeMouseLeave`, `OnPaneClick`, `OnPaneContextMenu`, `OnPaneMouseEnter`, `OnPaneMouseLeave`, `OnPaneMouseMove`, `OnNodeMouseMove`, `OnEdgeMouseMove`, `OnPaneScroll`, `OnStateChange`, `OnSelectionContextMenu`, `OnNodeDragStart`, `OnNodeDrag`, `OnNodeDragStop`, `OnSelectionDragStart`, `OnSelectionDrag`, `OnSelectionDragStop`, `OnSelectionStart`, `OnSelectionEnd`, `OnSelectionChange`, `OnMoveStart`, `OnMove`, `OnMoveEnd`, `OnInit`, `OnNodesInitialized`, `OnError`, `OnDrop` (glisser-déposer depuis une palette, position en coordonnées flow), `OnBeforeDelete` (renvoyer faux annule), `OnDelete`. Les écouteurs de survol et de menu contextuel ne sont attachés que si un gestionnaire est fourni.
+`OnNodesChange`, `OnEdgesChange`, `OnConnect`, `OnConnectStart`, `OnConnectEnd`, `OnClickConnectStart`, `OnClickConnectEnd`, `OnReconnectStart`, `OnReconnect`, `OnReconnectEnd`, `OnNodeClick`, `OnNodeDoubleClick`, `OnNodeContextMenu`, `OnNodeMouseEnter`, `OnNodeMouseLeave`, `OnEdgeClick`, `OnEdgeDoubleClick`, `OnEdgeContextMenu`, `OnEdgeMouseEnter`, `OnEdgeMouseLeave`, `OnPaneClick`, `OnPaneContextMenu`, `OnPaneMouseEnter`, `OnPaneMouseLeave`, `OnPaneMouseMove`, `OnNodeMouseMove`, `OnEdgeMouseMove`, `OnPaneScroll`, `OnStateChange`, `OnSelectionContextMenu`, `OnNodeDragStart`, `OnNodeDrag`, `OnNodeDragStop`, `OnSelectionDragStart`, `OnSelectionDrag`, `OnSelectionDragStop`, `OnSelectionStart`, `OnSelectionEnd`, `OnSelectionChange`, `OnMoveStart`, `OnMove`, `OnMoveEnd`, `OnInit`, `OnNodesInitialized`, `OnError`, `OnDrop` (drag and drop from a palette, position in flow coordinates), `OnBeforeDelete` (returning false cancels), `OnDelete`. Hover and context-menu listeners are only attached if a handler is provided.
 
-Comme en WPF, un double-clic donne **clic, double-clic, clic**, et un clic droit sur une sélection lève `OnSelectionContextMenu` puis `OnNodeContextMenu`. Le second clic est retenu jusqu'au double-clic du navigateur (au plus 500 ms, si un élément de votre modèle l'arrête) ; les deux arrivent alors dans le même traitement.
+As in WPF, a double click gives **click, double click, click**, and a right click on a selection raises `OnSelectionContextMenu` then `OnNodeContextMenu`. The second click is held until the browser's double click (at most 500 ms, if an element of your model stops it); both then arrive in the same handler.
 
-#### Savoir quel élément du node a été cliqué
+#### Knowing which element of the node was clicked
 
-Pour `OnNodeClick`, `OnNodeDoubleClick` et `OnNodeContextMenu`, `NodeEventArgs.TargetData` contient les attributs `data-*` de l'élément pressé et de ses parents à l'intérieur du node (le plus proche l'emporte), sans le préfixe `data-` :
+For `OnNodeClick`, `OnNodeDoubleClick` and `OnNodeContextMenu`, `NodeEventArgs.TargetData` contains the `data-*` attributes of the pressed element and of its parents inside the node (the closest one wins), without the `data-` prefix:
 
 ```razor
 @foreach (var column in table.Columns)
@@ -131,36 +131,36 @@ void OnDoubleClick(NodeEventArgs e)
 }
 ```
 
-L'élément retenu est celui sous le pointeur à l'appui. Le dictionnaire est vide au survol et si aucun élément ne porte d'attribut. Le node lui-même est exclu. Un clic sur un contrôle HTML (`button`, `input`, `select`, `textarea`, `a`) ne lève pas `OnNodeClick` : utilisez son propre `@onclick`.
+The retained element is the one under the pointer at press time. The dictionary is empty on hover and if no element carries an attribute. The node itself is excluded. A click on an HTML control (`button`, `input`, `select`, `textarea`, `a`) does not raise `OnNodeClick`: use its own `@onclick`.
 
-### Méthodes (`@ref`)
+### Methods (`@ref`)
 
-Viewport : `SetViewport(viewport, duration)`, `SetCenter`, `FitBounds`, `FitView(options)`, `ZoomTo`, `ZoomIn`, `ZoomOut`, `ZoomBy` (toutes animables avec une `duration`). Requêtes : `GetNode`, `GetEdge`, `GetInternalNode`, `GetIntersectingNodes`, `IsNodeIntersecting`, `GetNodeConnections`, `GetIncomers`, `GetOutgoers`, `GetNodesBounds`, `SelectedNodes`, `SelectedEdges`. Édition : `AddNodes`, `AddEdges`, `UpdateNode`, `UpdateNodeData`, `UpdateEdge`, `UpdateEdgeData`, `DeleteElements`, `DeleteSelected`, `SelectAll`, `ClearSelection`, `Copy`, `Cut`, `Paste`, `Undo`, `Redo`, `CanUndo`, `CanRedo`, `ClearHistory`, `SetLocked`. États : `NodesInitialized`, `CanPaste`, `IsViewportAnimating`, `IsConnecting`, `Zoom`, `AbsoluteNodes`. Conversion : `ScreenToFlow`, `FlowToScreen`, `ClientToFlow`. Sauvegarde : `ToJson()` / `LoadJson(json)` (format React Flow, voir [Sauvegarde et JSON](learn/12-serialization.md)), `SaveImage("graphe.png")` (télécharge le rendu réel en PNG ou SVG : nodes à contenu personnalisé, styles et thème ; `vector: true` pour le dessin simplifié), `ExportSvg()` (le dessin simplifié : rectangles et texte).
+Viewport: `SetViewport(viewport, duration)`, `SetCenter`, `FitBounds`, `FitView(options)`, `ZoomTo`, `ZoomIn`, `ZoomOut`, `ZoomBy` (all animatable with a `duration`). Queries: `GetNode`, `GetEdge`, `GetInternalNode`, `GetIntersectingNodes`, `IsNodeIntersecting`, `GetNodeConnections`, `GetIncomers`, `GetOutgoers`, `GetNodesBounds`, `SelectedNodes`, `SelectedEdges`. Editing: `AddNodes`, `AddEdges`, `UpdateNode`, `UpdateNodeData`, `UpdateEdge`, `UpdateEdgeData`, `DeleteElements`, `DeleteSelected`, `SelectAll`, `ClearSelection`, `Copy`, `Cut`, `Paste`, `Undo`, `Redo`, `CanUndo`, `CanRedo`, `ClearHistory`, `SetLocked`. States: `NodesInitialized`, `CanPaste`, `IsViewportAnimating`, `IsConnecting`, `Zoom`, `AbsoluteNodes`. Conversion: `ScreenToFlow`, `FlowToScreen`, `ClientToFlow`. Saving: `ToJson()` / `LoadJson(json)` (React Flow format, see [Saving and JSON](learn/12-serialization.md)), `SaveImage("graph.png")` (downloads the real rendering as PNG or SVG: nodes with custom content, styles and theme; `vector: true` for the simplified drawing), `ExportSvg()` (the simplified drawing: rectangles and text).
 
-## Composants
+## Components
 
-| Composant | Rôle |
+| Component | Role |
 |---|---|
-| `FlowHandle` | Point de connexion, à placer dans un modèle de node. |
-| `FlowDefaultNode` | Nodes intégrés (`input`, `output`, `default`, `group`). |
-| `FlowControls` | Zoom +/−, cadrage, verrou ; `ShowZoom`, `ShowFitView`, `ShowInteractive`, `Horizontal`, `PanelPosition`, `ExtraContent`, `AnimationDuration`, `FitViewOptions`, `OnZoomIn/Out`, `OnFitView`, `OnInteractiveChange`. |
-| `FlowMiniMap` | Vue d'ensemble ; `Width`, `Height`, `PanelPosition`, `NodeColor`, `NodeStrokeColor`, `NodeStrokeWidth`, `NodeBorderRadius`, `MaskColor`, `Pannable`, `Zoomable`, `InversePan`, `ZoomStep`, `OnNodeClick`. |
-| `FlowPanel` | Ancre son contenu à l'une des 8 positions (`PanelPosition`). |
-| `NodeResizer`, `NodeResizeControl` | Poignées de redimensionnement (4 coins, 4 côtés) ou poignée libre ; `NodeMinWidth/Height`, `NodeMaxWidth/Height`, `KeepAspectRatio`, `ShowResizer`, `AutoScale`, `Variant`, `ShouldResize`, `OnResizeStart`, `OnResize`, `OnResizeEnd`, `Accent`. |
-| `NodeRotator` | Poignée de rotation (`Node.Rotation`, Maj = pas de `SnapAngle`). |
-| `NodeToolbar` | Barre d'outils du node sélectionné ; `ToolbarPosition`, `Offset`, `Align`, `IsToolbarVisible`. |
-| `EdgeToolbar` | Barre d'outils d'un edge sélectionné, dans `EdgeLabelTemplate`. |
-| `SelectionToolbar` | Barre d'outils d'une sélection multiple ; `MinSelected`, `Offset`, `NodeIds`, `IsToolbarVisible`. |
+| `FlowHandle` | Connection point, to place in a node template. |
+| `FlowDefaultNode` | Built-in nodes (`input`, `output`, `default`, `group`). |
+| `FlowControls` | Zoom +/−, fit, lock; `ShowZoom`, `ShowFitView`, `ShowInteractive`, `Horizontal`, `PanelPosition`, `ExtraContent`, `AnimationDuration`, `FitViewOptions`, `OnZoomIn/Out`, `OnFitView`, `OnInteractiveChange`. |
+| `FlowMiniMap` | Overview; `Width`, `Height`, `PanelPosition`, `NodeColor`, `NodeStrokeColor`, `NodeStrokeWidth`, `NodeBorderRadius`, `MaskColor`, `Pannable`, `Zoomable`, `InversePan`, `ZoomStep`, `OnNodeClick`. |
+| `FlowPanel` | Anchors its content to one of the 8 positions (`PanelPosition`). |
+| `NodeResizer`, `NodeResizeControl` | Resize handles (4 corners, 4 sides) or a free handle; `NodeMinWidth/Height`, `NodeMaxWidth/Height`, `KeepAspectRatio`, `ShowResizer`, `AutoScale`, `Variant`, `ShouldResize`, `OnResizeStart`, `OnResize`, `OnResizeEnd`, `Accent`. |
+| `NodeRotator` | Rotation handle (`Node.Rotation`, Shift = `SnapAngle` step). |
+| `NodeToolbar` | Toolbar of the selected node; `ToolbarPosition`, `Offset`, `Align`, `IsToolbarVisible`. |
+| `EdgeToolbar` | Toolbar of a selected edge, inside `EdgeLabelTemplate`. |
+| `SelectionToolbar` | Toolbar of a multiple selection; `MinSelected`, `Offset`, `NodeIds`, `IsToolbarVisible`. |
 
-## Thème
+## Theme
 
-Variables CSS sur `.wf-flow` : `--wf-bg`, `--wf-dot`, `--wf-node-bg`, `--wf-node-border`, `--wf-node-text`, `--wf-node-selected`, `--wf-edge`, `--wf-edge-selected`, `--wf-handle`, `--wf-handle-bg`, `--wf-connect`, `--wf-panel-bg`, `--wf-panel-border`, `--wf-minimap-mask`, `--wf-resize-accent`. `Dark="true"` applique le thème sombre.
+CSS variables on `.wf-flow`: `--wf-bg`, `--wf-dot`, `--wf-node-bg`, `--wf-node-border`, `--wf-node-text`, `--wf-node-selected`, `--wf-edge`, `--wf-edge-selected`, `--wf-handle`, `--wf-handle-bg`, `--wf-connect`, `--wf-panel-bg`, `--wf-panel-border`, `--wf-minimap-mask`, `--wf-resize-accent`. `Dark="true"` applies the dark theme.
 
 <!-- exemple-blazor: theme -->
 
 ## MVVM
 
-Comme en WPF ([MVVM](learn/13-mvvm.md)), la vue peut travailler sur **vos ViewModels** au lieu de listes de `record` : mêmes mappages, mêmes règles de réécriture, de refus et d'annulation (la logique est commune, dans le noyau).
+As in WPF ([MVVM](learn/13-mvvm.md)), the view can work on **your ViewModels** instead of lists of `record`s: same mappings, same rules for rewriting, refusing and undoing (the logic is shared, in the core).
 
 ```razor
 <FlowView NodesSource="_vm.Tasks" EdgesSource="_vm.Links" NodeMapping="_mapping"
@@ -169,70 +169,70 @@ Comme en WPF ([MVVM](learn/13-mvvm.md)), la vue peut travailler sur **vos ViewMo
           NodeTemplates="_templates" />
 
 @code {
-    // Dans un champ : un mappage écrit dans le balisage serait recréé, et la source relue, à chaque rendu.
+    // In a field: a mapping written in the markup would be recreated, and the source re-read, on every render.
     private readonly NodeMapping _mapping = new() { SelectedPath = nameof(TaskVm.IsSelected) };
     private IReadOnlyList<object> _selected = [];
 }
 ```
 
-Ne donnez pas `Nodes` / `Edges` en même temps qu'une source.
+Do not give `Nodes` / `Edges` at the same time as a source.
 
-| Paramètre | Description |
+| Parameter | Description |
 |---|---|
-| `NodesSource`, `EdgesSource` | Collections de ViewModels (`ObservableCollection`, éléments `INotifyPropertyChanged`). |
-| `NodeMapping`, `EdgeMapping` | Noms des propriétés ; voir [les mappages](learn/13-mvvm.md#mappages). `Node.Data` est le ViewModel. |
-| `NodeFactory`, `EdgeFactory` | Créent le ViewModel d'un élément ajouté par la vue (connexion, collage, `LoadJson`). |
-| `SelectedNodeItems`, `SelectedEdgeItems`, `SelectedNode` (+ `…Changed`) | Sélection en ViewModels. Une **nouvelle** valeur sélectionne ; la même, redonnée à chaque rendu sans liaison, est ignorée. `SelectedNodes` reste la liste des `record`. |
-| `ControllerChanged` | Remet un `IFlowController` (asynchrone) à votre ViewModel. |
-| `History` | Votre historique (`Wpflow.Blazor.IFlowHistory`) à la place de celui de la vue. |
+| `NodesSource`, `EdgesSource` | Collections of ViewModels (`ObservableCollection`, `INotifyPropertyChanged` items). |
+| `NodeMapping`, `EdgeMapping` | Property names; see [the mappings](learn/13-mvvm.md#mappings). `Node.Data` is the ViewModel. |
+| `NodeFactory`, `EdgeFactory` | Create the ViewModel of an element added by the view (connection, paste, `LoadJson`). |
+| `SelectedNodeItems`, `SelectedEdgeItems`, `SelectedNode` (+ `…Changed`) | Selection as ViewModels. A **new** value selects; the same one, given again at each render without a binding, is ignored. `SelectedNodes` remains the list of `record`s. |
+| `ControllerChanged` | Hands an `IFlowController` (asynchronous) to your ViewModel. |
+| `History` | Your history (`Wpflow.Blazor.IFlowHistory`) instead of the view's own. |
 
-`NodeModel(id)` et `EdgeModel(id)` donnent le ViewModel d'un élément d'un évènement.
+`NodeModel(id)` and `EdgeModel(id)` give the ViewModel of an element from an event.
 
-**Pas de commandes** : les `EventCallback` en tiennent lieu. Pour ce qu'une commande WPF *remplace* :
+**No commands**: `EventCallback`s take their place. For what a WPF command *replaces*:
 
 | WPF | Blazor |
 |---|---|
-| `ConnectCommand` (remplace la création, `CanExecute` valide) | `AutoConnect="false"`, `OnConnect` ajoute votre lien, `IsValidConnection` valide |
-| `NodesDeleteCommand`, `EdgesDeleteCommand` | `OnBeforeDelete` : renvoyer faux annule **toute** la suppression ; faites alors la vôtre (elle n'entre pas dans l'historique de la vue) |
+| `ConnectCommand` (replaces creation, `CanExecute` validates) | `AutoConnect="false"`, `OnConnect` adds your link, `IsValidConnection` validates |
+| `NodesDeleteCommand`, `EdgesDeleteCommand` | `OnBeforeDelete`: returning false cancels **all** of the deletion; then do your own (it does not enter the view's history) |
 | `DropCommand` | `OnDrop` |
 
-Deux points propres à Blazor :
+Two points specific to Blazor:
 
-- **Rendu** : les modèles de nodes sont mémorisés. Un `PropertyChanged`, même d'une propriété non mappée (un titre), redessine le node concerné. En revanche, une collection **à l'intérieur** d'un ViewModel (les colonnes d'une table) doit être signalée par le ViewModel : `Columns.CollectionChanged += (_, _) => OnPropertyChanged(nameof(Columns));`.
-- **Threads** : modifiez les ViewModels sur le contexte de rendu du composant (`InvokeAsync` depuis une minuterie ou une tâche de fond). Les changements d'une même rafale ne donnent qu'un rendu.
+- **Rendering**: node templates are memoised. A `PropertyChanged`, even of an unmapped property (a title), redraws the node concerned. However, a collection **inside** a ViewModel (the columns of a table) must be signalled by the ViewModel: `Columns.CollectionChanged += (_, _) => OnPropertyChanged(nameof(Columns));`.
+- **Threads**: modify the ViewModels on the component's render context (`InvokeAsync` from a timer or a background task). Changes within the same burst produce only one render.
 
 <!-- exemple-blazor: mvvm -->
 
-## Différences avec la version WPF
+## Differences from the WPF version
 
-Les deux vues ont les mêmes évènements et les mêmes réglages, ce qu'un test vérifie (`ViewParityTests`), et les mêmes gestes les lèvent dans le même ordre. Le tableau de parité est la matrice [`GestureMatrix`](../tests/Scenarios.Shared/GestureMatrix.cs) : pour chaque geste, la suite exacte des évènements, jouée avec de vraies entrées dans les deux vues. Restent les écarts liés à la plateforme :
+Both views have the same events and the same settings, which a test checks (`ViewParityTests`), and the same gestures raise them in the same order. The parity table is the [`GestureMatrix`](../tests/Scenarios.Shared/GestureMatrix.cs): for each gesture, the exact sequence of events, played with real input in both views. What remains are the platform differences:
 
 | WPF | Blazor |
 |---|---|
-| Méthodes synchrones | Asynchrones (`await`) |
-| Commandes (`ICommand`) | `EventCallback` |
-| Ressources `wpflow-node-*`, `wpflow-edge-*`, `wpflow-marker-*` | `NodeTemplates`, `EdgeTypes`, `EdgeTemplates`, `MarkerTemplates` |
-| `ColorMode`, `EdgeStroke`, `EdgeStrokeThickness`, `SelectionOutline*`, `ConnectionLineStyle` | `Dark` et variables CSS |
-| `DefaultEdgeOptions` | aussi `DefaultEdgeType` |
-| `DeleteKeys` vide | aussi `DeleteKeyEnabled` |
-| `SnapToGrid` + `SnapGrid` | `SnapGrid` (`null` : sans aimantation) |
+| Synchronous methods | Asynchronous (`await`) |
+| Commands (`ICommand`) | `EventCallback` |
+| Resources `wpflow-node-*`, `wpflow-edge-*`, `wpflow-marker-*` | `NodeTemplates`, `EdgeTypes`, `EdgeTemplates`, `MarkerTemplates` |
+| `ColorMode`, `EdgeStroke`, `EdgeStrokeThickness`, `SelectionOutline*`, `ConnectionLineStyle` | `Dark` and CSS variables |
+| `DefaultEdgeOptions` | also `DefaultEdgeType` |
+| Empty `DeleteKeys` | also `DeleteKeyEnabled` |
+| `SnapToGrid` + `SnapGrid` | `SnapGrid` (`null`: no snapping) |
 | `SelectedNodes` (ViewModels) | `SelectedNodeItems` |
-| `Zoom` lié dans les deux sens | `Zoom` en lecture, `ZoomTo` |
-| `FitViewOnInit` faux par défaut | vrai par défaut |
-| `EdgeHitWidth` : 10 par défaut | 20 par défaut |
-| `RenderToBitmap`, `SaveImage` (fichier) | `SaveImage` (téléchargement) |
-| Double-clic sur le fond : `PaneClick`, début du zoom, `PaneClick` | `PaneClick`, `PaneClick`, puis le zoom (le navigateur envoie son `dblclick` après le second clic) |
-| `BeforeDelete` (évènement) | `OnBeforeDelete` (fonction qui répond) |
-| Glisser le fond efface la sélection à l'appui | Glisser le fond la garde ; un clic l'efface |
-| Presse-papier commun à toutes les vues de l'application | Presse-papier propre à chaque vue |
+| `Zoom` bound in both directions | `Zoom` read-only, `ZoomTo` |
+| `FitViewOnInit` false by default | true by default |
+| `EdgeHitWidth`: 10 by default | 20 by default |
+| `RenderToBitmap`, `SaveImage` (file) | `SaveImage` (download) |
+| Double click on the background: `PaneClick`, start of zoom, `PaneClick` | `PaneClick`, `PaneClick`, then the zoom (the browser sends its `dblclick` after the second click) |
+| `BeforeDelete` (event) | `OnBeforeDelete` (function that answers) |
+| Dragging the background clears the selection on press | Dragging the background keeps it; a click clears it |
+| Clipboard shared by all views of the application | Clipboard specific to each view |
 
-- **Édition à la souris** : mêmes gestes ; le pont JS (`wpflow.js`) mesure les nodes et les handles et suit le pointeur pendant un geste.
-- **Export d'image** : `SaveImage` capture le rendu du navigateur (le calque est cloné avec ses styles calculés puis rastérisé) ; le contenu non sérialisable en SVG (canvas, vidéo, images d'une autre origine) n'y apparaît pas. `vector: true` ou `ExportSvg()` donnent un dessin simplifié (rectangle + `Node.Data`).
-- **Blazor Server ou WebAssembly** : la bibliothèque fonctionne avec les deux (elle dépend de `Microsoft.AspNetCore.Components.Web`). En Server, chaque déplacement de pointeur pendant un geste est un aller-retour réseau ; WebAssembly exécute tout dans le navigateur. La démo existe pour les deux (`demo-blazor`, `demo-blazor-wasm`).
-- **Virtualisation** : avec `OnlyRenderVisibleElements`, les nodes hors de la vue ne sont pas rendus. Avec `FitViewOnInit` (vrai par défaut), tout est d'abord rendu et mesuré, le temps du cadrage initial. Sans lui, un node jamais approché n'est jamais mesuré, comme en WPF : `FitView()` et la minimap l'ignorent, et `OnNodesInitialized` attend qu'il le soit. Avec ou sans virtualisation, un pas de pan ne refait ni les nodes ni les edges (couche mémorisée, même avec `@bind-Viewport`) tant que les éléments visibles restent les mêmes ; pendant un mouvement de vue, un modèle d'edge ou de label qui lit l'état du parent n'est donc pas redessiné (même règle que pour les modèles de nodes ci-dessous). Si presque tout est visible à la fois, la virtualisation n'apporte rien. Un node ne se rend que s'il a changé et le tracé d'un edge est mis en cache : un graphe de 1 500 nodes reste fluide.
-- **Modèles d'edges mémorisés** : un modèle d'edge (`EdgeTemplates`) ou de label (`EdgeLabelTemplate`) n'est rappelé que si son edge, ses extrémités, l'un de ses deux nodes ou un réglage de la vue change, ou s'il est redéclaré (un délégué neuf redessine). Ce qu'il lit d'autre (état du parent, autre node) doit arriver par `Edge.Data`.
-- **Modèles de nodes mémorisés** : un modèle (`NodeTemplate`) ne se rend que quand son node change, comme un composant React mémorisé ; un modèle qui lit l'état du parent doit recevoir cet état par le `Node` (`Node.Data`) ou être redéclaré (un délégué neuf redessine). Un état propre à l'affichage d'un node (champ en cours de renommage, case cochée) va dans un **composant enfant** rendu par le modèle, qui se redessine lui-même ; les handles qu'il déplace sont remesurés.
-- **Champs dans un node** : les touches tapées dans un champ ne sont pas traitées par le graphe (Suppr, flèches, Ctrl+A, Ctrl+Z restent au champ), et vos `@onkeydown` les reçoivent. Ajoutez `class="nodrag"` au champ.
-- **Conteneurs** : la vue peut être sous un parent en `transform: scale()`, dans une page ou un conteneur défilé, ou dans un onglet masqué puis affiché ; un parent tourné ou incliné (`rotate`, `skew`) n'est pas pris en compte.
-- **Charger un autre document** : appelez `ClearHistory()` après avoir remplacé `Nodes` et `Edges`, sinon « annuler » ramène le document précédent.
-- **Blazor Server et gros graphes** : les mesures sont découpées en messages de moins de 32 Ko, la limite par défaut de SignalR n'a pas à être augmentée.
+- **Mouse editing**: same gestures; the JS bridge (`wpflow.js`) measures the nodes and handles and follows the pointer during a gesture.
+- **Image export**: `SaveImage` captures the browser's rendering (the layer is cloned with its computed styles then rasterised); content that cannot be serialised to SVG (canvas, video, images from another origin) does not appear in it. `vector: true` or `ExportSvg()` give a simplified drawing (rectangle + `Node.Data`).
+- **Blazor Server or WebAssembly**: the library works with both (it depends on `Microsoft.AspNetCore.Components.Web`). On Server, every pointer movement during a gesture is a network round trip; WebAssembly runs everything in the browser. The demo exists for both (`demo-blazor`, `demo-blazor-wasm`).
+- **Virtualisation**: with `OnlyRenderVisibleElements`, nodes outside the view are not rendered. With `FitViewOnInit` (true by default), everything is first rendered and measured, for the duration of the initial fit. Without it, a node never approached is never measured, as in WPF: `FitView()` and the minimap ignore it, and `OnNodesInitialized` waits for it. With or without virtualisation, a panning step does not redo the nodes or the edges (layer memoised, even with `@bind-Viewport`) as long as the visible elements stay the same; during a view movement, an edge or label template that reads the parent's state is therefore not redrawn (same rule as for node templates below). If almost everything is visible at once, virtualisation brings nothing. A node is only rendered if it has changed and the path of an edge is cached: a graph of 1,500 nodes stays smooth.
+- **Memoised edge templates**: an edge template (`EdgeTemplates`) or label template (`EdgeLabelTemplate`) is only called again if its edge, its ends, one of its two nodes or a setting of the view changes, or if it is re-declared (a new delegate redraws). What it reads otherwise (parent state, another node) must arrive through `Edge.Data`.
+- **Memoised node templates**: a template (`NodeTemplate`) only renders when its node changes, like a memoised React component; a template that reads the parent's state must receive that state through the `Node` (`Node.Data`) or be re-declared (a new delegate redraws). A state specific to the display of a node (a field being renamed, a checked box) goes into a **child component** rendered by the template, which redraws itself; the handles it moves are measured again.
+- **Fields inside a node**: keys typed in a field are not handled by the graph (Delete, arrows, Ctrl+A, Ctrl+Z stay with the field), and your `@onkeydown` receives them. Add `class="nodrag"` to the field.
+- **Containers**: the view can be under a parent with `transform: scale()`, in a page or a scrolled container, or in a hidden tab that is then shown; a rotated or skewed parent (`rotate`, `skew`) is not taken into account.
+- **Loading another document**: call `ClearHistory()` after replacing `Nodes` and `Edges`, otherwise « undo » brings back the previous document.
+- **Blazor Server and large graphs**: measurements are split into messages of less than 32 KB, so SignalR's default limit does not need to be raised.

@@ -11,10 +11,10 @@ public partial class CustomizationExample : UserControl
         InitializeComponent();
         Flow.Nodes =
         [
-            new Node("a", new XYPosition(0, 0), Data: "Départ"),
-            new Node("b", new XYPosition(320, -70), Data: "Onde"),
-            new Node("c", new XYPosition(320, 90), Data: "Pulsation"),
-            new Node("d", new XYPosition(640, 10), Data: "Arrivée")
+            new Node("a", new XYPosition(0, 0), Data: "Start"),
+            new Node("b", new XYPosition(320, -70), Data: "Wave"),
+            new Node("c", new XYPosition(320, 90), Data: "Pulse"),
+            new Node("d", new XYPosition(640, 10), Data: "End")
         ];
         Flow.Edges =
         [
