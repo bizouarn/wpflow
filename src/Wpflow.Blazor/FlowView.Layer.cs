@@ -64,9 +64,6 @@ public partial class FlowView
         }
     }
 
-    /// <summary>Change à chaque reconstruction de la couche : la minimap redessine alors aussi ses rectangles.</summary>
-    internal int LayerRevision => _layerRevision;
-
     /// <summary>Décide, une fois par rendu, si la couche est refaite.</summary>
     private bool KeepsLayer() =>
         !_forceLayer && (_keepsNextRender || _keepingCallbacks > 0) && !(OnlyRenderVisibleElements && VisibleSetOutdated());

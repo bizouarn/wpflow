@@ -180,6 +180,64 @@ public sealed class LayerReuseTests : FlowViewTestContext
         Assert.NotEqual(first, host.Find(".wf-minimap-node").GetAttribute("x"));
     }
 
+    /// <summary>
+    ///     La virtualisation refait la couche quand des nodes apparaissent : la minimap, qui les montre tous, n'a rien à
+    ///     redessiner. Sans <c>OnNodeClick</c>, ses rectangles n'ont pas non plus de gestionnaire à renouveler.
+    /// </summary>
+    [Fact]
+    public async Task The_minimap_ignores_what_virtualisation_adds_or_removes()
+    {
+        var colored = 0;
+        Func<Node, string?> color = _ =>
+        {
+            colored++;
+            return "red";
+        };
+        var corner = new Node("corner", new XYPosition(7000, 0), Data: "C"); // l'emprise, donc l'échelle, ne change pas
+        var settings = Settings(true, [A, B, Far, corner], [AB with { Type = "counted" }, ToFar]);
+        settings[nameof(FlowView.ChildContent)] = (RenderFragment)(b =>
+        {
+            b.OpenComponent<FlowMiniMap>(0);
+            b.AddAttribute(1, nameof(FlowMiniMap.NodeColor), color);
+            b.CloseComponent();
+        });
+        var host = RenderComponent<Host>(p => p.Add(h => h.Settings, settings));
+        await host.InvokeAsync(() => host.Instance.View.OnRootRect(0, 0, 800, 600));
+        await host.InvokeAsync(() => host.Instance.View.OnMeasured([Measured("a"), Measured("b"), Measured("far"), Measured("corner")]));
+        await host.InvokeAsync(() => host.Instance.View.SetViewport(new Viewport(0, 0, 1)));
+        var before = colored;
+        var framing = host.Find(".wf-minimap svg").GetAttribute("viewBox");
+
+        // La vue passe sur le node lointain puis revient : la couche est refaite, les nodes sont les mêmes.
+        await host.InvokeAsync(() => host.Instance.View.SetViewport(new Viewport(-4800, 0, 1)));
+        Assert.NotEmpty(host.FindAll("[data-node-id='far']"));
+        await host.InvokeAsync(() => host.Instance.View.SetViewport(new Viewport(0, 0, 1)));
+
+        Assert.Equal(before, colored);
+        Assert.Equal(framing, host.Find(".wf-minimap svg").GetAttribute("viewBox"));
+        Assert.DoesNotContain(host.FindAll(".wf-minimap-node"), r => r.Attributes.Any(a => a.Name == "blazor:onpointerdown"));
+    }
+
+    [Fact]
+    public async Task A_listened_click_on_the_minimap_still_reaches_the_application()
+    {
+        var clicked = new List<string>();
+        var settings = Settings(false, [A, B], [AB with { Type = "counted" }]);
+        settings[nameof(FlowView.ChildContent)] = (RenderFragment)(b =>
+        {
+            b.OpenComponent<FlowMiniMap>(0);
+            b.AddAttribute(1, nameof(FlowMiniMap.OnNodeClick), EventCallback.Factory.Create<Node>(this, n => clicked.Add(n.Id)));
+            b.CloseComponent();
+        });
+        var host = RenderComponent<Host>(p => p.Add(h => h.Settings, settings));
+        await host.InvokeAsync(() => host.Instance.View.OnRootRect(0, 0, 800, 600));
+        await host.InvokeAsync(() => host.Instance.View.OnMeasured([Measured("a"), Measured("b")]));
+
+        await host.FindAll(".wf-minimap-node")[1].TriggerEventAsync("onpointerdown", new PointerEventArgs());
+
+        Assert.Equal(["b"], clicked);
+    }
+
     /// <summary>L'appui sur le fond, le déplacement et le relâchement : aucune reconstruction, début et fin compris.</summary>
     [Theory]
     [InlineData(false)]

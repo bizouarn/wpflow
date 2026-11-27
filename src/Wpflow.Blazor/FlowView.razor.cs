@@ -103,8 +103,12 @@ public partial class FlowView : ComponentBase, IAsyncDisposable
         StateHasChanged();
     }
 
+    /// <summary>Change avec la liste des nodes (contenu, positions, tailles) : la minimap redessine alors ses rectangles.</summary>
+    internal int NodesVersion { get; private set; }
+
     private void RebuildIndex()
     {
+        NodesVersion++;
         _indexedNodes = Nodes;
         var (previous, previousAbsolute) = (_nodeIndex, _absNodes);
         _nodeIndex = new Dictionary<string, Node>(Nodes.Count);

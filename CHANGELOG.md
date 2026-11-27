@@ -55,6 +55,7 @@ Même graphe, avec un modèle d'edge et un parent qui écoute le glisser et le s
 
 - Chaque edge et chaque label est mémorisé, comme les nodes : déplacer un node ne redessine que ses edges.
 - Les mesures d'un grand graphe, que le pont JS découpe en dizaines de messages (`MeasuredNode.More`), sont appliquées une seule fois : un seul changement (`OnNodesChange`) au lieu d'un par message.
+- La minimap ne redessine ses rectangles que quand les nodes changent (ni quand la virtualisation en fait apparaître), et ne leur pose un gestionnaire de clic que si `OnNodeClick` est écouté. Page « Performance » du site de documentation, 1 000 nodes avec virtualisation (configuration de développement, sans parent à l'écoute ni modèle) : déplacement de la vue 119 → 83 ms par pas, zoom 480 → 306 ms. Le glisser d'un node y reste vers 200 à 240 ms : la minimap en prend environ la moitié.
 - Le fil d'une connexion est dessiné hors de la couche ; survol, rectangle de sélection et rendus du parent qui ne changent rien ne la reconstruisent plus.
 
 ### Changements de comportement (Blazor)

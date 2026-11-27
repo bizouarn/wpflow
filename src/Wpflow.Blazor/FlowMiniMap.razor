@@ -20,7 +20,7 @@
                     var stroke = NodeStrokeColor?.Invoke(n);
                     <rect @key="n.Id" class="wf-minimap-node" x="@FlowView.F(r.X)" y="@FlowView.F(r.Y)" width="@FlowView.F(r.Width)" height="@FlowView.F(r.Height)"
                           rx="@FlowView.F(NodeBorderRadius * scale)" fill="@fill" stroke="@stroke" stroke-width="@(stroke == null ? null : FlowView.F(NodeStrokeWidth * scale))"
-                          @onpointerdown="e => NodeDown(n, e)" />
+                          @onpointerdown="PressHandler(n)" />
                 }
             </FlowLayer>
             <path fill-rule="evenodd" fill="@(MaskColor ?? "var(--wf-minimap-mask)")" pointer-events="none"
@@ -68,14 +68,14 @@
 
     protected override void OnInitialized() => _following = Flow?.Follow(() => _ = InvokeAsync(StateHasChanged));
 
-    private (int Layer, int Scale, object?, object?, double, double, bool) _drawn;
+    private (int Nodes, int Scale, object?, object?, double, double, bool) _drawn;
     private int _revision;
 
-    // Change quand les rectangles sont à refaire : la couche de la vue l'a été, ou un réglage d'ici a changé. L'échelle, qui
-    // ne fixe que les arrondis et les traits, ne compte que par paliers d'environ 10 %.
+    // Change quand les rectangles sont à refaire : les nodes ont changé, ou un réglage d'ici. Ni un mouvement de vue ni la
+    // virtualisation ne les concernent. L'échelle, qui ne fixe que les arrondis et les traits, compte par paliers d'environ 10 %.
     private int NodesRevision(double scale)
     {
-        var state = (Flow!.LayerRevision, (int)Math.Round(Math.Log(Math.Max(scale, 1e-6)) * 10), (object?)NodeColor,
+        var state = (Flow!.NodesVersion, (int)Math.Round(Math.Log(Math.Max(scale, 1e-6)) * 10), (object?)NodeColor,
             (object?)NodeStrokeColor, NodeStrokeWidth, NodeBorderRadius, OnNodeClick.HasDelegate);
         if (!state.Equals(_drawn))
         {
@@ -108,6 +108,10 @@
         : default;
 
     private void Up() => _down = false;
+
+    // Sans écoute, aucun gestionnaire : chaque dessin en renouvellerait un par rectangle dans le navigateur.
+    private EventCallback<PointerEventArgs> PressHandler(Node n) =>
+        OnNodeClick.HasDelegate ? EventCallback.Factory.Create<PointerEventArgs>(this, e => NodeDown(n, e)) : default;
 
     private async Task NodeDown(Node n, PointerEventArgs e)
     {
