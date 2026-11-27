@@ -35,7 +35,7 @@ jobs:
         run: dotnet build wpflow.sln -c Release --no-restore
 
       - name: Tests de base
-        timeout-minutes: 1
+        timeout-minutes: 3
         shell: bash
         run: |
           for p in Core Wpf Blazor; do

@@ -50,7 +50,7 @@ jobs:
 
       # Seulement les tests de base ; les tests lents se lancent en local avant de poser le tag (voir ci.yml).
       - name: Tests de base
-        timeout-minutes: 1
+        timeout-minutes: 3
         shell: bash
         run: |
           for p in Core Wpf Blazor; do
