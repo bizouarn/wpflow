@@ -22,6 +22,10 @@ public sealed class MiniMap : FrameworkElement
     private double _originX, _originY;
     private Point _dragStart;
     private XYPosition _dragCenter;
+    private RectangleGeometry? _clipGeometry;
+    private double _clipW, _clipH;
+    private Dictionary<Brush, Pen>? _strokePens;
+    private double _strokePenWidth;
 
     public MiniMap()
     {
@@ -192,7 +196,22 @@ public sealed class MiniMap : FrameworkElement
         var stroke = NodeStrokeColor;
         var renderer = NodeRenderer;
         var radius = NodeBorderRadius;
-        dc.PushClip(new RectangleGeometry(new Rect(0, 0, w, h)));
+        if (_clipGeometry == null || _clipW != w || _clipH != h)
+        {
+            _clipW = w;
+            _clipH = h;
+            _clipGeometry = Frozen(new RectangleGeometry(new Rect(0, 0, w, h)));
+        }
+
+        var strokeWidth = NodeStrokeWidth;
+        if (stroke != null)
+        {
+            if (_strokePens == null) _strokePens = new Dictionary<Brush, Pen>();
+            else if (_strokePenWidth != strokeWidth) _strokePens.Clear();
+            _strokePenWidth = strokeWidth;
+        }
+
+        dc.PushClip(_clipGeometry);
         foreach (var node in _flow.AbsoluteNodes)
         {
             if (node.Rect is not { } r) continue;
@@ -204,15 +223,37 @@ public sealed class MiniMap : FrameworkElement
             }
 
             var fill = color?.Invoke(node) ?? (node.Selected ? selectedBrush : nodeBrush);
-            var pen = stroke?.Invoke(node) is { } s ? new Pen(s, NodeStrokeWidth) : null;
+            Pen? pen = null;
+            if (stroke?.Invoke(node) is { } s)
+            {
+                if (!_strokePens!.TryGetValue(s, out pen))
+                {
+                    pen = new Pen(s, strokeWidth);
+                    if (pen.CanFreeze) pen.Freeze();
+                    _strokePens[s] = pen;
+                }
+            }
             dc.DrawRoundedRectangle(fill, pen, rect, radius, radius);
         }
 
         var view = new Rect((visible.X - layout.X) * _scale, (visible.Y - layout.Y) * _scale, visible.Width * _scale,
             visible.Height * _scale);
-        var mask = new CombinedGeometry(GeometryCombineMode.Exclude,
-            new RectangleGeometry(new Rect(0, 0, w, h)), new RectangleGeometry(view));
-        dc.DrawGeometry(MaskColor ?? _flow.ThemeBrush("Flow.MiniMapMask"), null, mask);
+        var maskBrush = MaskColor ?? _flow.ThemeBrush("Flow.MiniMapMask");
+        var x0 = Math.Max(0, view.X);
+        var y0 = Math.Max(0, view.Y);
+        var x1 = Math.Min(w, view.Right);
+        var y1 = Math.Min(h, view.Bottom);
+        if (x1 <= x0 || y1 <= y0)
+        {
+            dc.DrawRectangle(maskBrush, null, new Rect(0, 0, w, h));
+        }
+        else
+        {
+            if (y0 > 0) dc.DrawRectangle(maskBrush, null, new Rect(0, 0, w, y0));
+            if (y1 < h) dc.DrawRectangle(maskBrush, null, new Rect(0, y1, w, h - y1));
+            if (x0 > 0) dc.DrawRectangle(maskBrush, null, new Rect(0, y0, x0, y1 - y0));
+            if (x1 < w) dc.DrawRectangle(maskBrush, null, new Rect(x1, y0, w - x1, y1 - y0));
+        }
         dc.Pop();
     }
 

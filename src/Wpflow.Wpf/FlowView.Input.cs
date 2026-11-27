@@ -343,7 +343,11 @@ public partial class FlowView
     }
 
     /// <summary>Agrandit les parents que les enfants déplacés dépassent (<see cref="ParentExpansion" />).</summary>
-    internal void ExpandParents() => ExpandParents(_dragStart.Keys.ToList());
+    internal void ExpandParents()
+    {
+        if (!_hasTree) return;
+        ExpandParents(_dragStart.Keys.ToList());
+    }
 
     internal void ExpandParents(IReadOnlyCollection<string> moved)
     {

@@ -157,7 +157,7 @@ public partial class FlowView
     ///     personnalisé apparaissent comme leur rectangle et leur <see cref="Node.Data" />.
     /// </summary>
     public string ExportSvg(double padding = 20, string? background = null) =>
-        SvgExport.Build(Nodes.Where(n => !n.Hidden).Select(n => n with { Position = _abs[n.Id] }),
+        SvgExport.Build(Nodes.Where(n => !n.Hidden).Select(n => n with { Position = AbsolutePosition(n.Id) }),
             EdgeViews().Select(ev => new SvgEdge(ev.Edge, ev.Context.Path, ev.MarkerStart != null, ev.MarkerEnd != null)),
             Dark, padding, background);
 

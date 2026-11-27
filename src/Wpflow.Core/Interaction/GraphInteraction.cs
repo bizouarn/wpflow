@@ -86,8 +86,13 @@ public static class EdgeEndpoints
         var list = getHandles(node.Id) ?? node.Handles;
         if (list != null)
         {
-            var info = list.FirstOrDefault(h => h.Type == type && (string.IsNullOrEmpty(handleId) || h.Id == handleId));
-            if (info != null) return (GraphUtils.GetHandlePosition(node, info.Position, info), GraphUtils.GetHandleSide(node, info.Position));
+            var anyId = string.IsNullOrEmpty(handleId);
+            for (var i = 0; i < list.Count; i++)
+            {
+                var h = list[i];
+                if (h.Type == type && (anyId || h.Id == handleId))
+                    return (GraphUtils.GetHandlePosition(node, h.Position, h), GraphUtils.GetHandleSide(node, h.Position));
+            }
         }
 
         return node.Rect is null ? null : (GraphUtils.GetHandlePosition(node, fallback), GraphUtils.GetHandleSide(node, fallback));
@@ -189,21 +194,46 @@ public static class SelectionOps
     public static (IReadOnlyList<NodeChange> Nodes, IReadOnlyList<EdgeChange> Edges) Select(IReadOnlyList<Node> nodes,
         IReadOnlyList<Edge> edges, IEnumerable<string> nodeIds, IEnumerable<string> edgeIds, bool additive, bool elementsSelectable = true)
     {
-        var n = elementsSelectable ? nodeIds.ToHashSet() : [];
-        var e = elementsSelectable ? edgeIds.ToHashSet() : [];
+        var (nSet, singleNode) = elementsSelectable ? PrepareIds(nodeIds) : (null, null);
+        var (eSet, singleEdge) = elementsSelectable ? PrepareIds(edgeIds) : (null, null);
         additive &= elementsSelectable;
-        var nodeChanges = nodes
-            .Where(x => x.Selectable)
-            .Select(x => (x, want: n.Contains(x.Id) || (additive && x.Selected)))
-            .Where(p => p.x.Selected != p.want)
-            .Select(p => (NodeChange)new NodeSelectChange(p.x.Id, p.want)).ToList();
-        var edgeChanges = edges
-            .Where(x => x.Selectable && !x.Hidden)
-            .Select(x => (x, want: e.Contains(x.Id) || (additive && x.Selected)))
-            .Where(p => p.x.Selected != p.want)
-            .Select(p => (EdgeChange)new EdgeSelectChange(p.x.Id, p.want)).ToList();
+
+        var nodeChanges = new List<NodeChange>();
+        for (var i = 0; i < nodes.Count; i++)
+        {
+            var x = nodes[i];
+            if (!x.Selectable) continue;
+            var want = (additive && x.Selected) || ContainsId(nSet, singleNode, x.Id);
+            if (x.Selected != want) nodeChanges.Add(new NodeSelectChange(x.Id, want));
+        }
+
+        var edgeChanges = new List<EdgeChange>();
+        for (var i = 0; i < edges.Count; i++)
+        {
+            var x = edges[i];
+            if (!x.Selectable || x.Hidden) continue;
+            var want = (additive && x.Selected) || ContainsId(eSet, singleEdge, x.Id);
+            if (x.Selected != want) edgeChanges.Add(new EdgeSelectChange(x.Id, want));
+        }
+
         return (nodeChanges, edgeChanges);
     }
+
+    private static (ISet<string>? Set, string? Single) PrepareIds(IEnumerable<string> ids)
+    {
+        if (ids is ISet<string> set) return (set, null);
+        if (ids is IReadOnlyList<string> list)
+        {
+            if (list.Count == 0) return (null, null);
+            if (list.Count == 1) return (null, list[0]);
+        }
+
+        var hs = ids.ToHashSet();
+        return hs.Count == 0 ? (null, null) : (hs, null);
+    }
+
+    private static bool ContainsId(ISet<string>? set, string? single, string id) =>
+        set != null ? set.Contains(id) : single != null && single == id;
 
     /// <summary>
     ///     Nodes pris par un rectangle de sélection (coordonnées flow ; <paramref name="absolute" /> donne les nodes avec leur

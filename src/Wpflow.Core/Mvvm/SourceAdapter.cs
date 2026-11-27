@@ -26,6 +26,7 @@ public abstract class SourceAdapter<T> : IDisposable where T : class
     private List<ModelBinding<T>> _bindings = [];
     private string _idPath = "Id";
     private string? _dataPath;
+    private HashSet<string?>? _gesturePaths;
 
     /// <summary>
     ///     Un ViewModel a notifié sans que son record change (propriété non mappée : un titre que le modèle affiche). WPF
@@ -193,7 +194,7 @@ public abstract class SourceAdapter<T> : IDisposable where T : class
     /// </summary>
     public T Rebase(T target, T before, T after)
     {
-        var gestures = GesturePaths.ToHashSet();
+        var gestures = _gesturePaths ??= GesturePaths.ToHashSet();
         foreach (var binding in _bindings)
             if (!gestures.Contains(binding.Path) && !Equals(binding.Value(before), binding.Value(after)))
                 target = binding.Copy(target, after);

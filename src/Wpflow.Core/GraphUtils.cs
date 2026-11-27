@@ -6,21 +6,37 @@ public static class GraphUtils
     /// <summary>Rectangle englobant les nodes mesurés ; <c>null</c> s'il n'y en a aucun.</summary>
     public static Rect? GetNodesBounds(IEnumerable<Node> nodes)
     {
-        var list = nodes as IReadOnlyList<Node> ?? nodes.ToList();
-        // Les enfants ont une position relative : on travaille en coordonnées absolues.
-        var abs = list.Any(n => n.ParentId != null) ? NodeTree.AbsolutePositions(list) : null;
-
+        var col = nodes as IReadOnlyCollection<Node> ?? nodes.ToList();
         Rect? bounds = null;
-        foreach (var n in list)
+        foreach (var n in col)
+        {
+            if (n.ParentId != null)
+                return GetNodesBoundsWithTree(col);
+            if (n.Width is not { } w || n.Height is not { } h) continue;
+            var r = new Rect(n.Position.X, n.Position.Y, w, h);
+            bounds = bounds is { } b ? Rect.Union(b, r) : r;
+        }
+
+        return bounds;
+    }
+
+    private static Rect? GetNodesBoundsWithTree(IReadOnlyCollection<Node> nodes)
+    {
+        // Les enfants ont une position relative : on travaille en coordonnées absolues.
+        var abs = NodeTree.AbsolutePositions(nodes);
+        Rect? bounds = null;
+        foreach (var n in nodes)
         {
             if (n.Width is not { } w || n.Height is not { } h) continue;
-            var p = abs?[n.Id] ?? n.Position;
+            var p = abs[n.Id];
             var r = new Rect(p.X, p.Y, w, h);
             bounds = bounds is { } b ? Rect.Union(b, r) : r;
         }
 
         return bounds;
     }
+
+    private static readonly Position[] Clockwise = [Position.Top, Position.Right, Position.Bottom, Position.Left];
 
     /// <summary>Centre d'un handle (utilisé pour la distance de connexion, comme <c>getHandlePosition(..., center = true)</c>).</summary>
     public static XYPosition GetHandleCenter(Node node, HandleInfo handle) =>
@@ -34,8 +50,7 @@ public static class GraphUtils
     {
         var quarters = (int)Math.Round(node.Rotation / 90, MidpointRounding.AwayFromZero) % 4;
         if (quarters == 0) return position;
-        Position[] clockwise = [Position.Top, Position.Right, Position.Bottom, Position.Left];
-        return clockwise[(Array.IndexOf(clockwise, position) + quarters + 4) % 4];
+        return Clockwise[(Array.IndexOf(Clockwise, position) + quarters + 4) % 4];
     }
 
     // Un point donné dans le node non tourné, là où il est affiché : le node tourne autour de son centre. Les handles sont

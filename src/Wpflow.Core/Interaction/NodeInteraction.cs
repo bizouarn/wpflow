@@ -130,17 +130,47 @@ public static class NodeZOrder
     /// </summary>
     public static HashSet<string>? ElevatedSet(IReadOnlyList<Node> nodes, FlowZIndexMode mode)
     {
-        if (mode != FlowZIndexMode.Auto || !nodes.Any(n => n.ParentId != null)) return null;
-        var byId = nodes.ToDictionary(n => n.Id);
-        var elevated = new HashSet<string>();
-        foreach (var selected in nodes.Where(n => n.Selected))
-            for (var p = selected.ParentId; p != null && byId.TryGetValue(p, out var parent) && elevated.Add(p); p = parent.ParentId) { }
-        var followers = nodes.Where(n =>
+        if (mode != FlowZIndexMode.Auto) return null;
+        var hasTree = false;
+        var hasSelectedChild = false;
+        for (var i = 0; i < nodes.Count; i++)
         {
+            var n = nodes[i];
+            if (n.ParentId == null) continue;
+            hasTree = true;
+            if (n.Selected)
+            {
+                hasSelectedChild = true;
+                break;
+            }
+        }
+
+        if (!hasTree) return null;
+        if (!hasSelectedChild) return new HashSet<string>();
+
+        var byId = new Dictionary<string, Node>(nodes.Count);
+        for (var i = 0; i < nodes.Count; i++) byId[nodes[i].Id] = nodes[i];
+
+        var elevated = new HashSet<string>();
+        for (var i = 0; i < nodes.Count; i++)
+        {
+            var selected = nodes[i];
+            if (!selected.Selected) continue;
+            for (var p = selected.ParentId; p != null && byId.TryGetValue(p, out var parent) && elevated.Add(p); p = parent.ParentId) { }
+        }
+
+        var followers = new List<string>();
+        for (var i = 0; i < nodes.Count; i++)
+        {
+            var n = nodes[i];
             for (var p = n.ParentId; p != null && byId.TryGetValue(p, out var parent); p = parent.ParentId)
-                if (elevated.Contains(p)) return true;
-            return false;
-        }).Select(n => n.Id).ToList();
+                if (elevated.Contains(p))
+                {
+                    followers.Add(n.Id);
+                    break;
+                }
+        }
+
         elevated.UnionWith(followers);
         return elevated;
     }

@@ -10,6 +10,7 @@ namespace Wpflow.Wpf;
 internal interface IEdgePart
 {
     string EdgeId { get; }
+    string? LastAria { get; set; }
 }
 
 /// <summary>Forme d'un marqueur personnalisé (ressource <c>wpflow-marker-{clé}</c>) : orientée comme les flèches intégrées (pointe en (0,0), vers +x).</summary>
@@ -34,7 +35,7 @@ internal sealed class EdgeVisual : FrameworkElement, IEdgePart
     private static readonly Geometry OpenArrow = Frozen(Geometry.Parse("M-7,-5 L0,0 L-7,5"));
     private static readonly Geometry ClosedArrow = Frozen(Geometry.Parse("M-7,-5 L0,0 L-7,5 Z"));
 
-    private readonly record struct Marker(EdgeMarker Kind, MarkerShape? Custom, Matrix Transform, Brush? Fill, Pen? Pen);
+    private readonly record struct Marker(EdgeMarker Kind, MarkerShape? Custom, MatrixTransform Transform, Brush? Fill, Pen? Pen);
 
     private readonly record struct UpdateKey(Edge Edge, string Path, XYPosition Start, Position StartSide, XYPosition End,
         Position EndSide, EdgeStyle Style, MarkerShape? StartShape, MarkerShape? EndShape);
@@ -52,6 +53,7 @@ internal sealed class EdgeVisual : FrameworkElement, IEdgePart
     }
 
     public string EdgeId { get; }
+    public string? LastAria { get; set; }
 
     /// <summary>Chemin SVG actuellement dessiné (utilisé par les tests).</summary>
     internal string? PathData => _lastUpdate?.Path;
@@ -97,27 +99,43 @@ internal sealed class EdgeVisual : FrameworkElement, IEdgePart
         var own = edge.Style?.Stroke is { } color ? EdgeColors.Parse(color) : null;
         _stroke = edge.Selected ? style.SelectedStroke : own ?? style.Stroke;
         _linePen = new Pen(_stroke, thickness) { LineJoin = PenLineJoin.Round };
-        if (edge.Style?.DashArray is { Count: > 0 } dashes && !edge.Animated)
-            _linePen.DashStyle = new DashStyle(dashes.Select(d => d / Math.Max(thickness, 0.1)).ToList(), 0);
+        var hasDash = edge.Style?.DashArray is { Count: > 0 } dashes && !edge.Animated;
+        if (hasDash)
+        {
+            var ds = new DashStyle(edge.Style!.DashArray!.Select(d => d / Math.Max(thickness, 0.1)).ToList(), 0);
+            if (ds.CanFreeze) ds.Freeze();
+            _linePen.DashStyle = ds;
+        }
 
         SetAnimated(edge.Animated);
-        _markerEnd = MakeMarker(edge.MarkerEnd, endShape, edge.MarkerEndOptions, style, thickness, end, endSide);
-        _markerStart = MakeMarker(edge.MarkerStart, startShape, edge.MarkerStartOptions, style, thickness, start, startSide);
+        if (!edge.Animated && _linePen.CanFreeze) _linePen.Freeze();
+        _markerEnd = MakeMarker(edge.MarkerEnd, endShape, edge.MarkerEndOptions, style, thickness, end, endSide, !edge.Animated && !hasDash);
+        _markerStart = MakeMarker(edge.MarkerStart, startShape, edge.MarkerStartOptions, style, thickness, start, startSide, !edge.Animated && !hasDash);
         InvalidateVisual();
     }
 
     // Une flèche reprend la couleur de l'edge, sauf couleur propre (options du marqueur) ou couleur par défaut de la vue.
     private Marker MakeMarker(EdgeMarker kind, MarkerShape? custom, EdgeMarkerOptions? options, EdgeStyle style,
-        double thickness, XYPosition at, Position side)
+        double thickness, XYPosition at, Position side, bool canReuseLinePen)
     {
         if (kind == EdgeMarker.None && custom == null) return default;
         var fill = options?.Color is { } c && EdgeColors.Parse(c) is { } own ? own : style.MarkerColor ?? _stroke;
-        var pen = new Pen(fill, EdgeMarkerMath.StrokeWidth(options, thickness)) { LineJoin = PenLineJoin.Round }; // la plupart des edges n'en ont pas
+        var markerThickness = EdgeMarkerMath.StrokeWidth(options, thickness);
+        Pen pen;
+        if (canReuseLinePen && _linePen is { IsFrozen: true } && ReferenceEquals(fill, _stroke) && markerThickness == thickness)
+        {
+            pen = _linePen;
+        }
+        else
+        {
+            pen = new Pen(fill, markerThickness) { LineJoin = PenLineJoin.Round }; // la plupart des edges n'en ont pas
+            if (pen.CanFreeze) pen.Freeze();
+        }
         var transform = options?.Orient is { } angle ? FixedTransform(at, angle) : ArrowTransform(at, side);
         // Taille : 12,5 (valeur par défaut de xyflow) correspond à la flèche telle que dessinée.
         var (sx, sy) = EdgeMarkerMath.Scale(options);
         if (sx != 1 || sy != 1) transform = Matrix.Multiply(new Matrix(sx, 0, 0, sy, 0, 0), transform);
-        return new Marker(kind, custom, transform, fill, pen);
+        return new Marker(kind, custom, Frozen(new MatrixTransform(transform)), fill, pen);
     }
 
     internal static Matrix FixedTransform(XYPosition at, double angle)
@@ -181,7 +199,7 @@ internal sealed class EdgeVisual : FrameworkElement, IEdgePart
             geometry = filled ? ClosedArrow : OpenArrow;
         }
 
-        dc.PushTransform(new MatrixTransform(marker.Transform));
+        dc.PushTransform(marker.Transform);
         dc.DrawGeometry(filled ? marker.Fill : null, marker.Pen, geometry);
         dc.Pop();
     }
@@ -210,6 +228,7 @@ internal sealed class EdgeTemplateVisual : ContentControl, IEdgePart
     }
 
     public string EdgeId { get; }
+    public string? LastAria { get; set; }
 
     public void Update(Edge edge, EdgePath path, XYPosition start, Position startSide, XYPosition end, Position endSide,
         EdgeStyle style, DataTemplate template)
@@ -248,6 +267,7 @@ internal sealed class EdgeLabel : Border, IEdgePart
     }
 
     public string EdgeId { get; }
+    public string? LastAria { get; set; }
 
     public void Update(Edge edge, EdgePath path, EdgeStyle style, DataTemplate? template)
     {
@@ -288,6 +308,8 @@ public sealed class EdgeLayer : Canvas
 {
     private readonly Dictionary<string, FrameworkElement> _visuals = new(); // EdgeVisual ou EdgeTemplateVisual
     private readonly Dictionary<string, EdgeLabel> _labels = new();
+    private readonly HashSet<string> _seen = new();
+    private readonly List<string> _stale = new();
 
     /// <summary>Ce que les ressources de la vue définissent pour un type d'edge ; résolu une seule fois par rafraîchissement.</summary>
     private sealed record TypeInfo(IEdgePathProvider Provider, DataTemplate? Template, DataTemplate? Label);
@@ -331,7 +353,12 @@ public sealed class EdgeLayer : Canvas
             flow.ThemeBrush("Flow.NodeBackground"), flow.ThemeBrush("Flow.NodeText"), flow.EdgeHitWidth,
             flow.DefaultMarkerColor, flow.ElevateEdgesOnSelect);
         var resolver = new Resolver(flow);
-        var seen = touchedNodes == null ? new HashSet<string>() : null;
+        HashSet<string>? seen = null;
+        if (touchedNodes == null)
+        {
+            _seen.Clear();
+            seen = _seen;
+        }
 
         foreach (var edge in flow.Edges)
         {
@@ -396,13 +423,23 @@ public sealed class EdgeLayer : Canvas
             Panel.SetZIndex(visual!, z);
             if (_labels.TryGetValue(edge.Id, out var labelVisual)) Panel.SetZIndex(labelVisual, z + 1);
             var aria = edge.AriaLabel ?? flow.EdgeAriaLabelProvider?.Invoke(edge);
-            if (aria != null) System.Windows.Automation.AutomationProperties.SetName(visual!, aria);
-            else visual!.ClearValue(System.Windows.Automation.AutomationProperties.NameProperty);
+            var part = (IEdgePart)visual!;
+            if (aria != part.LastAria)
+            {
+                part.LastAria = aria;
+                if (aria != null) System.Windows.Automation.AutomationProperties.SetName(visual!, aria);
+                else visual!.ClearValue(System.Windows.Automation.AutomationProperties.NameProperty);
+            }
             SetVisibility(edge.Id, visual!, visibility);
         }
 
         if (seen == null) return;
-        foreach (var id in _visuals.Keys.Where(k => !seen.Contains(k)).ToList()) Remove(id);
+        _stale.Clear();
+        foreach (var k in _visuals.Keys)
+            if (!seen.Contains(k))
+                _stale.Add(k);
+        for (var i = 0; i < _stale.Count; i++) Remove(_stale[i]);
+        _stale.Clear();
     }
 
     private void SetVisibility(string id, FrameworkElement visual, Visibility visibility)

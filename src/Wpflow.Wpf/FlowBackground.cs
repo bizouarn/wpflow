@@ -21,9 +21,10 @@ public sealed record BackgroundLayer(BackgroundVariant Variant = BackgroundVaria
 /// <summary>Fond de la surface (points / lignes / croix) qui suit le viewport grâce à des <c>DrawingBrush</c> en tuiles.</summary>
 public sealed class FlowBackground : FrameworkElement
 {
-    private sealed class Tile(DrawingBrush? brush)
+    private sealed class Tile(DrawingBrush? brush, MatrixTransform? transform)
     {
         public DrawingBrush? Brush { get; } = brush;
+        public MatrixTransform? Transform { get; } = transform;
         public double Offset { get; init; }
     }
 
@@ -47,13 +48,13 @@ public sealed class FlowBackground : FrameworkElement
     {
         _viewport = v;
         foreach (var t in _tiles)
-            if (t.Brush != null)
-                t.Brush.Transform = TransformFor(t.Offset);
+            if (t.Transform != null)
+                t.Transform.Matrix = MatrixFor(t.Offset);
         InvalidateVisual();
     }
 
-    private Transform TransformFor(double offset) =>
-        new MatrixTransform(_viewport.Zoom, 0, 0, _viewport.Zoom, _viewport.X + offset * _viewport.Zoom,
+    private Matrix MatrixFor(double offset) =>
+        new(_viewport.Zoom, 0, 0, _viewport.Zoom, _viewport.X + offset * _viewport.Zoom,
             _viewport.Y + offset * _viewport.Zoom);
 
     private Tile Build(BackgroundLayer layer, Brush color)
@@ -64,7 +65,7 @@ public sealed class FlowBackground : FrameworkElement
         switch (layer.Variant)
         {
             case BackgroundVariant.None:
-                return new Tile(null);
+                return new Tile(null, null);
             case BackgroundVariant.Dots:
                 var r = layer.Size ?? 1.1;
                 drawing.Children.Add(new GeometryDrawing(color, null, new EllipseGeometry(new Point(0, 0), r, r)));
@@ -85,6 +86,7 @@ public sealed class FlowBackground : FrameworkElement
             new RectangleGeometry(new Rect(-g / 2, -g / 2, g, g))));
 
         var tile = new Rect(-g / 2, -g / 2, g, g);
+        var transform = new MatrixTransform(MatrixFor(layer.Offset));
         return new Tile(new DrawingBrush(drawing)
         {
             TileMode = TileMode.Tile,
@@ -92,8 +94,8 @@ public sealed class FlowBackground : FrameworkElement
             ViewportUnits = BrushMappingMode.Absolute,
             Viewbox = tile,
             ViewboxUnits = BrushMappingMode.Absolute,
-            Transform = TransformFor(layer.Offset)
-        })
+            Transform = transform
+        }, transform)
         {
             Offset = layer.Offset
         };

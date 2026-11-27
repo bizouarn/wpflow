@@ -368,6 +368,29 @@ public partial class FlowView : ContentControl
     private bool _flushQueued;
     private readonly Dictionary<string, (double W, double H)> _measured = new();
     private readonly GraphHistory _history = new();
+    private readonly MatrixTransform _viewportTransform = new();
+    private Func<string, Node?>? _nodeLookup;
+    private Func<string, IReadOnlyList<HandleInfo>?>? _handleLookup;
+    private Pen? _outlinePen;
+    private Brush? _outlinePenBrush;
+    private double _outlinePenThickness;
+
+    private Func<string, Node?> NodeLookup => _nodeLookup ??= id => _nodeIndex.GetValueOrDefault(id);
+    private Func<string, IReadOnlyList<HandleInfo>?> HandleLookup => _handleLookup ??= id => _handleMap.GetValueOrDefault(id);
+
+    internal Pen OutlinePen(double thickness)
+    {
+        var brush = ThemeBrush("Flow.Outline");
+        if (_outlinePen == null || !ReferenceEquals(_outlinePenBrush, brush) || _outlinePenThickness != thickness)
+        {
+            _outlinePenBrush = brush;
+            _outlinePenThickness = thickness;
+            _outlinePen = new Pen(brush, thickness);
+            if (_outlinePen.CanFreeze) _outlinePen.Freeze();
+        }
+
+        return _outlinePen;
+    }
 
     /// <summary>Bornes de déplacement des nodes (<c>nodeExtent</c>) ; <c>null</c> = illimité.</summary>
     public static readonly DependencyProperty NodeExtentProperty = DependencyProperty.Register(
@@ -547,17 +570,26 @@ public partial class FlowView : ContentControl
     private Dictionary<string, int>? _depths;
     private bool _hasTree;
     private Core.Rect _showRect, _keepRect;
-
+    private readonly HashSet<string> _changedNodes = new();
 
     private void OnNodesChanged()
     {
         if (_nodeCanvas == null) return;
         var nodes = Nodes;
-        _hasTree = nodes.Any(n => n.ParentId != null);
+        var origin = NodeOrigin;
+        var hasTree = false;
+        var shifted = origin != XYPosition.Zero;
+        for (var i = 0; i < nodes.Count; i++)
+        {
+            var n = nodes[i];
+            if (n.ParentId != null) hasTree = true;
+            if (n.Origin != null) shifted = true;
+            if (hasTree && shifted) break;
+        }
+
+        _hasTree = hasTree;
         _depths = _hasTree ? NodeTree.Depths(nodes) : null;
         _elevated = NodeZOrder.ElevatedSet(nodes, ZIndexMode);
-        var origin = NodeOrigin;
-        var shifted = origin != XYPosition.Zero || nodes.Any(n => n.Origin != null); // origine non nulle : positions décalées
         // Avec une origine, le coin haut-gauche d'un enfant part du coin haut-gauche (déjà décalé) de son parent.
         var abs = !_hasTree ? null : shifted ? NodeConstraints.AbsoluteWithOrigin(nodes, origin) : NodeTree.AbsolutePositions(nodes);
         _virtualized = OnlyRenderVisibleElements;
@@ -569,7 +601,7 @@ public partial class FlowView : ContentControl
         _rawIndex.Clear();
         _useRaw = _hasTree || shifted; // sans arbre ni origine, _nodeIndex contient déjà les nodes tels que fournis
 
-        var changed = new HashSet<string>();
+        _changedNodes.Clear();
         var added = false;
         var kept = 0;
         foreach (var node in nodes)
@@ -593,12 +625,12 @@ public partial class FlowView : ContentControl
             if (existed)
             {
                 kept++;
-                if (!ReferenceEquals(before, absolute) && !((_hasTree || shifted) && before == absolute)) changed.Add(node.Id);
+                if (!ReferenceEquals(before, absolute) && !((_hasTree || shifted) && before == absolute)) _changedNodes.Add(node.Id);
             }
             else
             {
                 added = true;
-                changed.Add(node.Id);
+                _changedNodes.Add(node.Id);
             }
 
             SyncHost(node, absolute);
@@ -607,19 +639,18 @@ public partial class FlowView : ContentControl
         var removed = kept != _previousIndex.Count;
         if (removed)
         {
-            foreach (var id in _hosts.Keys.Where(k => !_nodeIndex.ContainsKey(k)).ToList())
+            foreach (var id in _previousIndex.Keys)
             {
-                _nodeCanvas.Children.Remove(_hosts[id]);
-                _hosts.Remove(id);
+                if (_nodeIndex.ContainsKey(id)) continue;
+                if (_hosts.Remove(id, out var host)) _nodeCanvas.Children.Remove(host);
+                _handleMap.Remove(id);
             }
-
-            foreach (var id in _handleMap.Keys.Where(k => !_nodeIndex.ContainsKey(k)).ToList()) _handleMap.Remove(id);
         }
 
         // Ajout/retrait de node : recalcul complet ; sinon seuls les edges des nodes modifiés (et de leurs descendants).
         var structural = added || removed;
-        if (_hasTree && !structural) changed.UnionWith(NodeTree.DescendantsOf(changed.ToList(), nodes));
-        RefreshEdges(structural ? null : changed);
+        if (_hasTree && !structural && _changedNodes.Count > 0) _changedNodes.UnionWith(NodeTree.DescendantsOf(_changedNodes, nodes));
+        RefreshEdges(structural ? null : _changedNodes);
         UpdateNodesInitialized();
         RaiseStateChanged();
     }
@@ -651,7 +682,11 @@ public partial class FlowView : ContentControl
     {
         var v = Viewport;
         if (_viewportGrid != null)
-            _viewportGrid.RenderTransform = new MatrixTransform(v.Zoom, 0, 0, v.Zoom, v.X, v.Y);
+        {
+            _viewportTransform.Matrix = new Matrix(v.Zoom, 0, 0, v.Zoom, v.X, v.Y);
+            if (!ReferenceEquals(_viewportGrid.RenderTransform, _viewportTransform))
+                _viewportGrid.RenderTransform = _viewportTransform;
+        }
         _background?.SetViewport(v);
         UpdateVirtualization();
         SyncZoom();
@@ -841,12 +876,12 @@ public partial class FlowView : ContentControl
     /// <summary>Extrémités d'un edge (point d'attache et côté du handle) ; la résolution est partagée avec Blazor (<see cref="EdgeEndpoints" />).</summary>
     internal (XYPosition Source, Position SourcePos, XYPosition Target, Position TargetPos)? GetEdgeEnds(Edge edge)
     {
-        if (!edge.Hidden && Nodes.Count > 0 && EdgeEndpoints.MissingNode(edge, id => _nodeIndex.GetValueOrDefault(id)) is { } missing)
+        if (edge.Hidden) return null;
+        if (EdgeEndpoints.Resolve(edge, NodeLookup, HandleLookup, Position.Right, Position.Left) is { } e)
+            return (e.Source, e.SourcePosition, e.Target, e.TargetPosition);
+        if (Nodes.Count > 0 && EdgeEndpoints.MissingNode(edge, NodeLookup) is { } missing)
             ReportError("node:" + edge.Id, "edge-node-missing", $"Edge {edge.Id} : node {missing} introuvable.");
-        return EdgeEndpoints.Resolve(edge, id => _nodeIndex.GetValueOrDefault(id), id => _handleMap.GetValueOrDefault(id), Position.Right, Position.Left)
-            is { } e
-            ? (e.Source, e.SourcePosition, e.Target, e.TargetPosition)
-            : null;
+        return null;
     }
 
     #endregion

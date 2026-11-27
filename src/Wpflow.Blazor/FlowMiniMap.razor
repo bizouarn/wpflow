@@ -3,7 +3,7 @@
 
 @if (Flow != null)
 {
-    var m = Flow.MiniMapBounds(Width, Height);
+    var m = Flow.MiniMapView(Width, Height);
     var view = m.View;
     var scale = view.Width / Width;
     <div class="wf-panel wf-minimap wf-panel-@(PanelPosition.ToString().ToLowerInvariant()) nopan nodrag nowheel @Class" style="width:@(Width)px;height:@(Height)px" data-wf-wheel="@(Zoomable ? "zoom" : null)">
@@ -13,7 +13,7 @@
              @onwheel="e => Wheel(e)" @onwheel:stopPropagation>
             @* Les rectangles sont en coordonnées flow : un pan ne change que le cadre et le voile. *@
             <FlowLayer Revision="NodesRevision(scale)">
-                @foreach (var (node, r) in m.Nodes)
+                @foreach (var (node, r) in Flow.MiniMapNodes())
                 {
                     var n = node;
                     var fill = NodeColor?.Invoke(n) ?? (n.Selected ? "var(--wf-minimap-node-selected)" : "var(--wf-minimap-node)");

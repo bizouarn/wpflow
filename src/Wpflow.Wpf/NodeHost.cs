@@ -39,6 +39,7 @@ public sealed class NodeHost : ContentControl
     private Border? _defaultBorder;
     private bool _measureQueued;
     private string? _contentKind;
+    private string? _lastAria;
 
     // Le contour de sélection est dessiné ici plutôt que par un gabarit : pas d'élément visuel supplémentaire par node.
     protected override void OnRender(DrawingContext dc)
@@ -46,7 +47,7 @@ public sealed class NodeHost : ContentControl
         base.OnRender(dc);
         if (!IsSelected || !ShowOutline || ActualWidth <= 0) return;
         double gap = _flow.SelectionOutlineGap, thickness = _flow.SelectionOutlineThickness;
-        var pen = new Pen(_flow.ThemeBrush("Flow.Outline"), thickness);
+        var pen = _flow.OutlinePen(thickness);
         var inset = gap - thickness / 2;
         var radius = OutlineCornerRadius.TopLeft > 0 ? OutlineCornerRadius.TopLeft + gap : 0; // angles droits par défaut
         dc.DrawRoundedRectangle(null, pen, new Rect(-inset, -inset, ActualWidth + 2 * inset, ActualHeight + 2 * inset),
@@ -109,8 +110,12 @@ public sealed class NodeHost : ContentControl
         }
 
         var aria = node.AriaLabel ?? _flow.NodeAriaLabelProvider?.Invoke(node);
-        if (aria != null) System.Windows.Automation.AutomationProperties.SetName(this, aria);
-        else ClearValue(System.Windows.Automation.AutomationProperties.NameProperty);
+        if (aria != _lastAria)
+        {
+            _lastAria = aria;
+            if (aria != null) System.Windows.Automation.AutomationProperties.SetName(this, aria);
+            else ClearValue(System.Windows.Automation.AutomationProperties.NameProperty);
+        }
 
         // Taille explicite (redimensionnement) : null => taille naturelle du contenu.
         Width = node.FixedWidth ?? double.NaN;
