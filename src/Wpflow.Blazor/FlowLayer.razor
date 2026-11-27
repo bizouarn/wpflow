@@ -1,19 +1,23 @@
 @namespace Wpflow.Blazor
 
-@* Rend son contenu seulement quand la révision change : un pas de pan ne modifie que la transformation du calque. *@
+@* Rend son contenu seulement quand la révision change : la couche des nodes et des edges (un pas de pan ne modifie que la
+   transformation du calque), puis dans cette couche chaque edge et chaque label. *@
 @ChildContent
 
 @code {
-    private int _rendered = -1;
+    private int _revision = -1;
+    private bool _changed;
 
     [Parameter] public int Revision { get; set; }
 
     [Parameter] public RenderFragment? ChildContent { get; set; }
 
-    protected override bool ShouldRender()
+    // Décidé ici et non dans ShouldRender, que Blazor n'appelle pas au premier rendu.
+    protected override void OnParametersSet()
     {
-        if (_rendered == Revision) return false;
-        _rendered = Revision;
-        return true;
+        _changed = _revision != Revision;
+        _revision = Revision;
     }
+
+    protected override bool ShouldRender() => _changed;
 }

@@ -26,7 +26,7 @@ public partial class FlowView
         var cts = _animation = new CancellationTokenSource();
         var from = Viewport;
         var started = DateTime.UtcNow;
-        await NotifyViewport(() => OnMoveStart.InvokeAsync(from));
+        await NotifyKeepingLayer(() => OnMoveStart.InvokeAsync(from));
         _animating++;
         try
         {
@@ -47,18 +47,18 @@ public partial class FlowView
             _animating--;
         }
 
-        await NotifyViewport(() => OnMoveEnd.InvokeAsync(Viewport));
+        await NotifyKeepingLayer(() => OnMoveEnd.InvokeAsync(Viewport));
     }
 
     private async Task SetViewportCore(Viewport v)
     {
         if (TranslateExtent is { } extent && _width > 0) v = ViewportMath.ClampToExtent(v, _width, _height, extent);
         Viewport = v;
-        await NotifyViewport(() => ViewportChanged.InvokeAsync(v));
-        await NotifyViewport(() => OnMove.InvokeAsync(v));
+        await NotifyKeepingLayer(() => ViewportChanged.InvokeAsync(v));
+        await NotifyKeepingLayer(() => OnMove.InvokeAsync(v));
         // Ici et non après le rendu : le parent s'y redessinerait plus tard, sans que la vue sache pourquoi.
         await RaiseStateChangeIfNeeded();
-        _viewportOnly = true;
+        _keepsNextRender = true;
         StateHasChanged();
     }
 

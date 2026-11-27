@@ -365,7 +365,12 @@ function queue(s, id, contentOnly = false) {
         }
         s.pending.clear();
         s.soft.clear();
-        for (const message of messages(batch)) s.dotnet.invokeMethodAsync('OnMeasured', message);
+        const series = messages(batch);
+        series.forEach((message, i) => {
+            // « more » : la vue attend le dernier message pour appliquer toutes les mesures d'un coup.
+            if (i < series.length - 1) for (const node of message) node.more = true;
+            s.dotnet.invokeMethodAsync('OnMeasured', message);
+        });
     });
 }
 

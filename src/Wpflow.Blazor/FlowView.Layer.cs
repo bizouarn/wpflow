@@ -8,7 +8,7 @@ namespace Wpflow.Blazor;
 /// </summary>
 public partial class FlowView
 {
-    private int _viewportCallbacks; // l'application est en train d'être prévenue d'un changement de vue
+    private int _keepingCallbacks; // l'application est en train d'être prévenue d'un changement de vue
     private readonly HashSet<string> _unresolvedEdges = new(); // sans extrémités à la dernière reconstruction
 
     /// <summary>
@@ -16,16 +16,51 @@ public partial class FlowView
     ///     parent qui écoute (<c>@bind-Viewport</c>), gardent la couche ; ce qu'il change pour de bon (nodes, edges, modèles
     ///     redéclarés, réglages) la fait refaire.
     /// </summary>
-    private async Task NotifyViewport(Func<Task> notify)
+    private async Task NotifyKeepingLayer(Func<Task> notify)
     {
-        _viewportCallbacks++;
+        _keepingCallbacks++;
         try
         {
             await notify();
         }
         finally
         {
-            _viewportCallbacks--;
+            _keepingCallbacks--;
+        }
+    }
+
+    private Node[] _seenNodes = [];
+    private Edge[] _seenEdges = [];
+
+    /// <summary>
+    ///     Les nodes et les edges reçus sont-ils, un à un, ceux du dernier rendu du parent ? Comparer les éléments et non les
+    ///     listes prend aussi en compte une liste que l'application modifie sur place. Les records sont immuables : la même
+    ///     référence dit le même élément.
+    /// </summary>
+    private bool SameElements()
+    {
+        var same = true;
+        if (!Same(Nodes, _seenNodes))
+        {
+            _seenNodes = Nodes.ToArray();
+            same = false;
+        }
+
+        if (!Same(Edges, _seenEdges))
+        {
+            _seenEdges = Edges.ToArray();
+            same = false;
+        }
+
+        return same;
+
+        static bool Same<T>(IReadOnlyList<T> list, T[] seen) where T : class
+        {
+            if (list.Count != seen.Length) return false;
+            for (var i = 0; i < seen.Length; i++)
+                if (!ReferenceEquals(list[i], seen[i]))
+                    return false;
+            return true;
         }
     }
 
@@ -34,7 +69,7 @@ public partial class FlowView
 
     /// <summary>Décide, une fois par rendu, si la couche est refaite.</summary>
     private bool KeepsLayer() =>
-        !_forceLayer && (_viewportOnly || _viewportCallbacks > 0) && !(OnlyRenderVisibleElements && VisibleSetOutdated());
+        !_forceLayer && (_keepsNextRender || _keepingCallbacks > 0) && !(OnlyRenderVisibleElements && VisibleSetOutdated());
 
     /// <summary>Les zones d'affichage et de maintien de la vue actuelle (virtualisation).</summary>
     private (Rect Show, Rect Keep) ViewZones() =>

@@ -246,7 +246,7 @@ public partial class FlowView
         {
             _space = true;
             // Maintenir Espace répète la touche : le dessin n'est pas refait (une sélection au clavier le signale par ses changes).
-            _viewportOnly = true;
+            _keepsNextRender = true;
         }
         var ctrl = e.CtrlKey || e.MetaKey;
         var key = e.Key;
@@ -310,7 +310,7 @@ public partial class FlowView
         if (e.Key == " ")
         {
             _space = false;
-            _viewportOnly = true;
+            _keepsNextRender = true;
         }
 
         return Task.CompletedTask;
@@ -472,7 +472,14 @@ public partial class FlowView
         })
         : default;
 
-    private EventCallback<PointerEventArgs> Cb(Func<PointerEventArgs, Task> f) => EventCallback.Factory.Create(this, f);
+    // Un survol ne change rien au dessin : ni le rendu qui suit son évènement, ni celui d'un parent qui l'écoute. Ce que le
+    // survol change pour de bon (fil d'une connexion par clics, données, modèles redéclarés) est signalé comme ailleurs.
+    private EventCallback<PointerEventArgs> Cb(Func<PointerEventArgs, Task> f) => EventCallback.Factory.Create<PointerEventArgs>(this,
+        async e =>
+        {
+            await NotifyKeepingLayer(() => f(e));
+            _keepsNextRender = true;
+        });
 
     private async Task OnDropped(DragEventArgs e) =>
         await OnDrop.InvokeAsync(new FlowDropEventArgs(ClientToFlow(e.ClientX, e.ClientY), e));

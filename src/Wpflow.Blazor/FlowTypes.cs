@@ -108,6 +108,9 @@ public sealed class MeasuredNode
 
     /// <summary>Les handles ne sont qu'une partie : la suite arrive dans les messages suivants.</summary>
     public bool Partial { get; set; }
+
+    /// <summary>D'autres messages de la même série de mesures suivent : la vue les applique toutes au dernier.</summary>
+    public bool More { get; set; }
 }
 
 /// <summary>Réglages propres à un <c>FlowHandle</c> (validateur et évènement), enregistrés auprès de la vue.</summary>

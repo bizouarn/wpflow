@@ -3,7 +3,7 @@
 @{
     // Le pan ne change que la transformation du calque : la couche des nodes et des edges n'est pas refaite (voir FlowView.Layer).
     if (!KeepsLayer()) _layerRevision++;
-    _viewportOnly = false;
+    _keepsNextRender = false;
     _forceLayer = false;
 }
 
@@ -76,42 +76,34 @@
                 @foreach (var ev in edgeViews)
                 {
                     var edge = ev.Edge;
-                    <g @key="edge.Id" class="wf-edge @(edge.Selected ? "wf-selected" : "") @(edge.Animated ? "wf-edge-animated" : "")"
-                       role="group" aria-label="@EdgeLabelText(ev)" aria-selected="@(edge.Selected ? "true" : "false")"
-                       tabindex="@(EdgesFocusable && !DisableKeyboardA11y ? 0 : (int?)null)" @onfocus="() => EdgeFocused(edge)">
-                        @if (ev.Template != null)
-                        {
-                            @ev.Template(ev.Context)
-                        }
-                        else
-                        {
-                            <path class="wf-edge-path" d="@ev.Context.Path.Path" style="@EdgeStyle(edge)"
-                                  marker-start="@ev.MarkerStart" marker-end="@ev.MarkerEnd" />
-                        }
-                        <path class="wf-edge-hit" d="@ev.Context.Path.Path" style="@EdgeHitStyle(edge)"
-                              @onpointerdown="e => OnEdgePointerDown(edge, e)" @onpointerdown:stopPropagation
-                              @ondblclick="e => EdgeDoubleClick(edge, e)" @ondblclick:stopPropagation
-                              @oncontextmenu="e => EdgeContextMenu(edge, e)" @oncontextmenu:preventDefault="OnEdgeContextMenu.HasDelegate"
-                              @oncontextmenu:stopPropagation
-                              @onpointerenter="EdgeEnterHandler(edge)" @onpointerleave="EdgeLeaveHandler(edge)"
-                              @onpointermove="EdgeMoveHandler(edge)" />
-                        @if (edge.Selected && EdgesReconnectable && edge.Reconnectable && !IsLocked)
-                        {
-                            <circle class="wf-edge-anchor" cx="@F(ev.Context.Geometry.Source.X)" cy="@F(ev.Context.Geometry.Source.Y)" r="@F(Math.Min(ReconnectRadius / 2, 5))" />
-                            <circle class="wf-edge-anchor" cx="@F(ev.Context.Geometry.Target.X)" cy="@F(ev.Context.Geometry.Target.Y)" r="@F(Math.Min(ReconnectRadius / 2, 5))" />
-                        }
-                    </g>
-                }
-                @if (ConnectionPath() is { } cp)
-                {
-                    if (ConnectionLineTemplate != null)
-                    {
-                        @ConnectionLineTemplate(CurrentConnection)
-                    }
-                    else
-                    {
-                        <path class="wf-connection-line @(_candidate == null ? "" : "wf-valid-line")" d="@cp" />
-                    }
+                    @* Comme les nodes, un edge n'est redessiné que s'il a changé (ev.Stamp). *@
+                    <FlowLayer @key="edge.Id" Revision="ev.Stamp">
+                        <g class="wf-edge @(edge.Selected ? "wf-selected" : "") @(edge.Animated ? "wf-edge-animated" : "")"
+                           role="group" aria-label="@EdgeLabelText(ev)" aria-selected="@(edge.Selected ? "true" : "false")"
+                           tabindex="@(EdgesFocusable && !DisableKeyboardA11y ? 0 : (int?)null)" @onfocus="() => EdgeFocused(edge)">
+                            @if (ev.Template != null)
+                            {
+                                @ev.Template(ev.Context)
+                            }
+                            else
+                            {
+                                <path class="wf-edge-path" d="@ev.Context.Path.Path" style="@EdgeStyle(edge)"
+                                      marker-start="@ev.MarkerStart" marker-end="@ev.MarkerEnd" />
+                            }
+                            <path class="wf-edge-hit" d="@ev.Context.Path.Path" style="@EdgeHitStyle(edge)"
+                                  @onpointerdown="e => OnEdgePointerDown(edge, e)" @onpointerdown:stopPropagation
+                                  @ondblclick="e => EdgeDoubleClick(edge, e)" @ondblclick:stopPropagation
+                                  @oncontextmenu="e => EdgeContextMenu(edge, e)" @oncontextmenu:preventDefault="OnEdgeContextMenu.HasDelegate"
+                                  @oncontextmenu:stopPropagation
+                                  @onpointerenter="EdgeEnterHandler(edge)" @onpointerleave="EdgeLeaveHandler(edge)"
+                                  @onpointermove="EdgeMoveHandler(edge)" />
+                            @if (edge.Selected && EdgesReconnectable && edge.Reconnectable && !IsLocked)
+                            {
+                                <circle class="wf-edge-anchor" cx="@F(ev.Context.Geometry.Source.X)" cy="@F(ev.Context.Geometry.Source.Y)" r="@F(Math.Min(ReconnectRadius / 2, 5))" />
+                                <circle class="wf-edge-anchor" cx="@F(ev.Context.Geometry.Target.X)" cy="@F(ev.Context.Geometry.Target.Y)" r="@F(Math.Min(ReconnectRadius / 2, 5))" />
+                            }
+                        </g>
+                    </FlowLayer>
                 }
             </svg>
 
@@ -128,21 +120,37 @@
             {
                 var edge = ev.Edge;
                 if (string.IsNullOrEmpty(edge.Label) && EdgeLabelTemplate == null) continue;
-                <div @key="@("l" + edge.Id)" class="wf-edge-label @(EdgeLabelTemplate != null ? "wf-edge-label-custom" : "")" style="@EdgeLabelStyle(ev)"
-                     @onpointerdown="e => OnEdgePointerDown(edge, e)" @onpointerdown:stopPropagation>
-                    <CascadingValue Value="edge" Name="WfEdge">
-                        @if (EdgeLabelTemplate != null)
-                        {
-                            @EdgeLabelTemplate(ev.Context)
-                        }
-                        else
-                        {
-                            @edge.Label
-                        }
-                    </CascadingValue>
-                </div>
+                <FlowLayer @key="@("l" + edge.Id)" Revision="ev.Stamp">
+                    <div class="wf-edge-label @(EdgeLabelTemplate != null ? "wf-edge-label-custom" : "")" style="@EdgeLabelStyle(ev)"
+                         @onpointerdown="e => OnEdgePointerDown(edge, e)" @onpointerdown:stopPropagation>
+                        <CascadingValue Value="edge" Name="WfEdge">
+                            @if (EdgeLabelTemplate != null)
+                            {
+                                @EdgeLabelTemplate(ev.Context)
+                            }
+                            else
+                            {
+                                @edge.Label
+                            }
+                        </CascadingValue>
+                    </div>
+                </FlowLayer>
             }
             </FlowLayer>
+            @* Le fil tiré, au-dessus des nodes comme en WPF et hors de la couche : le suivre ne la refait pas. *@
+            @if (ConnectionPath() is { } cp)
+            {
+                <svg class="wf-edges wf-connection-layer">
+                    @if (ConnectionLineTemplate != null)
+                    {
+                        @ConnectionLineTemplate(CurrentConnection)
+                    }
+                    else
+                    {
+                        <path class="wf-connection-line @(_candidate == null ? "" : "wf-valid-line")" d="@cp" />
+                    }
+                </svg>
+            }
         </div>
 
         @if (_mode == Mode.Box && _moved)

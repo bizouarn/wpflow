@@ -35,7 +35,7 @@ public partial class FlowView : ComponentBase, IAsyncDisposable
     private bool _space;
     private int _layerRevision;
     private bool _forceLayer; // un changement autre que le viewport : la couche des nodes et des edges est refaite
-    private bool _viewportOnly;// le prochain rendu ne change que le viewport (pan, zoom) : la couche des nodes est conservée
+    private bool _keepsNextRender;// le prochain rendu ne change que le viewport (pan, zoom) : la couche des nodes est conservée
     private string? _announce;
     private readonly SelectionTracker _selectionTracker = new(); // au départ rien de sélectionné : rien à annoncer
     private string? _jsOptions;
@@ -65,15 +65,19 @@ public partial class FlowView : ComponentBase, IAsyncDisposable
 
     protected override async Task OnParametersSetAsync()
     {
+        // Un rendu du parent qui ne change rien garde la couche : ce qui la change est cherché ci-dessous.
+        _keepsNextRender = true;
         ConfigureSources();
-        if (!ReferenceEquals(_indexedNodes, Nodes)) RebuildIndex();
+        var changedInPlace = !SameElements();
+        if (changedInPlace) _forceLayer = true;
+        if (changedInPlace || !ReferenceEquals(_indexedNodes, Nodes)) RebuildIndex();
         if (_edgeCache.Count > Edges.Count) _edgeCache.Clear();
         // Ce qui change le contenu de la couche des nodes et des edges (hors viewport) : elle est alors refaite.
         var signature = HashCode.Combine(HashCode.Combine(Nodes, Edges, NodeTemplate, NodeTemplates, EdgeTemplates, EdgeTypes, EdgeLabelTemplate, MarkerTemplates),
             HashCode.Combine(IsLocked, ZIndexMode, ElevateNodesOnSelect, ElevateEdgesOnSelect, NodeOrigin, DefaultMarkerColor, NodesFocusable, EdgesFocusable),
             HashCode.Combine(DisableKeyboardA11y, NodeAriaLabelProvider, EdgeAriaLabelProvider, EdgesReconnectable, ReconnectRadius, ConnectionLineTemplate, ConnectionLineType),
             HashCode.Combine(OnlyRenderVisibleElements, OnNodeContextMenu.HasDelegate, OnSelectionContextMenu.HasDelegate, OnNodeMouseEnter.HasDelegate,
-                OnNodeMouseLeave.HasDelegate, OnEdgeMouseEnter.HasDelegate,
+                OnNodeMouseLeave.HasDelegate, HashCode.Combine(OnEdgeMouseEnter.HasDelegate, OnEdgeMouseLeave.HasDelegate),
                 HashCode.Combine(OnEdgeContextMenu.HasDelegate, OnNodeMouseMove.HasDelegate, OnEdgeMouseMove.HasDelegate, EdgeHitWidth,
                     PaneHoverWanted)));
         if (signature != _layerSignature) _forceLayer = true;
@@ -237,9 +241,25 @@ public partial class FlowView : ComponentBase, IAsyncDisposable
 
     private readonly Dictionary<string, List<MeasuredHandle>> _partialHandles = new();
 
+    private readonly List<MeasuredNode> _pendingMeasures = [];
+
     [JSInvokable]
     public Task OnMeasured(List<MeasuredNode> measured) => InvokeAsync(async () =>
     {
+        // Une série découpée en plusieurs messages (des dizaines pour un grand graphe) n'est appliquée qu'au dernier : un
+        // changement et un rendu par message parcourraient tout le graphe à chaque fois.
+        if (measured.Any(m => m.More))
+        {
+            _pendingMeasures.AddRange(measured);
+            return;
+        }
+
+        if (_pendingMeasures.Count > 0)
+        {
+            measured = [.. _pendingMeasures, .. measured];
+            _pendingMeasures.Clear();
+        }
+
         var changes = new List<NodeChange>();
         foreach (var m in measured)
         {
@@ -303,7 +323,7 @@ public partial class FlowView : ComponentBase, IAsyncDisposable
         if (!_wheeling)
         {
             _wheeling = true;
-            await NotifyViewport(() => OnMoveStart.InvokeAsync(Viewport));
+            await NotifyKeepingLayer(() => OnMoveStart.InvokeAsync(Viewport));
         }
 
         await SetViewport(v);
@@ -315,7 +335,7 @@ public partial class FlowView : ComponentBase, IAsyncDisposable
             await InvokeAsync(async () =>
             {
                 _wheeling = false;
-                await NotifyViewport(() => OnMoveEnd.InvokeAsync(Viewport));
+                await NotifyKeepingLayer(() => OnMoveEnd.InvokeAsync(Viewport));
             });
         }, TaskScheduler.Default);
     }
@@ -436,19 +456,35 @@ public partial class FlowView : ComponentBase, IAsyncDisposable
     internal RenderFragment<Node>? TemplateFor(Node n) =>
         NodeTemplates != null && NodeTemplates.TryGetValue(n.Type, out var t) ? t : NodeTemplate;
 
-    /// <summary>Ce dont dépend le tracé d'un edge : l'edge (référence), ses extrémités et les réglages de la vue.</summary>
-    private readonly record struct EdgeKey(Edge Edge, EdgeEnds Ends, object? Types, object? Templates, string? MarkerColor)
+    /// <summary>
+    ///     Ce dont dépend le dessin d'un edge : l'edge (référence), ses extrémités, ses deux nodes (un modèle d'edge peut les
+    ///     lire) et les types. Les autres réglages de la vue sont dans <see cref="EdgeSettings" />.
+    /// </summary>
+    private readonly record struct EdgeKey(Edge Edge, EdgeEnds Ends, Node SourceNode, Node TargetNode, object? Types, object? Templates,
+        string? MarkerColor)
     {
-        public bool Equals(EdgeKey other) => ReferenceEquals(Edge, other.Edge) && Ends == other.Ends && ReferenceEquals(Types, other.Types)
-                                             && ReferenceEquals(Templates, other.Templates) && MarkerColor == other.MarkerColor;
+        public bool Equals(EdgeKey other) => ReferenceEquals(Edge, other.Edge) && Ends == other.Ends
+                                             && ReferenceEquals(SourceNode, other.SourceNode) && ReferenceEquals(TargetNode, other.TargetNode)
+                                             && ReferenceEquals(Types, other.Types) && ReferenceEquals(Templates, other.Templates)
+                                             && MarkerColor == other.MarkerColor;
 
         public override int GetHashCode() => Edge.GetHashCode();
     }
 
     private readonly Dictionary<string, (EdgeKey Key, EdgeView View)> _edgeCache = new();
 
+    // Les réglages que lit le balisage d'un edge ou de son label : quand l'un change, tous sont redessinés.
+    private object EdgeSettings() => (
+        (EdgesFocusable, DisableKeyboardA11y, EdgeAriaLabelProvider, EdgeLabelTemplate, EdgeHitWidth),
+        (OnEdgeContextMenu.HasDelegate, OnEdgeMouseEnter.HasDelegate, OnEdgeMouseLeave.HasDelegate, OnEdgeMouseMove.HasDelegate, PaneHoverWanted),
+        (EdgesReconnectable, ReconnectRadius, IsLocked));
+
+    private object? _edgeSettings;
+    private int _edgeStamp;
+
+    /// <param name="Stamp">Neuf à chaque fois que l'edge doit être redessiné (voir <c>FlowLayer</c>).</param>
     private sealed record EdgeView(Edge Edge, EdgeRenderContext Context, string? MarkerStart, string? MarkerEnd,
-        RenderFragment<EdgeRenderContext>? Template)
+        RenderFragment<EdgeRenderContext>? Template, int Stamp)
     {
         /// <summary>Nom accessible quand ni l'edge ni la vue n'en donnent.</summary>
         public string DefaultLabel { get; } = $"Edge de {Edge.Source} vers {Edge.Target}";
@@ -466,6 +502,9 @@ public partial class FlowView : ComponentBase, IAsyncDisposable
         (Rect, Rect)? zones = Virtualizes ? ViewZones() : null;
         _unresolvedEdges.Clear();
         _edgeContexts.Clear();
+        var settings = EdgeSettings();
+        if (!settings.Equals(_edgeSettings)) _edgeCache.Clear();
+        _edgeSettings = settings;
         var ordered = Edges.OrderBy(e => EdgeZOrder.Compute(e, ElevateEdgesOnSelect));
         foreach (var e in ordered)
         {
@@ -488,9 +527,9 @@ public partial class FlowView : ComponentBase, IAsyncDisposable
             if (zones is { } z && EdgePresence(e, z) != VirtualizationRule.Presence.Shown)
                 continue;
 
-            // Un edge dont l'edge lui-même, les extrémités et les réglages n'ont pas changé garde son tracé (déplacer un node
-            // ne refait que les edges de ce node).
-            var key = new EdgeKey(e, ends, EdgeTypes, EdgeTemplates, DefaultMarkerColor);
+            // Un edge dont la clé n'a pas changé garde son tracé et n'est pas redessiné (déplacer un node ne refait que les
+            // edges de ce node).
+            var key = new EdgeKey(e, ends, _absNodes[e.Source], _absNodes[e.Target], EdgeTypes, EdgeTemplates, DefaultMarkerColor);
             if (_edgeCache.TryGetValue(e.Id, out var cached) && cached.Key.Equals(key))
             {
                 _edgeContexts[e.Id] = cached.View.Context;
@@ -504,7 +543,7 @@ public partial class FlowView : ComponentBase, IAsyncDisposable
             _edgeContexts[e.Id] = ctx;
             var view = new EdgeView(e, ctx, MarkerRef(e.MarkerStart, e.MarkerStartKey, e.MarkerStartOptions, e),
                 MarkerRef(e.MarkerEnd, e.MarkerEndKey, e.MarkerEndOptions, e),
-                EdgeTemplates != null && EdgeTemplates.TryGetValue(e.Type, out var tpl) ? tpl : null);
+                EdgeTemplates != null && EdgeTemplates.TryGetValue(e.Type, out var tpl) ? tpl : null, ++_edgeStamp);
             _edgeCache[e.Id] = (key, view);
             yield return view;
         }

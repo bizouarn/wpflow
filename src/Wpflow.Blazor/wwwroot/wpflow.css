@@ -59,6 +59,8 @@
 .wf-edge.wf-selected .wf-edge-path { stroke: var(--wf-edge-selected); }
 .wf-edge-animated .wf-edge-path { stroke-dasharray: 5; animation: wf-dash .5s linear infinite; }
 @keyframes wf-dash { to { stroke-dashoffset: -10; } }
+/* Au-dessus des nodes, élevés compris. */
+.wf-connection-layer { z-index: 100000; }
 .wf-connection-line { fill: none; stroke: var(--wf-connect); stroke-width: 1.5; pointer-events: none; }
 .wf-connection-line.wf-invalid { stroke: #b1b1b7; stroke-dasharray: 4; }
 

@@ -43,8 +43,24 @@ Mesuré en WebAssembly dans Chrome, 855 nodes et 908 edges tous visibles : un pa
 - Saisir puis relâcher le fond, ou maintenir Espace, ne reconstruit plus la couche.
 - La minimap ne redessine plus ses rectangles à chaque pas de pan.
 
+Même graphe, avec un modèle d'edge et un parent qui écoute le glisser et le survol (configuration de développement) :
+
+| Geste ou étape | Avant | Après |
+|---|---|---|
+| Chargement (mode contrôlé) | 78 s | 9 s |
+| Glisser d'un node, par pas | 1 820 ms | 300 ms |
+| Fil tiré, par pas | 990 ms | 140 ms |
+| Rectangle de sélection, par pas | 1 270 ms | 150 ms |
+| Survol du fond, par pas | 620 ms | 55 ms |
+
+- Chaque edge et chaque label est mémorisé, comme les nodes : déplacer un node ne redessine que ses edges.
+- Les mesures d'un grand graphe, que le pont JS découpe en dizaines de messages (`MeasuredNode.More`), sont appliquées une seule fois : un seul changement (`OnNodesChange`) au lieu d'un par message.
+- Le fil d'une connexion est dessiné hors de la couche ; survol, rectangle de sélection et rendus du parent qui ne changent rien ne la reconstruisent plus.
+
 ### Changements de comportement (Blazor)
 
+- Un modèle d'edge (`EdgeTemplates`) ou de label (`EdgeLabelTemplate`) n'est rappelé que si son edge, ses extrémités, l'un de ses deux nodes ou un réglage de la vue change, ou s'il est redéclaré (un délégué neuf). Un modèle qui lit l'état du parent ou un autre node doit recevoir cet état par les données.
+- Le fil d'une connexion passe au-dessus des nodes, comme en WPF (il passait dessous). Il est dans son propre `svg` (`wf-connection-layer`).
 - Pendant un changement de vue, le rendu du parent ne redessine plus les modèles d'edges et de labels qui liraient son état (c'était déjà le cas des modèles de nodes) : passez cet état par les données, ou redéclarez le modèle. Même règle pour `NodeColor` de la minimap.
 - Avec `OnlyRenderVisibleElements`, les edges proches de la vue (300 px) sont dessinés d'avance, comme les nodes.
 - `OnStateChange`, quand seule la vue bouge, est levé juste avant le rendu et non après.

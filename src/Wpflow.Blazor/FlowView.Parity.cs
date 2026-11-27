@@ -56,7 +56,7 @@ public partial class FlowView
         // Seule la vue a bougé : le parent qui se redessine en l'apprenant ne fait pas refaire la couche.
         var viewportOnly = _state is { } was && was with { Item3 = state.Viewport } == state;
         _state = state;
-        return viewportOnly ? NotifyViewport(() => OnStateChange.InvokeAsync()) : OnStateChange.InvokeAsync();
+        return viewportOnly ? NotifyKeepingLayer(() => OnStateChange.InvokeAsync()) : OnStateChange.InvokeAsync();
     }
 
     private string? EdgeHitStyle(Edge edge)

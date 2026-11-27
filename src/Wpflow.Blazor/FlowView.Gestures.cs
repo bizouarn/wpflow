@@ -154,7 +154,7 @@ public partial class FlowView
         else if (!flags.NoPan && (PanOnDrag && PanOnDragButtons.Contains(button) || panKey && button == 0))
         {
             _mode = Mode.Pan;
-            _viewportOnly = true; // saisir le fond ne change rien au dessin
+            _keepsNextRender = true; // saisir le fond ne change rien au dessin
         }
     }
 
@@ -333,7 +333,7 @@ public partial class FlowView
         switch (_mode)
         {
             case Mode.Pan:
-                if (first) await NotifyViewport(() => OnMoveStart.InvokeAsync(Viewport));
+                if (first) await NotifyKeepingLayer(() => OnMoveStart.InvokeAsync(Viewport));
                 await SetViewport(new Viewport(_startViewport.X + _pointer.X - _startPointer.X,
                     _startViewport.Y + _pointer.Y - _startPointer.Y, _startViewport.Zoom));
                 break;
@@ -353,12 +353,14 @@ public partial class FlowView
 
                 _cursorFlow = flow;
                 _candidate = FindCandidate(flow);
-                Refresh(); // le fil est dessiné dans la couche
+                _keepsNextRender = true; // le fil est hors de la couche
+                StateHasChanged();
                 break;
             case Mode.Box:
                 if (first) await OnSelectionStart.InvokeAsync();
                 _boxEnd = _pointer;
                 UpdateBoxSelection();
+                _keepsNextRender = true; // le rectangle est hors de la couche ; une sélection changée se signale par ses changes
                 StateHasChanged();
                 break;
             case Mode.Resize:
@@ -400,7 +402,7 @@ public partial class FlowView
         switch (mode)
         {
             case Mode.Pan when _moved:
-                await NotifyViewport(() => OnMoveEnd.InvokeAsync(Viewport));
+                await NotifyKeepingLayer(() => OnMoveEnd.InvokeAsync(Viewport));
                 break;
             case Mode.DragNodes when _moved:
                 await FinishDrag(pointer);
@@ -447,7 +449,7 @@ public partial class FlowView
         _reconnect = null;
         _moved = false;
         // La fin d'un pan ne change rien au dessin ; ce qu'un clic modifie (sélection) est signalé par les changes.
-        if (mode == Mode.Pan && !_clickMode) _viewportOnly = true;
+        if (mode == Mode.Pan && !_clickMode) _keepsNextRender = true;
         else _forceLayer = true;
         StateHasChanged();
     });
@@ -661,7 +663,6 @@ public partial class FlowView
         {
             _cursorFlow = ScreenToFlow(_pointer);
             _candidate = FindCandidate(_cursorFlow);
-            _forceLayer = true;
         }
 
         // Un élément survolé a pu disparaître sans « pointerleave ».
