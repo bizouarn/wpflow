@@ -25,13 +25,7 @@
     private void Down(PointerEventArgs e)
     {
         if (Flow == null || Node == null) return;
-        Flow.StartResize(Node.Id, Direction, new ResizeOptions
-        {
-            MinWidth = NodeMinWidth, MinHeight = NodeMinHeight, MaxWidth = NodeMaxWidth, MaxHeight = NodeMaxHeight,
-            KeepAspectRatio = KeepAspectRatio, ShouldResize = ShouldResize,
-            Started = a => _ = OnResizeStart.InvokeAsync(a),
-            Resizing = a => _ = OnResize.InvokeAsync(a),
-            Ended = a => _ = OnResizeEnd.InvokeAsync(a)
-        }, e);
+        Flow.StartResize(Node.Id, Direction, ResizeOptions.Of(NodeMinWidth, NodeMinHeight, NodeMaxWidth, NodeMaxHeight, KeepAspectRatio,
+            ShouldResize, OnResizeStart, OnResize, OnResizeEnd), e);
     }
 }

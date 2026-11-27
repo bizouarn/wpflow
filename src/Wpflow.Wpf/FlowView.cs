@@ -548,12 +548,6 @@ public partial class FlowView : ContentControl
     private bool _hasTree;
     private Core.Rect _showRect, _keepRect;
 
-    private enum Presence
-    {
-        Absent, // pas d'élément visuel du tout (c'est ce qui économise la mémoire)
-        Hidden, // élément gardé mais masqué : évite de le recréer à chaque aller-retour du pan
-        Shown
-    }
 
     private void OnNodesChanged()
     {
@@ -679,35 +673,35 @@ public partial class FlowView : ContentControl
         (_showRect, _keepRect) = Virtualization.Zones(view, Viewport.Zoom);
     }
 
-    private Presence PresenceOf(Node absolute)
+    private VirtualizationRule.Presence PresenceOf(Node absolute)
     {
-        if (!_virtualized || absolute.Selected) return Presence.Shown;
+        if (!_virtualized || absolute.Selected) return VirtualizationRule.Presence.Shown; // sans calculer son rectangle
         var rect = Virtualization.AssumedRect(absolute);
-        return rect.Overlaps(_showRect) ? Presence.Shown : rect.Overlaps(_keepRect) ? Presence.Hidden : Presence.Absent;
+        return VirtualizationRule.OfNode(false, rect, _showRect, _keepRect);
     }
 
     /// <summary>
     ///     Met l'élément visuel d'un node en accord avec son état (créé, masqué, supprimé, à jour).
-    ///     Seul le mode virtualisé produit <see cref="Presence.Hidden" /> et <see cref="Presence.Absent" />.
+    ///     Seul le mode virtualisé produit <see cref="VirtualizationRule.Presence.Kept" /> et <see cref="VirtualizationRule.Presence.Absent" />.
     /// </summary>
     private void SyncHost(Node raw, Node absolute)
     {
         var presence = PresenceOf(absolute);
         if (!_hosts.TryGetValue(raw.Id, out var host))
         {
-            if (presence == Presence.Absent) return;
+            if (presence == VirtualizationRule.Presence.Absent) return;
             host = new NodeHost(this);
             _hosts[raw.Id] = host;
             _nodeCanvas!.Children.Add(host);
         }
-        else if (presence == Presence.Absent)
+        else if (presence == VirtualizationRule.Presence.Absent)
         {
             _nodeCanvas!.Children.Remove(host);
             _hosts.Remove(raw.Id);
             return;
         }
 
-        var want = presence == Presence.Shown && !raw.Hidden ? Visibility.Visible : Visibility.Collapsed;
+        var want = presence == VirtualizationRule.Presence.Shown && !raw.Hidden ? Visibility.Visible : Visibility.Collapsed;
         if (host.Visibility != want) host.Visibility = want;
         var elevated = _elevated?.Contains(raw.Id) == true;
         if (ReferenceEquals(host.Node, raw) && host.AbsolutePosition == absolute.Position && host.Elevated == elevated) return;

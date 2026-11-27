@@ -6,31 +6,30 @@ namespace Wpflow.Core;
 /// </summary>
 public static class Changesets
 {
-    public static IReadOnlyList<NodeChange> Diff(IReadOnlyList<Node> before, IReadOnlyList<Node> after)
-    {
-        var old = before.ToDictionary(n => n.Id);
-        var now = after.Select(n => n.Id).ToHashSet();
-        var changes = new List<NodeChange>();
-        changes.AddRange(before.Where(n => !now.Contains(n.Id)).Select(n => (NodeChange)new NodeRemoveChange(n.Id)));
-        foreach (var n in after)
-        {
-            if (!old.TryGetValue(n.Id, out var was)) changes.Add(new NodeAddChange(n));
-            else if (!ReferenceEquals(was, n) && was != n) changes.Add(new NodeReplaceChange(n.Id, n));
-        }
+    public static IReadOnlyList<NodeChange> Diff(IReadOnlyList<Node> before, IReadOnlyList<Node> after) =>
+        Walk<Node, NodeChange>(before, after, before.ToDictionary(n => n.Id), n => n.Id, id => new NodeRemoveChange(id),
+            n => new NodeAddChange(n), (_, n, changes) => changes.Add(new NodeReplaceChange(n.Id, n)));
 
-        return changes;
-    }
+    public static IReadOnlyList<EdgeChange> Diff(IReadOnlyList<Edge> before, IReadOnlyList<Edge> after) =>
+        Walk<Edge, EdgeChange>(before, after, before.ToDictionary(e => e.Id), e => e.Id, id => new EdgeRemoveChange(id),
+            e => new EdgeAddChange(e), (_, e, changes) => changes.Add(new EdgeReplaceChange(e.Id, e)));
 
-    public static IReadOnlyList<EdgeChange> Diff(IReadOnlyList<Edge> before, IReadOnlyList<Edge> after)
+    /// <summary>
+    ///     Le parcours commun des différences : les retraits, puis dans l'ordre de <paramref name="after" /> les ajouts et les
+    ///     éléments modifiés. <paramref name="changed" /> dit en quels changes se traduit une modification.
+    /// </summary>
+    /// <param name="old">Les éléments de <paramref name="before" /> par id ; l'appelant décide du sort d'un id en double.</param>
+    internal static List<TChange> Walk<T, TChange>(IReadOnlyList<T> before, IReadOnlyList<T> after, Dictionary<string, T> old,
+        Func<T, string> id, Func<string, TChange> removed, Func<T, TChange> added, Action<T, T, List<TChange>> changed)
+        where T : class
     {
-        var old = before.ToDictionary(e => e.Id);
-        var now = after.Select(e => e.Id).ToHashSet();
-        var changes = new List<EdgeChange>();
-        changes.AddRange(before.Where(e => !now.Contains(e.Id)).Select(e => (EdgeChange)new EdgeRemoveChange(e.Id)));
-        foreach (var e in after)
+        var now = new HashSet<string>(after.Select(id));
+        var changes = new List<TChange>();
+        changes.AddRange(before.Where(item => !now.Contains(id(item))).Select(item => removed(id(item))));
+        foreach (var item in after)
         {
-            if (!old.TryGetValue(e.Id, out var was)) changes.Add(new EdgeAddChange(e));
-            else if (!ReferenceEquals(was, e) && was != e) changes.Add(new EdgeReplaceChange(e.Id, e));
+            if (!old.TryGetValue(id(item), out var was)) changes.Add(added(item));
+            else if (!ReferenceEquals(was, item) && !was.Equals(item)) changed(was, item, changes);
         }
 
         return changes;

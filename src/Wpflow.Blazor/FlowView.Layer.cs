@@ -36,36 +36,32 @@ public partial class FlowView
     private bool KeepsLayer() =>
         !_forceLayer && (_viewportOnly || _viewportCallbacks > 0) && !(OnlyRenderVisibleElements && VisibleSetOutdated());
 
+    /// <summary>Les zones d'affichage et de maintien de la vue actuelle (virtualisation).</summary>
+    private (Rect Show, Rect Keep) ViewZones() =>
+        Virtualization.Zones(ViewportMath.GetVisibleRect(Viewport, _width, _height), Viewport.Zoom);
+
+    private VirtualizationRule.Presence NodePresence(Node n, (Rect Show, Rect Keep) zones) =>
+        VirtualizationRule.OfNode(n.Selected, Virtualization.AssumedRect(n, _abs[n.Id]), zones.Show, zones.Keep);
+
+    private VirtualizationRule.Presence EdgePresence(Edge e, (Rect Show, Rect Keep) zones) =>
+        VirtualizationRule.OfEdge(ViewRect(e.Source), ViewRect(e.Target), zones.Show, zones.Keep);
+
     /// <summary>
-    ///     Avec la virtualisation, la vue a-t-elle assez bougé pour changer ce qui doit être affiché ? Un élément apparaît
-    ///     quand il entre dans la zone d'affichage ; il n'est retiré qu'en sortant de la zone, plus large, où on le garde.
-    ///     Sans cette marge, la couche serait refaite à chaque pas au bord de la vue.
+    ///     Avec la virtualisation, la vue a-t-elle assez bougé pour changer ce qui doit être affiché
+    ///     (<see cref="VirtualizationRule.IsOutdated" />) ?
     /// </summary>
     private bool VisibleSetOutdated()
     {
         if (!Virtualizes) return false;
-        var (show, keep) = Virtualization.Zones(ViewportMath.GetVisibleRect(Viewport, _width, _height), Viewport.Zoom);
+        var zones = ViewZones();
         foreach (var n in Nodes)
-        {
-            if (n.Hidden) continue;
-            var shown = _renderedIds.Contains(n.Id);
-            if (n.Selected)
-            {
-                if (!shown) return true;
-                continue;
-            }
-
-            var rect = Virtualization.AssumedRect(n, _abs[n.Id]);
-            if (shown ? !keep.Overlaps(rect) : show.Overlaps(rect)) return true;
-        }
+            if (!n.Hidden && VirtualizationRule.IsOutdated(_renderedIds.Contains(n.Id), NodePresence(n, zones)))
+                return true;
 
         foreach (var e in Edges)
         {
-            if (e.Hidden || !_absNodes.ContainsKey(e.Source) || !_absNodes.ContainsKey(e.Target)) continue;
-            var (from, to) = (ViewRect(e.Source), ViewRect(e.Target)); // les mêmes tailles que pour le dessin
-            if (_edgeContexts.ContainsKey(e.Id)
-                    ? !GraphUtils.IsEdgeVisible(from, to, keep)
-                    : !_unresolvedEdges.Contains(e.Id) && GraphUtils.IsEdgeVisible(from, to, show)) return true;
+            if (e.Hidden || _unresolvedEdges.Contains(e.Id) || !_absNodes.ContainsKey(e.Source) || !_absNodes.ContainsKey(e.Target)) continue;
+            if (VirtualizationRule.IsOutdated(_edgeContexts.ContainsKey(e.Id), EdgePresence(e, zones))) return true;
         }
 
         return false;

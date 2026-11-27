@@ -125,7 +125,22 @@ public partial class FlowView : ComponentBase, IAsyncDisposable
     private static readonly Dictionary<string, int> NoDepth = new();
 
     /// <summary>Levé après chaque rendu : les panneaux (minimap) se rafraîchissent car Blazor saute les composants sans paramètre.</summary>
-    internal event Action? Rendered;
+    private event Action? Rendered;
+
+    /// <summary>
+    ///     Appelle <paramref name="rendered" /> après chaque rendu de la vue, jusqu'à ce que le résultat soit libéré
+    ///     (<c>Dispose</c> du composant).
+    /// </summary>
+    internal IDisposable Follow(Action rendered)
+    {
+        Rendered += rendered;
+        return new Following(this, rendered);
+    }
+
+    private sealed class Following(FlowView flow, Action rendered) : IDisposable
+    {
+        public void Dispose() => flow.Rendered -= rendered;
+    }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
@@ -374,22 +389,10 @@ public partial class FlowView : ComponentBase, IAsyncDisposable
     private List<Node> PrepareRender()
     {
         _renderNodes.Clear();
-        Rect? zone = null;
-        if (Virtualizes)
-        {
-            zone = Virtualization.Zones(ViewportMath.GetVisibleRect(Viewport, _width, _height), Viewport.Zoom).Show;
-        }
-
+        (Rect, Rect)? zones = Virtualizes ? ViewZones() : null;
         foreach (var n in Nodes)
-        {
-            if (n.Hidden) continue;
-            if (zone is { } z && !n.Selected)
-            {
-                if (!z.Overlaps(Virtualization.AssumedRect(n, _abs[n.Id]))) continue;
-            }
-
-            _renderNodes.Add(n);
-        }
+            if (!n.Hidden && (zones is not { } z || NodePresence(n, z) == VirtualizationRule.Presence.Shown))
+                _renderNodes.Add(n);
 
         _renderedIds = _renderNodes.Select(n => n.Id).ToHashSet();
         return _renderNodes;
@@ -460,10 +463,7 @@ public partial class FlowView : ComponentBase, IAsyncDisposable
         _rawLookup ??= id => _nodeIndex.GetValueOrDefault(id);
         _absoluteLookup ??= id => _absNodes.GetValueOrDefault(id);
         _handleLookup ??= id => _handles.GetValueOrDefault(id);
-        var virtualize = Virtualizes;
-        var zone = virtualize
-            ? Virtualization.Zones(ViewportMath.GetVisibleRect(Viewport, _width, _height), Viewport.Zoom).Show
-            : default;
+        (Rect, Rect)? zones = Virtualizes ? ViewZones() : null;
         _unresolvedEdges.Clear();
         _edgeContexts.Clear();
         var ordered = Edges.OrderBy(e => EdgeZOrder.Compute(e, ElevateEdgesOnSelect));
@@ -485,7 +485,7 @@ public partial class FlowView : ComponentBase, IAsyncDisposable
             }
 
             // Un node jamais mesuré a une taille supposée, comme en WPF : sinon les edges des nodes absents resteraient tous.
-            if (virtualize && !GraphUtils.IsEdgeVisible(ViewRect(e.Source), ViewRect(e.Target), zone))
+            if (zones is { } z && EdgePresence(e, z) != VirtualizationRule.Presence.Shown)
                 continue;
 
             // Un edge dont l'edge lui-même, les extrémités et les réglages n'ont pas changé garde son tracé (déplacer un node

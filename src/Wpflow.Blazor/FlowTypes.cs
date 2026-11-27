@@ -69,6 +69,18 @@ public sealed class ResizeOptions
     public Action<ResizeInfo>? Started { get; init; }
     public Action<ResizeInfo>? Resizing { get; init; }
     public Action<ResizeInfo>? Ended { get; init; }
+
+    /// <summary>Les réglages des deux composants de redimensionnement, dont les évènements sont relayés à leurs paramètres.</summary>
+    internal static ResizeOptions Of(double minWidth, double minHeight, double maxWidth, double maxHeight, bool keepAspectRatio,
+        Func<ResizeDirection, Rect, bool>? shouldResize, EventCallback<ResizeInfo> started, EventCallback<ResizeInfo> resizing,
+        EventCallback<ResizeInfo> ended) => new()
+    {
+        MinWidth = minWidth, MinHeight = minHeight, MaxWidth = maxWidth, MaxHeight = maxHeight,
+        KeepAspectRatio = keepAspectRatio, ShouldResize = shouldResize,
+        Started = a => _ = started.InvokeAsync(a),
+        Resizing = a => _ = resizing.InvokeAsync(a),
+        Ended = a => _ = ended.InvokeAsync(a)
+    };
 }
 
 

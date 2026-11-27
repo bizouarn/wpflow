@@ -64,12 +64,9 @@
 
     [Parameter] public string? Class { get; set; }
 
-    protected override void OnInitialized()
-    {
-        if (Flow != null) Flow.Rendered += Refresh;
-    }
+    private IDisposable? _following;
 
-    private void Refresh() => _ = InvokeAsync(StateHasChanged);
+    protected override void OnInitialized() => _following = Flow?.Follow(() => _ = InvokeAsync(StateHasChanged));
 
     private (int Layer, int Scale, object?, object?, double, double, bool) _drawn;
     private int _revision;
@@ -89,10 +86,7 @@
         return _revision;
     }
 
-    public void Dispose()
-    {
-        if (Flow != null) Flow.Rendered -= Refresh;
-    }
+    public void Dispose() => _following?.Dispose();
 
     // Les coordonnées d'un clic sont relatives à l'élément cible : on les ramène à la minimap grâce à son origine mesurée.
     private XYPosition ToFlow(PointerEventArgs e, Rect view)

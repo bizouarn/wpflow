@@ -17,10 +17,9 @@
     // Sans fil en cours, inutile de chercher le handle mesuré (fait par chaque handle après chaque rendu, pan compris).
     private string? CurrentState() => Flow is { ShowsConnection: true } flow ? flow.HandleState(Node?.Id ?? "", Info) : null;
 
-    protected override void OnInitialized()
-    {
-        if (Flow != null) Flow.Rendered += CheckState;
-    }
+    private IDisposable? _following;
+
+    protected override void OnInitialized() => _following = Flow?.Follow(CheckState);
 
     private void CheckState()
     {
@@ -73,7 +72,7 @@
 
     public void Dispose()
     {
-        if (Flow != null) Flow.Rendered -= CheckState;
+        _following?.Dispose();
         if (_key is { } k) Flow?.UnregisterHandle(k);
     }
 

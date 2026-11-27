@@ -172,6 +172,16 @@ public abstract class SourceAdapter<T> : IDisposable where T : class
         }
     }
 
+    /// <summary>Les éléments par id ; en cas de doublon, le premier gagne, comme dans la projection de la source.</summary>
+    private protected static Dictionary<string, T> ById(IReadOnlyList<T> items, Func<T, string> id)
+    {
+        var byId = new Dictionary<string, T>(items.Count);
+        foreach (var item in items)
+            if (!byId.ContainsKey(id(item)))
+                byId.Add(id(item), item);
+        return byId;
+    }
+
     private T? RecordOf(object model) =>
         _idByModel.TryGetValue(model, out var id) ? _current().FirstOrDefault(r => IdOfRecord(r) == id) : null;
 
@@ -436,42 +446,30 @@ public sealed class NodeSourceAdapter : SourceAdapter<Node>
     }
 
     /// <summary>Les changes qui font passer <paramref name="from" /> à <paramref name="to" /> (restauration d'un état d'Undo/Redo).</summary>
-    public static List<NodeChange> Diff(IReadOnlyList<Node> from, IReadOnlyList<Node> to)
+    public static List<NodeChange> Diff(IReadOnlyList<Node> from, IReadOnlyList<Node> to) =>
+        Changesets.Walk<Node, NodeChange>(from, to, ById(from, n => n.Id), n => n.Id, id => new NodeRemoveChange(id),
+            n => new NodeAddChange(n), Changed);
+
+    // Une modification est détaillée autant que possible : un ViewModel ne reçoit que les propriétés concernées.
+    private static void Changed(Node o, Node n, List<NodeChange> changes)
     {
-        var changes = new List<NodeChange>();
-        var before = new Dictionary<string, Node>(from.Count);
-        foreach (var n in from) before.TryAdd(n.Id, n);
-        var after = new HashSet<string>(to.Select(n => n.Id));
-        changes.AddRange(from.Where(n => !after.Contains(n.Id)).Select(n => (NodeChange)new NodeRemoveChange(n.Id)));
-        foreach (var n in to)
+        var resized = o.FixedWidth != n.FixedWidth || o.FixedHeight != n.FixedHeight;
+        // Ce qui diffère en dehors de la position, de la sélection, de la taille et des états de la vue.
+        var others = o with
         {
-            if (!before.TryGetValue(n.Id, out var o))
-            {
-                changes.Add(new NodeAddChange(n));
-                continue;
-            }
-
-            if (o == n) continue;
-            var resized = o.FixedWidth != n.FixedWidth || o.FixedHeight != n.FixedHeight;
-            // Ce qui diffère en dehors de la position, de la sélection, de la taille et des états de la vue.
-            var others = o with
-            {
-                Position = n.Position, Selected = n.Selected, FixedWidth = n.FixedWidth, FixedHeight = n.FixedHeight,
-                Width = n.Width, Height = n.Height, Dragging = n.Dragging, Resizing = n.Resizing
-            } != n;
-            // Une taille redevenue automatique ne s'exprime pas par un redimensionnement.
-            if (others || (resized && (n.FixedWidth == null || n.FixedHeight == null)))
-            {
-                changes.Add(new NodeReplaceChange(n.Id, n));
-                continue;
-            }
-
-            if (o.Position != n.Position) changes.Add(new NodePositionChange(n.Id, n.Position));
-            if (o.Selected != n.Selected) changes.Add(new NodeSelectChange(n.Id, n.Selected));
-            if (resized) changes.Add(new NodeResizeChange(n.Id, n.FixedWidth!.Value, n.FixedHeight!.Value));
+            Position = n.Position, Selected = n.Selected, FixedWidth = n.FixedWidth, FixedHeight = n.FixedHeight,
+            Width = n.Width, Height = n.Height, Dragging = n.Dragging, Resizing = n.Resizing
+        } != n;
+        // Une taille redevenue automatique ne s'exprime pas par un redimensionnement.
+        if (others || (resized && (n.FixedWidth == null || n.FixedHeight == null)))
+        {
+            changes.Add(new NodeReplaceChange(n.Id, n));
+            return;
         }
 
-        return changes;
+        if (o.Position != n.Position) changes.Add(new NodePositionChange(n.Id, n.Position));
+        if (o.Selected != n.Selected) changes.Add(new NodeSelectChange(n.Id, n.Selected));
+        if (resized) changes.Add(new NodeResizeChange(n.Id, n.FixedWidth!.Value, n.FixedHeight!.Value));
     }
 }
 
@@ -538,21 +536,9 @@ public sealed class EdgeSourceAdapter : SourceAdapter<Edge>
     }
 
     /// <inheritdoc cref="NodeSourceAdapter.Diff" />
-    public static List<EdgeChange> Diff(IReadOnlyList<Edge> from, IReadOnlyList<Edge> to)
-    {
-        var changes = new List<EdgeChange>();
-        var before = new Dictionary<string, Edge>(from.Count);
-        foreach (var e in from) before.TryAdd(e.Id, e);
-        var after = new HashSet<string>(to.Select(e => e.Id));
-        changes.AddRange(from.Where(e => !after.Contains(e.Id)).Select(e => (EdgeChange)new EdgeRemoveChange(e.Id)));
-        foreach (var e in to)
-        {
-            if (!before.TryGetValue(e.Id, out var o)) changes.Add(new EdgeAddChange(e));
-            else if (o == e) continue;
-            else if (o with { Selected = e.Selected } != e) changes.Add(new EdgeReplaceChange(e.Id, e));
-            else changes.Add(new EdgeSelectChange(e.Id, e.Selected));
-        }
-
-        return changes;
-    }
+    public static List<EdgeChange> Diff(IReadOnlyList<Edge> from, IReadOnlyList<Edge> to) =>
+        Changesets.Walk<Edge, EdgeChange>(from, to, ById(from, e => e.Id), e => e.Id, id => new EdgeRemoveChange(id),
+            e => new EdgeAddChange(e), (o, e, changes) => changes.Add(o with { Selected = e.Selected } != e
+                ? new EdgeReplaceChange(e.Id, e)
+                : new EdgeSelectChange(e.Id, e.Selected)));
 }

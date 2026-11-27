@@ -346,16 +346,14 @@ public sealed class EdgeLayer : Canvas
                     continue;
                 }
 
-                if (!GraphUtils.IsEdgeVisible(a, b, shown))
+                var presence = VirtualizationRule.OfEdge(a, b, shown, kept);
+                if (presence == VirtualizationRule.Presence.Absent)
                 {
-                    if (!GraphUtils.IsEdgeVisible(a, b, kept))
-                    {
-                        Remove(edge.Id); // trop loin : pas d'élément visuel du tout
-                        continue;
-                    }
-
-                    visibility = Visibility.Collapsed;
+                    Remove(edge.Id); // trop loin : pas d'élément visuel du tout
+                    continue;
                 }
+
+                if (presence == VirtualizationRule.Presence.Kept) visibility = Visibility.Collapsed;
             }
 
             var exists = _visuals.TryGetValue(edge.Id, out var visual);
