@@ -15,7 +15,7 @@
 
   <!-- System.Text.Json est fourni par le framework en .NET 8 ; les anciennes cibles le prennent sur NuGet. -->
   <ItemGroup Condition="'$(TargetFramework)' == 'netstandard2.0' Or '$(TargetFramework)' == 'net472'">
-    <PackageReference Include="System.Text.Json" Version="8.0.*" />
+    <PackageReference Include="System.Text.Json" Version="11.0.*" />
   </ItemGroup>
 
   <ItemGroup>
