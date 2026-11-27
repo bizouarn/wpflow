@@ -71,6 +71,5 @@ Le thème sombre (`ColorMode="Dark"`) est fourni ; surchargez les clés `Flow.*`
 
 ### Tactile
 
-Le pincement à deux doigts zoome (`ManipulationDelta`) ; le glisser à un doigt déplace nodes ou vue via les événements souris promus par WPF. **Non testé sur matériel tactile.**
-
+Le pincement à deux doigts zoome (`ManipulationDelta`) ; le glisser à un doigt déplace nodes ou vue via les événements souris promus par WPF.
 Suivant : [Sauvegarde et JSON](12-serialization.md).

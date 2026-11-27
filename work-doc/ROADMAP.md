@@ -10,7 +10,6 @@ Objectif : fournir en WPF l'équivalent de [xyflow](https://github.com/xyflow/xy
 
 | Élément | Pourquoi |
 |---|---|
-| Pincement tactile (`ManipulationDelta`) | implémenté, jamais essayé sur un écran tactile |
 | Lecteurs d'écran (Narrateur, NVDA) | les `AutomationPeer` sont vérifiés par code, pas avec un lecteur |
 
 ## Tests et usage réel

@@ -52,7 +52,7 @@ Blazor (ce que les tests ne font qu'imiter) :
 
 WPF :
 
-- [ ] Tactile injecté (`InjectTouchInput`) : tap, double tap, appui long, glisser, pincement (`ManipulationDelta`, jamais essayé).
+- [ ] Tactile injecté (`InjectTouchInput`) : tap, double tap, appui long, glisser, pincement (`ManipulationDelta`).
 - [ ] Stylet, et conflit entre les évènements tactiles et les évènements souris simulés.
 - [ ] Clavier AZERTY et boutons de souris inversés.
 
@@ -77,7 +77,7 @@ Commun :
 
 | Vérification | Dernier essai |
 |---|---|
-| Écran tactile et stylet réels (WPF et Blazor) | jamais |
+| Stylet réel (WPF et Blazor) | jamais |
 | Narrateur et NVDA (WPF et Blazor) | jamais |
 | WPF sur Windows 10 et en bureau à distance | jamais |
 | Blazor sur iPhone ou iPad (Safari) et téléphone Android | jamais |

@@ -91,7 +91,7 @@ Les contrôles HTML (`input`, `button`, `select`…) et tout élément de classe
 
 `PanOnDrag`, `PanOnDragButtons` (`[0, 1]`), `PanOnScroll`, `PanOnScrollSpeed`, `PanOnScrollMode`, `ZoomOnScroll`, `ZoomOnPinch`, `ZoomOnDoubleClick`, `PreventScrolling`, `NodesDraggable`, `NodesConnectable`, `ElementsSelectable`, `EdgesReconnectable`, `SelectNodesOnDrag`, `SelectionOnDrag`, `SelectionMode` (`Partial` / `Full`), `SelectionKey` (`Shift`), `MultiSelectionKey` (`Control`), `PanActivationKey` (`Space`), `ZoomActivationKey` (`Control`), `DeleteKeys`, `DeleteKeyEnabled`, `NodeDragThreshold`, `ConnectionDragThreshold`, `PaneDragThreshold`, `AutoPanOnNodeDrag`, `AutoPanOnConnect`, `AutoPanOnSelection`, `AutoPanOnNodeFocus`, `AutoPanSpeed`, `EdgeHitWidth`, `ElevateNodesOnSelect`, `ElevateEdgesOnSelect`, `ZIndexMode`.
 
-Clavier : Suppr / Retour arrière supprime, Ctrl+A tout sélectionner, Ctrl+C / X / V presse-papier (copies décalées de 20 px), Ctrl+Z / Ctrl+Y historique, flèches déplacent la sélection (Maj : ×4, `SnapGrid` sinon 5 px), Échap efface la sélection ou annule une connexion par clics, Entrée / Espace sélectionne le node ayant le focus, Espace + glisser fait défiler la vue. Tactile : pincement à deux doigts (non vérifié sur matériel).
+Clavier : Suppr / Retour arrière supprime, Ctrl+A tout sélectionner, Ctrl+C / X / V presse-papier (copies décalées de 20 px), Ctrl+Z / Ctrl+Y historique, flèches déplacent la sélection (Maj : ×4, `SnapGrid` sinon 5 px), Échap efface la sélection ou annule une connexion par clics, Entrée / Espace sélectionne le node ayant le focus, Espace + glisser fait défiler la vue. Tactile : pincement à deux doigts.
 
 ### Connexions
 

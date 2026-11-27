@@ -36,7 +36,7 @@ Fait : tout ce que couvre `ECART-XYFLOW.md` côté interface, sauf les points de
 | Adaptateur MVVM (`NodesSource`, mappages, `IFlowController`, `IFlowHistory`) | ✅ logique commune dans le noyau ; les `EventCallback` tiennent lieu de commandes, voir [doc/blazor.md](../doc/blazor.md#mvvm) |
 | Export d'image | 🟡 le rendu est capturé par le navigateur (Chrome vérifié) ; le contenu non sérialisable en SVG (canvas, vidéo, images d'une autre origine) n'apparaît pas ; `vector: true` donne le dessin simplifié |
 | Lecteurs d'écran (Narrateur, NVDA, VoiceOver) | non vérifiables ici : rôles ARIA et région `aria-live` vérifiés par les tests, pas avec un lecteur |
-| Navigateurs autres que Chrome, vrai écran tactile | le pincement est vérifié avec des évènements tactiles simulés par Chrome (CDP), pas sur du matériel |
+| Navigateurs autres que Chrome | non vérifiés |
 | Publication NuGet | `release.yml` empaquette et publie `Wpflow.Blazor` avec `Wpflow.Core` et `Wpflow.Wpf` (même version, tirée du tag) ; le premier tag publié après la fusion de la branche `blazor` créera le package |
 
 ## Tests

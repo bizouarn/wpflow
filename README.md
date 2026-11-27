@@ -124,7 +124,6 @@ La [documentation complète](doc/README.md) contient aussi la référence de l'A
 
 - Les deux versions n'ont pas tout en commun : l'adaptateur MVVM (`NodesSource`) n'existe qu'en WPF.
 - En Blazor, les lecteurs d'écran et les navigateurs autres que Chrome n'ont pas été vérifiés.
-- Le pincement n'a pas été testé sur un écran tactile réel.
 - La validation des connexions (`IsValidConnection`) est synchrone : il n'y a pas de version asynchrone.
 
 ## Développement
