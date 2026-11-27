@@ -6,16 +6,24 @@ on:
   push:
     tags: ['v*']
 
+# Aucun droit par défaut : chaque job demande les siens.
+permissions: {}
+
+# Trois jobs, pour que le code exécuté pendant la construction (paquets, cibles MSBuild, tests) n'ait accès
+# ni au jeton OIDC de publication ni à un droit d'écriture sur le dépôt.
 jobs:
-  publish:
+  build:
     runs-on: windows-latest
     permissions:
-      contents: write   # créer la release GitHub
-      id-token: write   # jeton OIDC échangé contre une clé d'API temporaire par NuGet/login
+      contents: read
+    outputs:
+      version: ${{ steps.version.outputs.value }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
 
-      - uses: actions/setup-dotnet@v4
+      - uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4.3.1
         with:
           dotnet-version: |
             8.0.x
@@ -25,10 +33,20 @@ jobs:
       - name: Version depuis le tag
         id: version
         shell: bash
-        run: echo "value=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          # Le nom du tag finit dans des commandes : on n'accepte qu'un numéro de version.
+          if [[ ! "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$ ]]; then
+            echo "::error::Tag de version invalide"
+            exit 1
+          fi
+          echo "value=$version" >> "$GITHUB_OUTPUT"
 
       - name: Build
-        run: dotnet build wpflow.sln -c Release -p:Version=${{ steps.version.outputs.value }}
+        shell: bash
+        env:
+          VERSION: ${{ steps.version.outputs.value }}
+        run: dotnet build wpflow.sln -c Release -p:Version="$VERSION"
 
       # Seulement les tests de base ; les tests lents se lancent en local avant de poser le tag (voir ci.yml).
       - name: Tests de base
@@ -41,29 +59,73 @@ jobs:
 
       # La validation de paquet (Directory.Build.props) fait échouer le pack si une API publiée a disparu.
       - name: Pack
+        shell: bash
+        env:
+          VERSION: ${{ steps.version.outputs.value }}
         run: |
-          dotnet pack src/Wpflow.Core -c Release --no-build -p:Version=${{ steps.version.outputs.value }} -o artifacts
-          dotnet pack src/Wpflow.Wpf -c Release --no-build -p:Version=${{ steps.version.outputs.value }} -o artifacts
-          dotnet pack src/Wpflow.Blazor -c Release --no-build -p:Version=${{ steps.version.outputs.value }} -o artifacts
+          for p in Core Wpf Blazor; do
+            dotnet pack "src/Wpflow.$p" -c Release --no-build -p:Version="$VERSION" -o artifacts
+          done
+
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: packages
+          path: |
+            artifacts/*.nupkg
+            artifacts/*.snupkg
+          if-no-files-found: error
+
+  publish:
+    needs: build
+    runs-on: ubuntu-latest
+    # Environnement à protéger dans le dépôt (Settings → Environments → nuget) : validation manuelle, tags v* seulement.
+    environment: nuget
+    permissions:
+      id-token: write   # jeton OIDC échangé contre une clé d'API temporaire par NuGet/login
+    steps:
+      - uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4.3.1
+        with:
+          dotnet-version: 10.0.x
+
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: packages
+          path: artifacts
 
       # Échange le jeton OIDC contre une clé d'API NuGet valable une heure (politique « trusted publishing » du compte).
       - name: Connexion à nuget.org
         id: login
-        uses: NuGet/login@v1
+        uses: NuGet/login@8d196754b4036150537f80ac539e15c2f1028841 # v1.2.0
         with:
           user: ${{ secrets.NUGET_USER }}
 
       - name: Publication
-        shell: bash
+        env:
+          NUGET_API_KEY: ${{ steps.login.outputs.NUGET_API_KEY }}
         run: |
-          # Un fichier à la fois : le joker "artifacts/*.nupkg" n'est pas résolu par dotnet sous Windows.
           # Le .snupkg correspondant est poussé automatiquement avec chaque .nupkg.
           for f in artifacts/*.nupkg; do
-            dotnet nuget push "$f" --api-key "${{ steps.login.outputs.NUGET_API_KEY }}" --source https://api.nuget.org/v3/index.json --skip-duplicate
+            dotnet nuget push "$f" --api-key "$NUGET_API_KEY" --source https://api.nuget.org/v3/index.json --skip-duplicate
           done
 
+  github-release:
+    needs: [build, publish]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write   # créer la release GitHub
+    steps:
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: packages
+          path: artifacts
+
+      # Pas de dépôt cloné dans ce job : GH_REPO indique à gh où créer la release.
       - name: Release GitHub
-        shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release create "$GITHUB_REF_NAME" artifacts/*.nupkg --generate-notes ${{ contains(steps.version.outputs.value, '-') && '--prerelease' || '' }}
+          GH_REPO: ${{ github.repository }}
+          VERSION: ${{ needs.build.outputs.version }}
+        run: |
+          flags=()
+          if [[ "$VERSION" == *-* ]]; then flags+=(--prerelease); fi
+          gh release create "$GITHUB_REF_NAME" artifacts/*.nupkg --verify-tag --generate-notes "${flags[@]}"

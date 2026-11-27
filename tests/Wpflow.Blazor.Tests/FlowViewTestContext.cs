@@ -10,7 +10,7 @@ namespace Wpflow.Blazor.Tests;
 ///     Socle des tests de <see cref="FlowView" /> sans navigateur : le pont JS est simulé (mode souple) et les callbacks que
 ///     JS appellerait (<c>OnMeasured</c>, <c>OnPointerMove</c>…) sont invoqués directement.
 /// </summary>
-public abstract class FlowViewTestContext : TestContext
+public abstract class FlowViewTestContext : BunitContext
 {
     protected static readonly Node A = new("a", new XYPosition(0, 0), Data: "A");
     protected static readonly Node B = new("b", new XYPosition(300, 100), Data: "B");
@@ -40,7 +40,7 @@ public abstract class FlowViewTestContext : TestContext
         Action<Harness, ComponentParameterCollectionBuilder<FlowView>>? configure, bool fit)
     {
         var h = new Harness { Nodes = nodes ?? [A, B], Edges = edges ?? [AB] };
-        h.Cut = RenderComponent<FlowView>(p =>
+        h.Cut = Render<FlowView>(p =>
         {
             p.Add(f => f.Nodes, h.Nodes);
             p.Add(f => f.Edges, h.Edges);

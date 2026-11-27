@@ -72,7 +72,7 @@ public sealed class LayerReuseTests : FlowViewTestContext
     {
         nodes ??= [A, B];
         var settings = Settings(virtualize, nodes, edges ?? [AB with { Type = "counted" }]);
-        var host = RenderComponent<Host>(p =>
+        var host = Render<Host>(p =>
         {
             p.Add(h => h.Settings, settings);
             p.Add(h => h.Listens, listens);
@@ -124,9 +124,9 @@ public sealed class LayerReuseTests : FlowViewTestContext
     {
         var changes = 0;
         var settings = Settings(false, [A, B], [AB with { Type = "counted" }]);
-        var host = RenderComponent<Host>(p => p.Add(h => h.Settings, settings));
+        var host = Render<Host>(p => p.Add(h => h.Settings, settings));
         settings[nameof(FlowView.OnStateChange)] = EventCallback.Factory.Create(host.Instance, () => changes++);
-        host.SetParametersAndRender(p => p.Add(h => h.Settings, settings));
+        host.Render(p => p.Add(h => h.Settings, settings));
         await host.InvokeAsync(() => host.Instance.View.OnRootRect(0, 0, 800, 600));
         await host.InvokeAsync(() => host.Instance.View.OnMeasured([Measured("a"), Measured("b")]));
         var (drawn, seen) = (_drawn, changes);
@@ -157,7 +157,7 @@ public sealed class LayerReuseTests : FlowViewTestContext
             b.AddAttribute(1, nameof(FlowMiniMap.NodeColor), color);
             b.CloseComponent();
         });
-        var host = RenderComponent<Host>(p =>
+        var host = Render<Host>(p =>
         {
             p.Add(h => h.Settings, settings);
             p.Add(h => h.Listens, true);
@@ -201,7 +201,7 @@ public sealed class LayerReuseTests : FlowViewTestContext
             b.AddAttribute(1, nameof(FlowMiniMap.NodeColor), color);
             b.CloseComponent();
         });
-        var host = RenderComponent<Host>(p => p.Add(h => h.Settings, settings));
+        var host = Render<Host>(p => p.Add(h => h.Settings, settings));
         await host.InvokeAsync(() => host.Instance.View.OnRootRect(0, 0, 800, 600));
         await host.InvokeAsync(() => host.Instance.View.OnMeasured([Measured("a"), Measured("b"), Measured("far"), Measured("corner")]));
         await host.InvokeAsync(() => host.Instance.View.SetViewport(new Viewport(0, 0, 1)));
@@ -229,7 +229,7 @@ public sealed class LayerReuseTests : FlowViewTestContext
             b.AddAttribute(1, nameof(FlowMiniMap.OnNodeClick), EventCallback.Factory.Create<Node>(this, n => clicked.Add(n.Id)));
             b.CloseComponent();
         });
-        var host = RenderComponent<Host>(p => p.Add(h => h.Settings, settings));
+        var host = Render<Host>(p => p.Add(h => h.Settings, settings));
         await host.InvokeAsync(() => host.Instance.View.OnRootRect(0, 0, 800, 600));
         await host.InvokeAsync(() => host.Instance.View.OnMeasured([Measured("a"), Measured("b")]));
 

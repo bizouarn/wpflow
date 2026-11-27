@@ -66,7 +66,7 @@ public sealed class EdgeReuseTests : FlowViewTestContext
             [nameof(FlowView.FitViewOnInit)] = false
         };
         more?.Invoke(settings);
-        var host = RenderComponent<Host>(p => p.Add(h => h.Settings, settings));
+        var host = Render<Host>(p => p.Add(h => h.Settings, settings));
         await host.InvokeAsync(() => host.Instance.View.OnRootRect(0, 0, 800, 600));
         await host.InvokeAsync(() => host.Instance.View.OnMeasured([Measured("a"), Measured("b"), Measured("c"), Measured("d")]));
         _drawn.Clear();
@@ -175,7 +175,7 @@ public sealed class EdgeReuseTests : FlowViewTestContext
         var host = await Open(CountWalks);
         _walked = 0;
 
-        for (var i = 0; i < 5; i++) host.SetParametersAndRender(p => p.Add(h => h.Settings, host.Instance.Settings));
+        for (var i = 0; i < 5; i++) host.Render(p => p.Add(h => h.Settings, host.Instance.Settings));
 
         Assert.Equal(0, _walked);
     }
@@ -188,12 +188,12 @@ public sealed class EdgeReuseTests : FlowViewTestContext
         var host = await Open(s => s[nameof(FlowView.Edges)] = (IReadOnlyList<Edge>)edges);
 
         edges[0] = First with { Animated = true };
-        host.SetParametersAndRender(p => p.Add(h => h.Settings, host.Instance.Settings));
+        host.Render(p => p.Add(h => h.Settings, host.Instance.Settings));
 
         Assert.Single(host.FindAll(".wf-edge-animated"));
 
         edges.RemoveAt(1);
-        host.SetParametersAndRender(p => p.Add(h => h.Settings, host.Instance.Settings));
+        host.Render(p => p.Add(h => h.Settings, host.Instance.Settings));
 
         Assert.Single(host.FindAll(".wf-edge"));
     }
@@ -267,7 +267,7 @@ public sealed class EdgeReuseTests : FlowViewTestContext
         await host.InvokeAsync(() => host.Instance.View.SetLocked(false));
         _drawn.Clear();
         host.Instance.Settings[nameof(FlowView.EdgeHitWidth)] = 37.0;
-        host.SetParametersAndRender(p => p.Add(h => h.Settings, host.Instance.Settings));
+        host.Render(p => p.Add(h => h.Settings, host.Instance.Settings));
 
         Assert.Equal(2, _drawn.Distinct().Count());
         Assert.All(host.FindAll(".wf-edge-hit"), hit => Assert.Contains("37", hit.GetAttribute("style")));
@@ -279,7 +279,7 @@ public sealed class EdgeReuseTests : FlowViewTestContext
         var host = await Open();
         host.Instance.Settings[nameof(FlowView.EdgeTemplates)] = Templates("autre");
 
-        host.SetParametersAndRender(p => p.Add(h => h.Settings, host.Instance.Settings));
+        host.Render(p => p.Add(h => h.Settings, host.Instance.Settings));
 
         Assert.Equal(2, host.FindAll("path.autre").Count);
     }

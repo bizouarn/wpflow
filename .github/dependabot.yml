@@ -1,0 +1,28 @@
+# Mises à jour hebdomadaires, groupées pour limiter le nombre de pull requests.
+# Les actions sont figées par SHA : Dependabot met à jour le SHA et le commentaire de version.
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    cooldown:
+      default-days: 7
+    commit-message:
+      prefix: "CI"
+    groups:
+      actions:
+        patterns: ["*"]
+
+  - package-ecosystem: nuget
+    directory: /
+    schedule:
+      interval: weekly
+    cooldown:
+      default-days: 7
+    commit-message:
+      prefix: "Deps"
+    groups:
+      nuget-minor:
+        patterns: ["*"]
+        update-types: [minor, patch]

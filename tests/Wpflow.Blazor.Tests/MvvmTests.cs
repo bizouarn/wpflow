@@ -78,7 +78,7 @@ public sealed class MvvmTests : FlowViewTestContext
     private readonly ObservableCollection<LinkVm> _links = [new("e", "a", "b")];
 
     private IRenderedComponent<FlowView> Render(Action<ComponentParameterCollectionBuilder<FlowView>>? configure = null) =>
-        RenderComponent<FlowView>(p =>
+        Render<FlowView>(p =>
         {
             p.Add(f => f.NodesSource, _tasks);
             p.Add(f => f.EdgesSource, _links);
@@ -210,7 +210,7 @@ public sealed class MvvmTests : FlowViewTestContext
 
         Assert.Same(_tasks[1], Assert.Single(reported));
         Assert.Same(_tasks[1], single);
-        cut.SetParametersAndRender(p => p.Add(f => f.SelectedNodeItems, new object[] { _tasks[0] }));
+        cut.Render(p => p.Add(f => f.SelectedNodeItems, new object[] { _tasks[0] }));
         Assert.True(_tasks[0].IsSelected);
         Assert.False(_tasks[1].IsSelected);
     }
@@ -224,7 +224,7 @@ public sealed class MvvmTests : FlowViewTestContext
         Assert.True(_tasks[0].IsSelected);
 
         await cut.InvokeAsync(() => cut.Instance.SelectOnly("b", null));
-        cut.SetParametersAndRender(p => p.Add(f => f.SelectedNodeItems, initial)); // le parent se redessine
+        cut.Render(p => p.Add(f => f.SelectedNodeItems, initial)); // le parent se redessine
 
         Assert.True(_tasks[1].IsSelected);
         Assert.False(_tasks[0].IsSelected);

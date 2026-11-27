@@ -15,7 +15,7 @@ public sealed class ParityTests : FlowViewTestContext
     private static readonly Edge Link = new("e", "a", "b");
 
     private IRenderedComponent<FlowView> Render(IReadOnlyList<Node> nodes, IReadOnlyList<Edge> edges,
-        Action<ComponentParameterCollectionBuilder<FlowView>>? configure = null) => RenderComponent<FlowView>(p =>
+        Action<ComponentParameterCollectionBuilder<FlowView>>? configure = null) => Render<FlowView>(p =>
     {
         p.Add(f => f.Nodes, nodes);
         p.Add(f => f.Edges, edges);
