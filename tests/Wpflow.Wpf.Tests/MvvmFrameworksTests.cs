@@ -81,7 +81,7 @@ public class MvvmFrameworksTests
 
             // ReactiveCommand est un ICommand : il se lie aux commandes de FlowView.
             var received = new List<Connection>();
-            var command = ReactiveCommand.Create<Connection>(received.Add, outputScheduler: System.Reactive.Concurrency.ImmediateScheduler.Instance);
+            var command = ReactiveCommand.Create<Connection>(received.Add, outputScheduler: ReactiveUI.Primitives.Concurrency.ImmediateSequencer.Instance);
             flow.ConnectCommand = command;
             flow.ConnectCommand.Execute(new Connection("a", "b", null, null));
             Assert.Single(received);
