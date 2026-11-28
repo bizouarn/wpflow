@@ -40,6 +40,7 @@ public partial class ExamplesWindow : Window
         BuildEdgeTypes();
         BuildGroups();
         BuildTools();
+        BuildRotation();
         BuildPalette();
         BuildLayout();
         BuildOptions();
@@ -122,6 +123,18 @@ public partial class ExamplesWindow : Window
             new Edge("g-e1", "c1", "c2", Animated: true),
             new Edge("g-e2", "c2", "free")
         ];
+    }
+
+    // ---------- Rotation ----------
+
+    private void BuildRotation()
+    {
+        RotateFlow.Nodes =
+        [
+            new Node("r1", new XYPosition(0, 0), "rotatable", "Rotate me", Rotation: 0),
+            new Node("r2", new XYPosition(300, 120), "rotatable", "Rotate me too", Rotation: 30)
+        ];
+        RotateFlow.Edges = [new Edge("r-e", "r1", "r2", MarkerEnd: EdgeMarker.ArrowClosed)];
     }
 
     // ---------- Toolbar / resizer ----------

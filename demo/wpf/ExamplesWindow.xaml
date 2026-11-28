@@ -17,6 +17,20 @@
             </DataTemplate.Triggers>
         </DataTemplate>
 
+        <!-- Node tournant : la poignée NodeRotator apparaît au-dessus du node quand il est sélectionné -->
+        <DataTemplate x:Key="wpflow-node-rotatable">
+            <Grid>
+                <Border Background="{DynamicResource Flow.NodeBackground}" BorderBrush="{DynamicResource Flow.NodeBorder}"
+                        BorderThickness="1" Padding="12" Width="160" Height="70">
+                    <TextBlock Text="{Binding Data}" FontWeight="SemiBold" HorizontalAlignment="Center"
+                               VerticalAlignment="Center" Foreground="{DynamicResource Flow.NodeText}" />
+                </Border>
+                <flow:NodeRotator />
+                <flow:Handle Type="Target" Position="Left" />
+                <flow:Handle Type="Source" Position="Right" />
+            </Grid>
+        </DataTemplate>
+
         <!-- Node avec NodeToolbar et NodeResizer -->
         <DataTemplate x:Key="wpflow-node-tool">
             <Grid>
@@ -169,6 +183,14 @@
         </TabItem>
         <TabItem Header="MVVM">
             <demo:MvvmExample />
+        </TabItem>
+        <TabItem Header="Rotation">
+            <flow:FlowView x:Name="RotateFlow" FitViewOnInit="True" FitViewPadding="0.3">
+                <flow:FlowPanel PanelPosition="TopLeft">
+                    <TextBlock Text="Select a node, then drag its round handle above it to rotate it. Hold Shift to snap to 15°."
+                               Foreground="#666" />
+                </flow:FlowPanel>
+            </flow:FlowView>
         </TabItem>
     </TabControl>
 </Window>
