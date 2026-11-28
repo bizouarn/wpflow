@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+### .NET 10 target
+
+- `Wpflow.Core` also targets `net10.0`, `Wpflow.Wpf` also targets `net10.0-windows`, and `Wpflow.Blazor` also targets `net10.0` (its `Microsoft.AspNetCore.Components.Web` reference is 10.0 on that target). The `net8.0` and `net472` / `netstandard2.0` targets are unchanged.
+
 The three packages (`Wpflow.Core`, `Wpflow.Wpf`, `Wpflow.Blazor`) share the same version number. At `dotnet pack`, package validation compares the API with the published version (`PackageValidationBaselineVersion` in `Directory.Build.props`): a removed API makes the build fail, unless the break is declared in `CompatibilitySuppressions.xml`.
 
 ## 1.2.0

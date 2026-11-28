@@ -1,11 +1,11 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFrameworks>net8.0-windows;net472</TargetFrameworks>
+    <TargetFrameworks>net8.0-windows;net10.0-windows;net472</TargetFrameworks>
     <LangVersion>latest</LangVersion>
     <Nullable>enable</Nullable>
     <!-- Le BCL des anciennes cibles n'est pas annoté : la nullabilité est vérifiée par le build .NET 8. -->
-    <Nullable Condition="!$(TargetFramework.StartsWith('net8.0'))">annotations</Nullable>
+    <Nullable Condition="!$(TargetFramework.StartsWith('net8.0')) And !$(TargetFramework.StartsWith('net10.0'))">annotations</Nullable>
     <UseWPF>true</UseWPF>
     <ImplicitUsings>enable</ImplicitUsings>
     <RootNamespace>Wpflow.Wpf</RootNamespace>
